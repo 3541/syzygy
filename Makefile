@@ -2,6 +2,8 @@ arch ?= x86_64
 kernel := build/kernel-$(arch).bin
 iso := build/$(arch).iso
 
+xorriso ?= $(shell whereis xorriso | cut -d' ' -f2)
+
 asm_src := $(wildcard src/arch/$(arch)/*.asm)
 asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
 
@@ -43,7 +45,7 @@ $(iso): $(kernel) $(grub_cfg)
 	mkdir -p build/isofiles/boot/grub
 	cp $(kernel) build/isofiles/boot/kernel.bin
 	cp $(grub_cfg) build/isofiles/boot/grub
-	grub-mkrescue -o $(iso) build/isofiles $(grub_flags)
+	grub-mkrescue -o $(iso) build/isofiles $(grub_flags) --xorriso=$(xorriso)
 
 $(kernel): $(asm_obj) $(ldscript) 
 	ld $(ld_flags) -n -T $(ldscript) -o $(kernel) $(asm_obj)

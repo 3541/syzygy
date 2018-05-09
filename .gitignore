@@ -1,4 +1,6 @@
 
+build
+build/*
 /target
 **/*.rs.bk
 
