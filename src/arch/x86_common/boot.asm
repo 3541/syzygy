@@ -4,6 +4,7 @@ section .text
 bits 32
 start:
 	mov esp, stack_bottom
+	mov edi, ebx
 	call check_multiboot
 	call check_cpuid
 	call check_long_mode

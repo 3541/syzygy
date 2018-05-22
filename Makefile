@@ -1,5 +1,7 @@
 arch ?= x86_64
+target ?= $(arch)-syzygy
 kernel := build/kernel-$(arch).bin
+syzygy_lib := target/$(target)/debug/libsyzygy.a
 iso := build/$(arch).iso
 
 xorriso ?= $(shell whereis xorriso | cut -d' ' -f2)
@@ -31,12 +33,13 @@ grub_cfg := src/arch/$(arch_common)/grub.cfg
 
 
 
-.PHONY: all clean run iso
+.PHONY: all clean run iso syzygy
 
 all: $(kernel)
 
 clean:
 	rm -r build
+	cargo clean
 
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso)
@@ -47,8 +50,11 @@ $(iso): $(kernel) $(grub_cfg)
 	cp $(grub_cfg) build/isofiles/boot/grub
 	grub-mkrescue -o $(iso) build/isofiles $(grub_flags) --xorriso=$(xorriso)
 
-$(kernel): $(asm_obj) $(ldscript) 
-	ld $(ld_flags) -n -T $(ldscript) -o $(kernel) $(asm_obj)
+$(kernel): syzygy $(asm_obj) $(ldscript) 
+	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(syzygy_lib)
+
+syzygy:
+	RUST_TARGET_PATH=$(PWD) xargo build --target=$(target)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@mkdir -p $(dir $@)
