@@ -1,4 +1,7 @@
+mod paging;
 mod sfa;
+
+pub use self::sfa::SequentialFrameAllocator;
 
 const PAGE_SIZE: usize = 4096;
 
@@ -14,6 +17,8 @@ pub struct Frame {
 
 impl Frame {
     fn containing_address(addr: usize) -> Frame {
-        Frame { number: addr / PAGE_SIZE }
+        Frame {
+            number: addr / PAGE_SIZE,
+        }
     }
 }

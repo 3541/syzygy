@@ -57,7 +57,7 @@ impl SequentialFrameAllocator {
     ) -> SequentialFrameAllocator {
         let mut ret = SequentialFrameAllocator {
             next_free: Frame::containing_address(0),
-            current_area: None,
+            current_area : None,
             areas: memory_areas,
             kernel_start: Frame::containing_address(kernel_start),
             kernel_end: Frame::containing_address(kernel_end),
