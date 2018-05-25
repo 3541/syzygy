@@ -1,23 +1,18 @@
-ENTRY(_start)
+ENTRY(start)
 
 SECTIONS {
     . = 1M;
 
     .text ALIGN(4K) : {
-        *(.multiboot_header)
-        *(.text)
+        KEEP(*(.multiboot_header))
+        *(.text .text.*)
     }
 
-    .rodata ALIGN(4K) : {
-        *(.rodata)
+    .rodata : {
+        *(.rodata .rodata.*)
     }
 
-    .data ALIGN(4K) : {
-        *(.data)
-    }
-
-    .bss ALIGN(4K) : {
-        *(COMMON)
-        *(.bss)
+    .data.rel.ro : {
+        *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
     }
 }
