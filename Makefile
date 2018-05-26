@@ -34,7 +34,7 @@ clean:
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso)
 
-$(iso): $(kernel) $(grub_cfg):
+$(iso): $(kernel) $(grub_cfg)
 	mkdir -p build/isofiles/boot/grub
 	cp $(kernel) build/isofiles/kernel.bin
 	cp $(grub_cfg) build/isofiles/boot/grub
@@ -45,4 +45,4 @@ $(kernel): $(asm_obj) $(ldscript)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@mkdir -p $(dir $@)
-	nasm $(nasm_flags) $< -o $@
+	nasm $(nasm_flags) $< -o $@ 

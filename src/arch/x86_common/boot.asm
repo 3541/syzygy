@@ -1,4 +1,4 @@
-%include "./multiboot_header.asm"
+%include "src/arch/x86_common/multiboot_header.asm"
 
 section .bss
 align 16
