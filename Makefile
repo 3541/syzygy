@@ -1,56 +1,48 @@
 arch ?= x86_64
 target ?= $(arch)-syzygy
-kernel := build/kernel-$(arch).bin
-syzygy_lib := target/$(target)/debug/libsyzygy.a
-iso := build/$(arch).iso
 
-xorriso ?= $(shell whereis xorriso | cut -d' ' -f2)
-
-asm_src := $(wildcard src/arch/$(arch)/*.asm)
-asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
-
+arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
-arch_common := $(arch)
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
 	nasm_flags += -felf64
 else ifeq ($(arch), i686)
 	arch_common := x86_common
-	nasm_flags += -felf
 	ld_flags += -melf_i386
+	nasm_flags += -felf
 endif
 
+xorriso ?= $(shell whereis xorriso | cut -d' ' -f2)
 
+kernel := build/kernel-$(arch).bin
+iso := build/$(arch).iso
+
+asm_src := $(wildcard src/arch/$(arch)/*.asm)
+asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
 ldscript := src/arch/$(arch_common)/linker.ld
 grub_cfg := src/arch/$(arch_common)/grub.cfg
 
-
-
-.PHONY: all clean run iso syzygy
+.PHONY: all clean run
 
 all: $(kernel)
 
 clean:
 	rm -r build
-	cargo clean
 
 run: $(iso)
 	qemu-system-x86_64 -cdrom $(iso)
 
-$(iso): $(kernel) $(grub_cfg)
+$(iso): $(kernel) $(grub_cfg):
 	mkdir -p build/isofiles/boot/grub
-	cp $(kernel) build/isofiles/boot/kernel.bin
+	cp $(kernel) build/isofiles/kernel.bin
 	cp $(grub_cfg) build/isofiles/boot/grub
-	grub-mkrescue -o $(iso) build/isofiles $(grub_flags) --xorriso=$(xorriso)
+	grub-mkrescue -o $(iso) build/isofiles --xorriso=$(xorriso)
 
-$(kernel): syzygy $(asm_obj) $(ldscript) 
-	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(syzygy_lib)
-
-syzygy:
-	RUST_TARGET_PATH=$(PWD) xargo build --target=$(target)
+$(kernel): $(asm_obj) $(ldscript)
+	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@mkdir -p $(dir $@)
-	nasm $(nasm_flags) $< -o $@ 
+	nasm $(nasm_flags) $< -o $@
