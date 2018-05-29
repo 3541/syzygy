@@ -13,14 +13,47 @@ bits 32
 _start:
 	mov esp, stack_top
 
+	call check_multiboot
+	call check_cpuid
+
 	mov dword [0xb8000], 0x2F4B2F4F
 
-	mov al, 'a'
-	jmp err
+	jmp arch_start
+
 	hlt
+
+check_multiboot:
+	cmp eax, 0x36D76289
+	jne .no
+	ret
+.no:
+	mov al, '0'
+	jmp err
+
+check_cpuid:
+	pushfd
+	pushfd
+
+	xor dword [esp], 1 << 21
+	popfd
+
+	pushfd
+	pop eax
+
+	mov dword ecx, [esp]
+
+	popfd
+
+	cmp eax, ecx
+	je .no
+	ret
+.no:
+	mov al, '1'
+	jmp err
 
 err:
 	mov dword [0xb8000], 0x4F524F45
-	mov byte [0xb8005], 0x4F
-	mov byte [0xb8004], al
+	mov dword [0xb8004], 0x4F3A4F52
+	mov dword [0xb8008], 0x4F204F20
+	mov byte [0xb800a], al
 	hlt
