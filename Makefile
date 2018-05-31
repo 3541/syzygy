@@ -21,7 +21,7 @@ iso := build/$(arch).iso
 
 asm_src := $(wildcard src/arch/$(arch)/*.asm)
 asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
-ldscript := src/arch/$(arch_common)/linker.ld
+ldscript := src/arch/$(arch)/linker.ld
 grub_cfg := src/arch/$(arch_common)/grub.cfg
 
 .PHONY: all clean run

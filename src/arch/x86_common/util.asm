@@ -1,27 +1,3 @@
-%include "src/arch/x86_common/multiboot_header.asm"
-
-section .bss
-align 16
-stack_bottom:
-	resb 16384
-stack_top:
-
-
-global _start
-section .text
-bits 32
-_start:
-	mov esp, stack_top
-
-	call check_multiboot
-	call check_cpuid
-
-	mov dword [0xb8000], 0x2F4B2F4F
-
-	jmp arch_start
-
-	hlt
-
 check_multiboot:
 	cmp eax, 0x36D76289
 	jne .no
@@ -49,6 +25,17 @@ check_cpuid:
 	ret
 .no:
 	mov al, '1'
+	jmp err
+
+check_pae:
+	mov eax, 1
+	cpuid
+
+	test edx, 1 << 6
+	jz .no
+	ret
+.no:
+	mov al, '2'
 	jmp err
 
 err:
