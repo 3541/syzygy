@@ -10,10 +10,11 @@ bits 32
 _start:
 	mov esp, stack_top - KERNEL_BASE
 
+
 	call check_multiboot
 	call check_cpuid
 	call check_pae
-
+	
 	call setup_page_tables
 	call enable_paging
 
