@@ -3,7 +3,7 @@ ENTRY(_start)
 KERNEL_BASE = 0xC0000000;
 
 SECTIONS {
-    . = KERNEL_BASE + 0x100000;
+    . = 1M + KERNEL_BASE;
 
     .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_BASE) {
         KEEP(*(.multiboot_header))

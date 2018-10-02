@@ -10,7 +10,6 @@ bits 32
 _start:
 	mov esp, stack_top - KERNEL_BASE
 
-
 	call check_multiboot
 	call check_cpuid
 	call check_pae
@@ -48,8 +47,9 @@ enable_paging:
 	mov cr0, eax
 	ret
 
+
 higher_half:
-	mov dword [0xb8000], 0x2F4B2F4F
+	mov dword [0xC00B8000], 0x2F4B2F4F
 
 	hlt
 
