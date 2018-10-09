@@ -28,7 +28,8 @@ setup_page_tables:
 	mov [pdp - KERNEL_BASE], eax
 	mov [pdp + KERNEL_PDP_INDEX * 8 - KERNEL_BASE], eax
 
-	mov eax, 0x200000
+;	mov eax, 0x200000
+	mov eax, 0
 	or eax, 0b10000011
 	mov [pd + KERNEL_PD_INDEX - KERNEL_BASE], eax
 
@@ -39,12 +40,14 @@ enable_paging:
 	mov cr3, eax
 
 	mov eax, cr4
-	or eax, 1 << 5
+	or eax, 1 << 5 ; Enable PAE
+	or eax, 1 << 4 ; Enable PSE
 	mov cr4, eax
 
 	mov eax, cr0
 	or eax, 1 << 31
 	mov cr0, eax
+	hlt
 	ret
 
 higher_half:

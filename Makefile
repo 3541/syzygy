@@ -4,6 +4,8 @@ target ?= $(arch)-syzygy
 arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
+qemu_flags ?=
+debug ?=
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
@@ -14,9 +16,15 @@ else ifeq ($(arch), i686)
 	nasm_flags += -felf
 endif
 
+ifdef debug
+	nasm_flags += -g
+	qemu_flags += -s -S
+endif
+
 xorriso ?= $(shell whereis xorriso | cut -d' ' -f2)
 
 kernel := build/kernel-$(arch).bin
+kernel_debug := build/kernel-$(arch).sym
 iso := build/$(arch).iso
 
 asm_src := $(wildcard src/arch/$(arch)/*.asm)
@@ -32,7 +40,7 @@ clean:
 	rm -r build
 
 run: $(iso)
-	qemu-system-x86_64 -cdrom $(iso)
+	qemu-system-x86_64 -cdrom $(iso) $(qemu_flags)
 
 $(iso): $(kernel) $(grub_cfg)
 	mkdir -p build/isofiles/boot/grub
