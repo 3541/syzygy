@@ -13,7 +13,7 @@ _start:
 	call check_multiboot
 	call check_cpuid
 	call check_pae
-
+	
 	call setup_page_tables
 	call enable_paging
 
@@ -50,8 +50,9 @@ enable_paging:
 	hlt
 	ret
 
+
 higher_half:
-	mov dword [0xb8000], 0x2F4B2F4F
+	mov dword [0xC00B8000], 0x2F4B2F4F
 
 	hlt
 
