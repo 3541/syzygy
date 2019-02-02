@@ -1,8 +1,7 @@
 %include "src/arch/x86_common/header.asm"
 
 KERNEL_BASE equ 0xC0000000
-KERNEL_PDP_INDEX equ 3
-KERNEL_PD_INDEX equ 0
+KERNEL_PD_INDEX equ 768
 
 global _start
 section .text
@@ -12,7 +11,7 @@ _start:
 
 	call check_multiboot
 	call check_cpuid
-	call check_pae
+;	call check_pae
 	
 	call setup_page_tables
 	call enable_paging
@@ -23,32 +22,51 @@ _start:
 	hlt
 
 setup_page_tables:
-	mov eax, pd - KERNEL_BASE
-	or eax, 0b11 ; Present and writable
-	mov [pdp - KERNEL_BASE], eax
-	mov [pdp + KERNEL_PDP_INDEX * 8 - KERNEL_BASE], eax
-
-	mov eax, 0x200000
+	mov eax, 0
+	; PS, present, writable
 	or eax, 0b10000011
-	mov [pd + KERNEL_PD_INDEX - KERNEL_BASE], eax
+
+	; IDENTITY MAP
+	mov [pd - KERNEL_BASE], eax
+	; HIGHER HALF
+	mov [pd - KERNEL_BASE + KERNEL_PD_INDEX * 4], eax
 
 	ret
 
 enable_paging:
-	mov eax, pdp - KERNEL_BASE
+	; Load page address
+	mov eax, pd - KERNEL_BASE
 	mov cr3, eax
 
+	; Enable PAE
+;	mov eax, cr4
+;	or eax, 1 << 5
+;	mov cr4, eax
+
+	; Enable PSE
 	mov eax, cr4
-	or eax, 1 << 5
+	or eax, 1 << 4
 	mov cr4, eax
 
+	; Enable paging
 	mov eax, cr0
 	or eax, 1 << 31
+	or eax, 1
 	mov cr0, eax
 	ret
 
 
 higher_half:
+	; Unmap identity mapping
+	mov dword [pd], 0
+	invlpg [0]
+
+	; Unfuck stack
+	mov esp, stack_top
+
+	extern kmain
+	call kmain
+
 	mov dword [0xC00B8000], 0x2F4B2F4F
 
 	hlt
@@ -57,7 +75,7 @@ higher_half:
 
 section .bss
 align 0x1000
-pdp:
-	resb 32
 pd:
-	resb 0x1000	
+	resb 0x1000
+pt:
+	resb 0x1000

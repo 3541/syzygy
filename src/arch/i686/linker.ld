@@ -10,15 +10,15 @@ SECTIONS {
         *(.text .text.*)
     }
 
-    .bss : AT(ADDR(.bss) - KERNEL_BASE) {
+    .bss ALIGN(4K) : AT(ADDR(.bss) - KERNEL_BASE) {
         *(.bss)
     }
 
-    .rodata : {
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_BASE) {
         *(.rodata .rodata.*)
     }
 
-    .data.rel.ro : {
+    .data.rel.ro ALIGN(4K) : AT(ADDR(.data.rel.ro) - KERNEL_BASE) {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
     }
 }

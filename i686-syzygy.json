@@ -2,7 +2,10 @@
     "llvm-target": "i686-unknown-none",
     "data-layout": "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128",
     "linker-flavor": "gcc",
-    "pre-link-args": [ "-m32" ],
+    "_pre-link-args": [ "-m32" ],
+    "pre-link-args": {
+        "gcc": [ "-m32" ]
+    },
     "target-endian": "little",
     "target-pointer-width": "32",
     "target-c-int-width": "32",

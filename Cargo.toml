@@ -1,0 +1,12 @@
+[package]
+name = "syzygy"
+version = "0.1.0"
+authors = ["Alex O'Brien <alex@emobrien.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+volatile = "*"
+spin = "*"
