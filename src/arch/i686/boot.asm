@@ -53,6 +53,7 @@ enable_paging:
 	or eax, 1 << 31
 	or eax, 1
 	mov cr0, eax
+	hlt
 	ret
 
 

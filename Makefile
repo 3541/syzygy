@@ -9,6 +9,7 @@ arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
 qemu_flags ?=
+debug ?=
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
@@ -28,8 +29,15 @@ ifeq ($(build_type), release)
 	# things
 endif
 
+ifdef debug
+	nasm_flags += -g
+	qemu_flags += -s -S
+endif
+
+
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
 kernel := build/kernel-$(arch).bin
+kernel_debug := build/kernel-$(arch).sym
 iso := build/$(arch).iso
 
 asm_src := $(wildcard src/arch/$(arch)/*.asm)
