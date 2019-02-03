@@ -1,4 +1,4 @@
-use core::fmt;
+use core::fmt::{self, Write};
 
 use lazy_static::lazy_static;
 use spin::Mutex;
@@ -64,10 +64,6 @@ pub struct Writer {
 }
 
 impl Writer {
-    /*    fn buffer(&mut self) -> &mut Buffer {
-        unsafe { self.buffer.as_mut() }
-    }*/
-
     fn new_line(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for column in 0..BUFFER_WIDTH {
@@ -87,6 +83,12 @@ impl Writer {
 
         for column in 0..BUFFER_WIDTH {
             self.buffer.characters[row][column].write(space);
+        }
+    }
+
+    pub fn clear_screen(&mut self) {
+        for row in 0..BUFFER_HEIGHT {
+            self.clear_row(row)
         }
     }
 
@@ -110,11 +112,27 @@ impl Writer {
     }
 }
 
-impl fmt::Write for Writer {
+impl Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for b in s.bytes() {
             self.write_byte(b)
         }
         Ok(())
     }
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_text::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!('\n'));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    WRITER.lock().write_fmt(args).unwrap()
 }

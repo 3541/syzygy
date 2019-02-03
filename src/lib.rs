@@ -21,12 +21,13 @@ pub extern "C" fn kmain() {
     let vga_buf = (0xC00B8000) as *mut _;
     unsafe { *vga_buf = message_colored };*/
 
-    use core::fmt::Write;
-    vga_text::WRITER.lock().write_str("[ENTER] kmain").unwrap();
+    vga_text::WRITER.lock().clear_screen();
+    println!("[ENTER] kmain");
 //    loop {}
 }
 
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    println!("{}", info);
     loop {}
 }
