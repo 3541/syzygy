@@ -1,7 +1,10 @@
 %include "src/arch/x86_common/header.asm"
 
-KERNEL_BASE equ 0xC0000000
-KERNEL_PD_INDEX equ 768
+;KERNEL_BASE equ 0xC0000000
+;KERNEL_PD_INDEX equ 768
+
+%define KERNEL_BASE  0xC0000000
+%define KERNEL_PD_INDEX 768
 
 global _start
 section .text
@@ -53,7 +56,7 @@ enable_paging:
 	or eax, 1 << 31
 	or eax, 1
 	mov cr0, eax
-	hlt
+
 	ret
 
 
@@ -62,13 +65,18 @@ higher_half:
 	mov dword [pd], 0
 	invlpg [0]
 
+
 	; Unfuck stack
 	mov esp, stack_top
+
+	mov dword [0xC00B8000], 0x2F4B2F4F ; OK
 
 	extern kmain
 	call kmain
 
-	mov dword [0xC00B8000], 0x2F4B2F4F
+	; We probably shouldn't ever be here.
+	mov dword [0xC00B8000], 0x2F452F52 ; RE
+	mov word [0xC00B8004], 0x2F54 ; T
 
 	hlt
 

@@ -29,10 +29,6 @@ ifeq ($(build_type), release)
 	# things
 endif
 
-ifdef debug
-	nasm_flags += -g
-	qemu_flags += -s -S
-endif
 
 
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
@@ -73,4 +69,4 @@ build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common
 	@mkdir -p $(dir $@)
 	nasm $(nasm_flags) $< -o $@ 
 
-.SILENT:
+#.SILENT:

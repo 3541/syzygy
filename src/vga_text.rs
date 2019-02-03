@@ -51,7 +51,7 @@ struct Buffer {
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
     column: 0,
     color: ColorCode::new(Color::Black, Color::White),
-    buffer: unsafe { Unique::new_unchecked(0xB8000 as *mut _) },
+    buffer: unsafe { Unique::new_unchecked(0xC00B8000 as *mut _) },
 });
 
 pub struct Writer {

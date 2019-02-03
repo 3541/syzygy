@@ -22,7 +22,7 @@ pub extern "C" fn kmain() {
 
     use core::fmt::Write;
     vga_text::WRITER.lock().write_str("[ENTER] kmain");
-    loop {}
+//    loop {}
 }
 
 #[panic_handler]
