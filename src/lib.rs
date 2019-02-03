@@ -1,6 +1,4 @@
-#![no_std]
-//#![feature(ptr_internals)]
-//#![feature(lang_items)]
+#![cfg_attr(not(test), no_std)]
 
 extern crate spin;
 extern crate volatile;
@@ -27,6 +25,7 @@ pub extern "C" fn kmain() {
 }
 
 #[panic_handler]
+#[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     println!("{}", info);
     loop {}

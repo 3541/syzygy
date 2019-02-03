@@ -43,7 +43,7 @@ rust_src := $(shell find src/ -type f -name '*.rs')
 ldscript := src/arch/$(arch)/linker.ld
 grub_cfg := src/arch/$(arch_common)/grub.cfg
 
-.PHONY: all clean run
+.PHONY: all clean run test
 
 all: $(kernel)
 
@@ -53,6 +53,9 @@ clean:
 
 run: $(iso)
 	$(qemu) -cdrom $(iso) $(qemu_flags)
+
+test: $(rust_src)
+	cargo test
 
 $(iso): $(kernel) $(grub_cfg)
 	mkdir -p build/isofiles/boot/grub
