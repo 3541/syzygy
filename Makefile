@@ -9,6 +9,7 @@ arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
 qemu_flags ?=
+xargo_flags ?=
 debug ?=
 
 ifeq ($(arch), x86_64)
@@ -26,7 +27,7 @@ ifeq ($(debug), true)
 endif
 
 ifeq ($(build_type), release)
-	# things
+	xargo_flags += --release
 endif
 
 
@@ -63,7 +64,7 @@ $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
 
 $(libkernel): $(rust_src) $(target).json
-	RUST_TARGET_PATH=$(PWD) xargo build --target $(target)
+	RUST_TARGET_PATH=$(PWD) xargo build --target $(target) $(xargo_flags)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@mkdir -p $(dir $@)

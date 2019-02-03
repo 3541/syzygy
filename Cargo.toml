@@ -10,3 +10,6 @@ crate-type = ["staticlib"]
 [dependencies]
 volatile = "*"
 spin = "*"
+
+[profile.release]
+lto = "true"
