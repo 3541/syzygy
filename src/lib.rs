@@ -1,9 +1,10 @@
 #![no_std]
-#![feature(ptr_internals)]
+//#![feature(ptr_internals)]
 //#![feature(lang_items)]
 
 extern crate spin;
 extern crate volatile;
+extern crate lazy_static;
 
 mod vga_text;
 
@@ -21,7 +22,7 @@ pub extern "C" fn kmain() {
     unsafe { *vga_buf = message_colored };*/
 
     use core::fmt::Write;
-    vga_text::WRITER.lock().write_str("[ENTER] kmain");
+    vga_text::WRITER.lock().write_str("[ENTER] kmain").unwrap();
 //    loop {}
 }
 

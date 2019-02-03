@@ -1,11 +1,12 @@
 use core::fmt;
-use core::ptr::Unique;
 
+use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
+#[allow(dead_code)]
 pub enum Color {
     Black = 0,
     Blue = 1,
@@ -48,29 +49,30 @@ struct Buffer {
     characters: [[Volatile<VgaChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
-pub static WRITER: Mutex<Writer> = Mutex::new(Writer {
-    column: 0,
-    color: ColorCode::new(Color::Black, Color::White),
-    buffer: unsafe { Unique::new_unchecked(0xC00B8000 as *mut _) },
-});
+lazy_static! {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
+        column: 0,
+        color: ColorCode::new(Color::Black, Color::White),
+        buffer: unsafe { &mut *(0xC00B8000 as *mut Buffer) },
+    });
+}
 
 pub struct Writer {
     column: usize,
     color: ColorCode,
-    buffer: Unique<Buffer>,
+    buffer: &'static mut Buffer,
 }
 
 impl Writer {
-    fn buffer(&mut self) -> &mut Buffer {
+    /*    fn buffer(&mut self) -> &mut Buffer {
         unsafe { self.buffer.as_mut() }
-    }
+    }*/
 
     fn new_line(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for column in 0..BUFFER_WIDTH {
-                let buffer = self.buffer();
-                let character = buffer.characters[row][column].read();
-                buffer.characters[row - 1][column].write(character);
+                let character = self.buffer.characters[row][column].read();
+                self.buffer.characters[row - 1][column].write(character);
             }
         }
         self.clear_row(BUFFER_HEIGHT - 1);
@@ -84,7 +86,7 @@ impl Writer {
         };
 
         for column in 0..BUFFER_WIDTH {
-            self.buffer().characters[row][column].write(space);
+            self.buffer.characters[row][column].write(space);
         }
     }
 
@@ -98,7 +100,7 @@ impl Writer {
 
                 let c = self.column;
                 let cl = self.color;
-                self.buffer().characters[BUFFER_HEIGHT - 1][c].write(VgaChar {
+                self.buffer.characters[BUFFER_HEIGHT - 1][c].write(VgaChar {
                     character: byte,
                     color: cl,
                 });
