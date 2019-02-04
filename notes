@@ -2,3 +2,4 @@ Early error codes:
     0: Not loaded by multiboot2 loader
     1: CPU does not support CPUID
     2: CPU does not support PAE
+    3: CPU does not support long mode

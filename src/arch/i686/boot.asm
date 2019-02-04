@@ -19,7 +19,10 @@ _start:
 	call setup_page_tables
 	call enable_paging
 
-	lea ecx, [higher_half]
+	mov dword [0xb8000], 0x2F472F50
+	mov dword [0xb8004], 0x2F4B2F4F
+
+	mov ecx, higher_half
 	jmp ecx
 	
 	hlt

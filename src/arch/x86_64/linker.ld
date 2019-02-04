@@ -1,18 +1,30 @@
 ENTRY(_start)
 
+KERNEL_BASE = 0xFFFFC00000000000;
+
 SECTIONS {
     . = 1M;
 
-    .text ALIGN(4K) : {
+    .inittext : {
+        *(.inittext)
+    }
+
+    . += KERNEL_BASE;
+
+    .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_BASE) {
         KEEP(*(.multiboot_header))
         *(.text .text.*)
     }
 
-    .rodata : {
+    .bss ALIGN(4K) : AT (ADDR(.bss) - KERNEL_BASE) {
+        *(.bss)
+    }
+
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_BASE) {
         *(.rodata .rodata.*)
     }
 
-    .data.rel.ro : {
+    .data.rel.ro ALIGN(4K) : AT(ADDR(.data.rel.ro) - KERNEL_BASE) {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
     }
 }
