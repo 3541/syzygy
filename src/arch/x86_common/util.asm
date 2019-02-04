@@ -43,8 +43,8 @@ check_pae:
 	jmp err
 
 err:
-	mov dword [0xb8000], 0x4F524F45 - KERNEL_BASE
-	mov dword [0xb8004], 0x4F3A4F52 - KERNEL_BASE
-	mov dword [0xb8008], 0x4F204F20 - KERNEL_BASE
+	mov dword [0xb8000], 0x4F524F45
+	mov dword [0xb8004], 0x4F3A4F52
+	mov dword [0xb8008], 0x4F204F20
 	mov byte [0xb800a], al
 	hlt
