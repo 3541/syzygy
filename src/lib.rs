@@ -26,6 +26,11 @@ pub extern "C" fn kmain() {
     //    loop {}
 }
 
+#[allow(dead_code)]
+unsafe fn exit_qemu() {
+    hardware::port::Port::<u8>::new(0xF4).write(0);
+}
+
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {

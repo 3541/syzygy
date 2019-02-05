@@ -1,2 +1,2 @@
-mod port;
+pub mod port;
 pub mod serial;

@@ -53,7 +53,7 @@ clean:
 	cargo clean
 
 run: $(iso)
-	$(qemu) -cdrom $(iso) -serial mon:stdio $(qemu_flags)
+	$(qemu) -cdrom $(iso) -serial mon:stdio -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: $(rust_src)
 	cargo test
