@@ -8,7 +8,7 @@ qemu := qemu-system-$(arch)
 arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
-qemu_flags ?=
+qemu_flags ?= 
 xargo_flags ?=
 debug ?=
 
@@ -28,8 +28,9 @@ endif
 
 ifeq ($(build_type), release)
 	xargo_flags += --release
+else
+	nasm_flags += -wno-number-overflow
 endif
-
 
 
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
@@ -52,7 +53,7 @@ clean:
 	cargo clean
 
 run: $(iso)
-	$(qemu) -cdrom $(iso) $(qemu_flags)
+	$(qemu) -cdrom $(iso) -serial mon:stdio $(qemu_flags)
 
 test: $(rust_src)
 	cargo test
