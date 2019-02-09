@@ -9,6 +9,8 @@ section .inittext
 bits 32
 _start:
 	mov esp, stack_top - KERNEL_BASE
+	; Pass multiboot info struct
+	mov edi, ebx
 
 	call check_multiboot
 	call check_cpuid

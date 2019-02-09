@@ -74,6 +74,8 @@ higher_half:
 
 	mov dword [0xC00B8000], 0x2F4B2F4F ; OK
 
+	; Pass multiboot info struct
+	push ebx
 	extern kmain
 	call kmain
 

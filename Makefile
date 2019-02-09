@@ -4,6 +4,7 @@ debug ?=
 build_type ?= debug
 
 qemu := qemu-system-$(arch)
+qemu_memory ?= 4G
 
 arch_common := $(arch)
 nasm_flags ?=
@@ -22,19 +23,20 @@ else ifeq ($(arch), i686)
 	qemu := qemu-system-i386
 endif
 
-ifeq ($(debug), true)
-	qemu_flags += -s -S
-endif
-
 ifeq ($(build_type), release)
 	xargo_flags += --release
+	debug = false
 else
 	nasm_flags += -wno-number-overflow
 endif
 
+ifeq ($(debug), true)
+	qemu_flags += -s -S
+endif
+
 
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
-kernel := build/kernel-$(arch).bin
+kernel := build/kernel-$(arch)-$(build_type).bin
 kernel_debug := build/kernel-$(arch).sym
 iso := build/$(arch).iso
 
@@ -53,7 +55,7 @@ clean:
 	cargo clean
 
 run: $(iso)
-	$(qemu) -cdrom $(iso) -serial mon:stdio -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
+	$(qemu) -cdrom $(iso) -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: $(rust_src)
 	cargo test

@@ -12,6 +12,7 @@ volatile = "*"
 spin = "*"
 lazy_static = { version = "*", features = ["spin_no_std"] }
 bitflags = "*"
+multiboot2 = "*"
 
 [profile.release]
-lto = "true"
+lto = "thin"
