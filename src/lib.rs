@@ -14,8 +14,6 @@ mod hardware;
 mod memory;
 mod vga_text;
 
-use core::cmp::min;
-
 use crate::memory::FrameAllocator;
 
 #[cfg(target_arch = "x86")]
@@ -35,39 +33,27 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
 
-    println!("Memory areas");
-    let mut min_overlap_start: usize = core::usize::MAX;
+    println!("Memory areas (PHYSICAL)");
 
     for a in mmap.memory_areas() {
-        if a.end_address() as usize > core::usize::MAX - KERNEL_BASE {
-            min_overlap_start = min(a.start_address() as usize + KERNEL_BASE, min_overlap_start);
-            continue;
-        }
         println!(
             "\t0x{:x} - 0x{:x} (0x{:x})",
-            a.start_address() as usize + KERNEL_BASE,
-            min(a.end_address() as usize, core::usize::MAX - KERNEL_BASE) + KERNEL_BASE,
+            a.start_address(),
+            a.end_address(),
             a.size()
         );
     }
-
-    println!(
-        "\t0x{:x} - 0x{:x} (0x{:x})",
-        min_overlap_start,
-        core::usize::MAX,
-        core::usize::MAX - min_overlap_start
-    );
 
     let elf_sections = multiboot_info
         .elf_sections_tag()
         .expect("ELF sections tag is malformed/missing.");
 
-    println!("Kernel sections:");
+    println!("Kernel sections (FUCKED):");
     for s in elf_sections.sections() {
         println!(
             "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0x{:x}",
-            s.start_address(), /*as usize + KERNEL_BASE*/
-            s.end_address(),   /*as usize + KERNEL_BASE*/
+            s.start_address(),
+            s.end_address(),
             s.size(),
             s.flags()
         );
@@ -86,14 +72,26 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .unwrap();
 
     println!(
-        "Kernel: 0x{:x} - 0x{:x}",
+        "Kernel (VIRTUAL): 0x{:x} - 0x{:x}",
         kernel_start_addr, kernel_end_addr
     );
 
     println!(
-        "Multiboot: 0x{:x} - 0x{:x}",
+        "Kernel (PHYSICAL): 0x{:x} - 0x{:x}",
+        kernel_start_addr as usize - KERNEL_BASE,
+        kernel_end_addr as usize - KERNEL_BASE
+    );
+
+    println!(
+        "Multiboot (VIRTUAL): 0x{:x} - 0x{:x}",
         multiboot_info_addr,
         multiboot_info.end_address()
+    );
+
+    println!(
+        "Multiboot (PHYSICAL): 0x{:x} - 0x{:x}",
+        multiboot_info_addr - KERNEL_BASE,
+        multiboot_info.end_address() - KERNEL_BASE
     );
 
     println!("Test frame alloc");
@@ -111,8 +109,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     println!("0x{:x} - 0x{:x}", mem.address(), mem.end_address());*/
 
     for i in 0.. {
-        println!("{}", i);
-        if let None = allocator.alloc(memory::FrameSize::Small) {
+        if let None = allocator.alloc(memory::FrameSize::Huge) {
             println!("Allocated {} frames", i);
             break;
         }

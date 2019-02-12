@@ -1,9 +1,12 @@
-use multiboot2::MemoryAreaIter;
+use multiboot2::{MemoryArea, MemoryAreaIter};
 
-use crate::memory::{next_aligned_addr, Frame, FrameAllocator, FrameSize, MemoryArea, FRAME_ALIGN};
+use crate::memory::{
+    next_aligned_addr, Frame, FrameAllocator, FrameSize, /*MemoryArea,*/ FRAME_ALIGN,
+};
+use crate::KERNEL_BASE;
 pub struct WatermarkFrameAllocator {
     next_frame: usize,
-    area: Option<MemoryArea>,
+    area: Option<&'static MemoryArea>,
     areas: MemoryAreaIter,
     kernel_start: usize,
     kernel_end: usize,
@@ -16,22 +19,14 @@ impl WatermarkFrameAllocator {
         self.area = self
             .areas
             .clone()
-            .map(|a| MemoryArea {
-                address: a.start_address() as usize + crate::KERNEL_BASE,
-                size: a.size() as usize,
-            })
-            .filter(|a| {
-                let addr = next_aligned_addr(a.end_address(), FRAME_ALIGN);
-                addr >= self.next_frame && a.size >= min_size && addr != core::usize::MAX
-            })
-            .min_by_key(|a| {
-                crate::println!("0x{:x}", self.next_frame);
-                a.address
-            });
+            .filter(|a| a.end_address() as usize >= self.next_frame + min_size)
+            .min_by_key(|a| a.start_address());
 
         if let Some(area) = self.area {
-            let first_addr = next_aligned_addr(area.address, FRAME_ALIGN);
-            self.next_frame = core::cmp::max(self.next_frame, first_addr);
+            self.next_frame = core::cmp::max(
+                self.next_frame,
+                next_aligned_addr(area.start_address() as usize, FRAME_ALIGN),
+            );
         }
     }
 
@@ -43,19 +38,20 @@ impl WatermarkFrameAllocator {
         areas: MemoryAreaIter,
     ) -> Self {
         let mut alloc = WatermarkFrameAllocator {
-            kernel_start,
-            kernel_end,
-            multiboot_info_start,
-            multiboot_info_end,
+            kernel_start: kernel_start - KERNEL_BASE,
+            kernel_end: kernel_end - KERNEL_BASE,
+            multiboot_info_start: multiboot_info_start - KERNEL_BASE,
+            multiboot_info_end: multiboot_info_end - KERNEL_BASE,
             areas,
             area: None,
-            next_frame: crate::KERNEL_BASE,
+            next_frame: 0,
         };
         alloc.next_area(FrameSize::Small as usize);
         alloc
     }
 }
 
+// Physical frame allocator
 impl FrameAllocator for WatermarkFrameAllocator {
     fn alloc(&mut self, size: FrameSize) -> Option<Frame> {
         if let Some(area) = self.area {
@@ -64,17 +60,20 @@ impl FrameAllocator for WatermarkFrameAllocator {
                 size,
             };
 
-            if frame.address + frame.size > area.end_address() as usize {
+            if frame.end_address() > area.end_address() as usize {
                 self.next_area(frame.size as usize);
-            } else if (frame.address > self.kernel_start && frame.address < self.kernel_end)
-                || (frame.address + frame.size < self.kernel_end
-                    && frame.address + frame.size > self.kernel_start)
+            } else if (frame.address() >= self.kernel_start && frame.address() <= self.kernel_end)
+                || (frame.end_address() <= self.kernel_end
+                    && frame.end_address() >= self.kernel_start)
+                || (frame.address() <= self.kernel_start && frame.end_address() >= self.kernel_end)
             {
                 self.next_frame = next_aligned_addr(self.kernel_end + 1, FRAME_ALIGN);
-            } else if (frame.address > self.multiboot_info_start
-                && frame.address < self.multiboot_info_end)
-                || (frame.address + frame.size < self.multiboot_info_end
-                    && frame.address + frame.size > self.multiboot_info_start)
+            } else if (frame.address() > self.multiboot_info_start
+                && frame.address() < self.multiboot_info_end)
+                || (frame.end_address() < self.multiboot_info_end
+                    && frame.end_address() > self.multiboot_info_start)
+                || (frame.address() <= self.multiboot_info_start
+                    && frame.end_address() >= self.multiboot_info_end)
             {
                 self.next_frame = next_aligned_addr(self.multiboot_info_end + 1, FRAME_ALIGN);
             } else {

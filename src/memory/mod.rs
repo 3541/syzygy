@@ -1,25 +1,8 @@
 mod watermark_frame_allocator;
 
-use crate::KERNEL_BASE;
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
-
-#[derive(Copy, Clone)]
-struct MemoryArea {
-    address: usize,
-    size: usize,
-}
-
-impl MemoryArea {
-    fn end_address(&self) -> usize {
-        if self.address - KERNEL_BASE + self.size > core::usize::MAX - KERNEL_BASE {
-            core::usize::MAX
-        } else {
-            self.address + self.size
-        }
-    }
-}
 
 #[cfg(target_arch = "x86_64")]
 #[derive(Debug, Copy, Clone)]
