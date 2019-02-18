@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(asm)]
 #![feature(const_fn)]
+#![feature(type_alias_enum_variants)]
 
 #[macro_use]
 extern crate bitflags;
@@ -109,11 +110,21 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     println!("0x{:x} - 0x{:x}", mem.address(), mem.end_address());*/
 
     for i in 0.. {
-        if let None = allocator.alloc(memory::FrameSize::Huge) {
+        if let None = allocator.alloc(memory::FrameSize::Large) {
             println!("Allocated {} frames", i);
             break;
         }
     }
+
+    /*    unsafe {
+        println!(
+            "{:x?}",
+            (*memory::paging::table::TOP_LEVEL_TABLE)[memory::paging::table::KERNEL_INDEX]
+                .address()
+        )
+    };*/
+
+    println!("0x{:x}", memory::paging::translate(KERNEL_BASE + 0x1000));
 
     //    loop {}
 }

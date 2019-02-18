@@ -50,6 +50,12 @@ check_long_mode:
 	jmp err
 
 setup_page_tables:
+	; Map pml4 recursively
+	mov eax, pml4 - KERNEL_BASE
+	or eax, 0b11
+	mov [pml4 - KERNEL_BASE + 4088], eax
+
+	; Map PDP identity and higher half
 	mov eax, pdp - KERNEL_BASE
 	or eax, 0b11
 	mov [pml4 - KERNEL_BASE], eax

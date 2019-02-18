@@ -1,5 +1,9 @@
+pub mod paging;
 mod watermark_frame_allocator;
 
+use core::ops::{Add, AddAssign};
+
+use paging::PhysicalAddress;
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
@@ -19,7 +23,7 @@ pub enum FrameSize {
     Large = 0x40_0000, // 4M
 }
 
-impl core::ops::Add<usize> for FrameSize {
+impl Add<usize> for FrameSize {
     type Output = usize;
 
     fn add(self, other: usize) -> usize {
@@ -27,7 +31,7 @@ impl core::ops::Add<usize> for FrameSize {
     }
 }
 
-impl core::ops::Add<FrameSize> for usize {
+impl Add<FrameSize> for usize {
     type Output = usize;
 
     fn add(self, other: FrameSize) -> usize {
@@ -35,7 +39,7 @@ impl core::ops::Add<FrameSize> for usize {
     }
 }
 
-impl core::ops::AddAssign<FrameSize> for usize {
+impl AddAssign<FrameSize> for usize {
     fn add_assign(&mut self, other: FrameSize) {
         *self = *self + other as usize;
     }
@@ -43,16 +47,16 @@ impl core::ops::AddAssign<FrameSize> for usize {
 
 #[derive(Debug)]
 pub struct Frame {
-    address: usize,
+    address: PhysicalAddress,
     size: FrameSize,
 }
 
 impl Frame {
-    pub fn address(&self) -> usize {
+    pub fn address(&self) -> PhysicalAddress {
         self.address
     }
 
-    pub fn end_address(&self) -> usize {
+    pub fn end_address(&self) -> PhysicalAddress {
         self.address + self.size as usize
     }
 }
@@ -62,8 +66,8 @@ pub trait FrameAllocator {
     fn free(&mut self, frame: Frame);
 }
 
-pub fn next_aligned_addr(mut base: usize, align: usize) -> usize {
-    if base % align != 0 && base != core::usize::MAX {
+pub fn next_aligned_addr(mut base: PhysicalAddress, align: usize) -> PhysicalAddress {
+    if base % align != 0 {
         base = (base / align + 1) * align
     }
     base

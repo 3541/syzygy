@@ -28,6 +28,11 @@ _start:
 	hlt
 
 setup_page_tables:
+	; Map PD recursively
+	mov eax, pd - KERNEL_BASE
+	or eax, 0b11
+	mov [pd - KERNEL_BASE + 1023 * 4], eax
+
 	mov eax, 0
 	; PS, present, writable
 	or eax, 0b10000011

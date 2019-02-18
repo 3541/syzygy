@@ -31,7 +31,7 @@ else
 endif
 
 ifeq ($(debug), true)
-	qemu_flags += -s -S
+	qemu_flags += -S
 endif
 
 
@@ -55,7 +55,7 @@ clean:
 	cargo clean
 
 run: $(iso)
-	$(qemu) -cdrom $(iso) -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
+	$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: $(rust_src)
 	cargo test
