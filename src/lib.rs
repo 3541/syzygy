@@ -124,7 +124,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         )
     };*/
 
-    println!("0x{:x}", memory::paging::translate(KERNEL_BASE + 0x1000));
+    println!("0x{:x}", memory::paging::translate(KERNEL_BASE + 0x2000));
 
     //    loop {}
 }

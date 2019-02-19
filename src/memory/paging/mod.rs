@@ -18,7 +18,17 @@ const PAGE_ADDR_INDEX_SHIFT: usize = 10;
 const PAGE_ADDR_INDEX_MASK: usize = (1 << PAGE_ADDR_INDEX_SHIFT) - 1;
 
 const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
-const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
+//const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
+#[inline]
+fn page_addr_offset_mask(size: PageSize) -> usize {
+    (1 << PAGE_ADDR_OFFSET_SHIFT
+        * match size {
+            PageSize::Small => 1,
+            PageSize::Large => 2,
+            PageSize::Huge => 3,
+        })
+        - 1
+}
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
@@ -110,10 +120,18 @@ impl Page {
     }
 
     fn table_index(&self, n: usize) -> usize {
+        // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
+        // sort of broken for larger pages, because the total offset is still the same
+        // if we want some specific table. e.g., PML4 index is always at the same place.
         (self.address >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
+    }
+
+    fn size(&self) -> PageSize {
+        self.frame.size
     }
 }
 
 pub fn translate(addr: VirtualAddress) -> PhysicalAddress {
-    Page::containing_addr(addr).frame.address + addr & PAGE_ADDR_OFFSET_MASK
+    let page = Page::containing_addr(addr);
+    page.frame.address + addr & page_addr_offset_mask(page.size())
 }
