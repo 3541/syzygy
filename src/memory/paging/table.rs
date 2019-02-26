@@ -1,25 +1,25 @@
 use core::marker::PhantomData;
 use core::ops::{Index, IndexMut};
 
-use crate::memory::paging::{PhysicalAddress, VirtualAddress};
+use crate::memory::paging::PhysicalAddress;
 
 #[cfg(target_arch = "x86_64")]
-pub const ACTIVE_PML4: *mut Table<PML4_T> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
+pub const ACTIVE_PML4: *mut Table<PML4> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86")]
 pub const ACTIVE_PD: *mut Table<PD_T> = 0xFFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86_64")]
-pub const TOP_LEVEL_TABLE: *mut Table<PML4_T> = ACTIVE_PML4;
+pub const ACTIVE_TOP_LEVEL_TABLE: *mut Table<PML4> = ACTIVE_PML4;
 
 #[cfg(target_arch = "x86")]
-pub const TOP_LEVEL_TABLE: *mut Table<PD_T> = ACTIVE_PD;
+pub const ACTIVE_TOP_LEVEL_TABLE: *mut Table<PD_T> = ACTIVE_PD;
 
-#[cfg(target_arch = "x86_64")]
-pub const KERNEL_INDEX: usize = 511;
+//#[cfg(target_arch = "x86_64")]
+//pub const KERNEL_INDEX: usize = 511;
 
-#[cfg(target_arch = "x86")]
-pub const KERNEL_INDEX: usize = 768;
+//#[cfg(target_arch = "x86")]
+//pub const KERNEL_INDEX: usize = 768;
 
 bitflags! {
     pub struct EntryFlags: usize {
@@ -126,24 +126,24 @@ pub trait NestedTableType {
 }
 
 #[cfg(target_arch = "x86_64")]
-pub enum PML4_T {}
-pub enum PDP_T {}
-pub enum PD_T {}
-pub enum PT_T {}
+pub enum PML4 {}
+pub enum PDP {}
+pub enum PD {}
+pub enum PT {}
 
 #[cfg(target_arch = "x86_64")]
-impl TableType for PML4_T {}
-impl TableType for PDP_T {}
-impl TableType for PD_T {}
-impl TableType for PT_T {}
+impl TableType for PML4 {}
+impl TableType for PDP {}
+impl TableType for PD {}
+impl TableType for PT {}
 
 #[cfg(target_arch = "x86_64")]
-impl NestedTableType for PML4_T {
-    type EntryType = PDP_T;
+impl NestedTableType for PML4 {
+    type EntryType = PDP;
 }
-impl NestedTableType for PDP_T {
-    type EntryType = PD_T;
+impl NestedTableType for PDP {
+    type EntryType = PD;
 }
-impl NestedTableType for PD_T {
-    type EntryType = PT_T;
+impl NestedTableType for PD {
+    type EntryType = PT;
 }

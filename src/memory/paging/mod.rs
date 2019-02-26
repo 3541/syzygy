@@ -1,7 +1,6 @@
 pub mod table;
 
 use crate::memory::Frame;
-use table::{NestedTableType, Table, TableType};
 
 #[cfg(target_arch = "x86")]
 const ENTRIES: usize = 1024;
@@ -59,7 +58,7 @@ impl Page {
                 },
                 address: addr,
             };
-            let pdp = unsafe { &*table::ACTIVE_PML4 }
+            let pdp = unsafe { &*table::ACTIVE_TOP_LEVEL_TABLE }
                 .next_table(tmp.pml4_index())
                 .expect("Invalid PML4 entry.");
 
@@ -112,7 +111,7 @@ impl Page {
                 address: addr,
             };
 
-            let pd = unsafe { &*table::ACTIVE_PD };
+            let pd = unsafe { &*table::TOP_LEVEL_TABLE };
             let pt = pd.next_table(tmp.pd_index());
             if pt.is_none() {
                 return Page {
@@ -156,6 +155,7 @@ impl Page {
         self.table_index(0)
     }
 
+    // NOTE: 0-indexed (PT is 0, PML4 is 3)
     fn table_index(&self, n: usize) -> usize {
         // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
         // sort of broken for larger pages, because the total offset is still the same

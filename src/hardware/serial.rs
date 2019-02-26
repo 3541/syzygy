@@ -4,6 +4,8 @@ use spin::Mutex;
 
 use crate::hardware::port::Port;
 
+const COM1: u16 = 0x3F8;
+
 pub struct SerialPort {
     data: Port<u8>,
     interrupt_enable: Port<u8>,
@@ -16,7 +18,7 @@ pub struct SerialPort {
 lazy_static! {
     pub static ref SERIAL1: Mutex<SerialPort> = {
         Mutex::new({
-            let mut s = SerialPort::new(0x3F8);
+            let mut s = SerialPort::new(COM1);
             s.init();
             s
         })

@@ -69,6 +69,6 @@ impl PortAccess for u32 {
 
     #[inline]
     unsafe fn port_write(address: u16, value: u32) {
-        asm!("outw %eax, %dx" :: "{dx}"(address), "{eax}"(value) :: "volatile");
+        asm!("outl %eax, %dx" :: "{dx}"(address), "{eax}"(value) :: "volatile");
     }
 }
