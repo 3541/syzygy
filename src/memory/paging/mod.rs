@@ -25,6 +25,7 @@ fn page_addr_offset_mask(size: PageSize) -> usize {
         * match size {
             PageSize::Small => 1,
             PageSize::Large => 2,
+            #[cfg(target_arch = "x86_64")]
             PageSize::Huge => 3,
         })
         - 1
@@ -58,7 +59,7 @@ impl Page {
                 },
                 address: addr,
             };
-            let pdp = unsafe { &*table::PML4 }
+            let pdp = unsafe { &*table::ACTIVE_PML4 }
                 .next_table(tmp.pml4_index())
                 .expect("Invalid PML4 entry.");
 
@@ -66,7 +67,7 @@ impl Page {
             if pd.is_none() {
                 return Page {
                     frame: Frame {
-                        address: pdp[addr & PAGE_ADDR_INDEX_MASK]
+                        address: pdp[tmp.pdp_index()]
                             .address()
                             .expect("Unexpected non-present PDP entry."),
                         size: PageSize::Huge,
@@ -80,7 +81,43 @@ impl Page {
             if pt.is_none() {
                 return Page {
                     frame: Frame {
-                        address: pd[addr & PAGE_ADDR_INDEX_MASK]
+                        address: pd[tmp.pd_index()]
+                            .address()
+                            .expect("Unexpected non-present PD entry."),
+                        size: PageSize::Large,
+                    },
+                    address: addr,
+                };
+            }
+
+            Page {
+                frame: Frame {
+                    address: pt.unwrap()[addr & PAGE_ADDR_INDEX_MASK]
+                        .address()
+                        .expect("Unexpected non-present PT entry."),
+                    size: PageSize::Small,
+                },
+                address: addr,
+            }
+        }
+
+        #[cfg(target_arch = "x86")]
+        fn resolve_page(addr: VirtualAddress) -> Page {
+            let tmp = Page {
+                // Garbage
+                frame: Frame {
+                    address: 0,
+                    size: super::FrameSize::Small,
+                },
+                address: addr,
+            };
+
+            let pd = unsafe { &*table::ACTIVE_PD };
+            let pt = pd.next_table(tmp.pd_index());
+            if pt.is_none() {
+                return Page {
+                    frame: Frame {
+                        address: pd[tmp.pd_index()]
                             .address()
                             .expect("Unexpected non-present PD entry."),
                         size: PageSize::Large,
@@ -104,19 +141,19 @@ impl Page {
     }
 
     fn pml4_index(&self) -> usize {
-        self.table_index(4)
-    }
-
-    fn pdp_index(&self) -> usize {
         self.table_index(3)
     }
 
-    fn pd_index(&self) -> usize {
+    fn pdp_index(&self) -> usize {
         self.table_index(2)
     }
 
-    fn pt_index(&self) -> usize {
+    fn pd_index(&self) -> usize {
         self.table_index(1)
+    }
+
+    fn pt_index(&self) -> usize {
+        self.table_index(0)
     }
 
     fn table_index(&self, n: usize) -> usize {

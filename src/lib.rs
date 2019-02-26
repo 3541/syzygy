@@ -95,7 +95,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         multiboot_info.end_address() - KERNEL_BASE
     );
 
-    println!("Test frame alloc");
     let mut allocator = memory::WatermarkFrameAllocator::new(
         kernel_start_addr as usize,
         kernel_end_addr as usize,
@@ -109,12 +108,12 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .expect("Failed to allocate.");
     println!("0x{:x} - 0x{:x}", mem.address(), mem.end_address());*/
 
-    for i in 0.. {
+    /*    for i in 0.. {
         if let None = allocator.alloc(memory::FrameSize::Large) {
             println!("Allocated {} frames", i);
             break;
         }
-    }
+    }*/
 
     /*    unsafe {
         println!(
@@ -124,7 +123,12 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         )
     };*/
 
-    println!("0x{:x}", memory::paging::translate(KERNEL_BASE + 0x2000));
+    let test_addr = KERNEL_BASE + 0x400000;
+    println!(
+        "Test address translation 0x{:x} -> 0x{:x}",
+        test_addr,
+        memory::paging::translate(test_addr)
+    );
 
     //    loop {}
 }

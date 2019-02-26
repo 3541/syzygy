@@ -4,16 +4,16 @@ use core::ops::{Index, IndexMut};
 use crate::memory::paging::{PhysicalAddress, VirtualAddress};
 
 #[cfg(target_arch = "x86_64")]
-pub const PML4: *mut Table<PML4_T> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
+pub const ACTIVE_PML4: *mut Table<PML4_T> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86")]
-pub const PD: *mut Table<PD_T> = 0xFFFF_F000 as *mut _;
+pub const ACTIVE_PD: *mut Table<PD_T> = 0xFFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86_64")]
-pub const TOP_LEVEL_TABLE: *mut Table<PML4_T> = PML4;
+pub const TOP_LEVEL_TABLE: *mut Table<PML4_T> = ACTIVE_PML4;
 
 #[cfg(target_arch = "x86")]
-pub const TOP_LEVEL_TABLE: *mut Table<PD_T> = PD;
+pub const TOP_LEVEL_TABLE: *mut Table<PD_T> = ACTIVE_PD;
 
 #[cfg(target_arch = "x86_64")]
 pub const KERNEL_INDEX: usize = 511;
