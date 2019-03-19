@@ -111,7 +111,7 @@ impl Page {
                 address: addr,
             };
 
-            let pd = unsafe { &*table::TOP_LEVEL_TABLE };
+            let pd = unsafe { &*table::ACTIVE_TOP_LEVEL_TABLE };
             let pt = pd.next_table(tmp.pd_index());
             if pt.is_none() {
                 return Page {

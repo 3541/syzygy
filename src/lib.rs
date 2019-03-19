@@ -1,4 +1,6 @@
 #![cfg_attr(not(test), no_std)]
+#![cfg_attr(test, allow(unused_imports))]
+#![cfg_attr(test, allow(dead_code))]
 #![feature(asm)]
 #![feature(const_fn)]
 #![feature(type_alias_enum_variants)]
@@ -95,13 +97,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         multiboot_info.end_address() - KERNEL_BASE
     );
 
-    let mut allocator = memory::WatermarkFrameAllocator::new(
+    /*let mut allocator = memory::WatermarkFrameAllocator::new(
         kernel_start_addr as usize,
         kernel_end_addr as usize,
         multiboot_info_addr as usize,
         multiboot_info.end_address() as usize,
         mmap.memory_areas(),
-    );
+    );*/
 
     /*    let mem = allocator
         .alloc(memory::FrameSize::Large)
@@ -123,14 +125,20 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         )
     };*/
 
-    let test_addr = KERNEL_BASE + 0x400000;
+    let test_addr = KERNEL_BASE + 0x400;
     println!(
         "Test address translation 0x{:x} -> 0x{:x}",
         test_addr,
         memory::paging::translate(test_addr)
     );
 
-    //    loop {}
+    let mut s = hardware::serial::SERIAL1.lock();
+    loop {
+        match s.recv_byte() {
+            Some(b) => vga_println!("received: {}", b),
+            None => {}
+        }
+    }
 }
 
 #[macro_export]

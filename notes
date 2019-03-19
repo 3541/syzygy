@@ -3,3 +3,11 @@ Early error codes:
     1: CPU does not support CPUID
     2: CPU does not support PAE
     3: CPU does not support long mode
+
+    i686
+        FrameSize::Small 4K
+        FrameSize::Large 4M
+    x86_64
+        FrameSize::Small 4K
+        FrameSize::Large 2M
+        FrameSize::Huge  4G

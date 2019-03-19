@@ -134,6 +134,17 @@ impl SerialPort {
         {}
         unsafe { self.data.write(byte) }
     }
+
+    pub fn recv_byte(&mut self) -> Option<u8> {
+        if self
+            .line_status()
+            .contains(LineStatusRegisterFlags::DATA_READY)
+        {
+            Some(unsafe { self.data.read() })
+        } else {
+            None
+        }
+    }
 }
 
 impl fmt::Write for SerialPort {

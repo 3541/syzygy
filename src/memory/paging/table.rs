@@ -7,13 +7,13 @@ use crate::memory::paging::PhysicalAddress;
 pub const ACTIVE_PML4: *mut Table<PML4> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86")]
-pub const ACTIVE_PD: *mut Table<PD_T> = 0xFFFF_F000 as *mut _;
+pub const ACTIVE_PD: *mut Table<PD> = 0xFFFF_F000 as *mut _;
 
 #[cfg(target_arch = "x86_64")]
 pub const ACTIVE_TOP_LEVEL_TABLE: *mut Table<PML4> = ACTIVE_PML4;
 
 #[cfg(target_arch = "x86")]
-pub const ACTIVE_TOP_LEVEL_TABLE: *mut Table<PD_T> = ACTIVE_PD;
+pub const ACTIVE_TOP_LEVEL_TABLE: *mut Table<PD> = ACTIVE_PD;
 
 //#[cfg(target_arch = "x86_64")]
 //pub const KERNEL_INDEX: usize = 511;

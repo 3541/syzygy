@@ -26,7 +26,7 @@ pub enum Color {
     White = 15,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct ColorCode(u8);
 
 impl ColorCode {
@@ -35,7 +35,7 @@ impl ColorCode {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(C)]
 struct VgaChar {
     character: u8,
@@ -135,4 +135,61 @@ macro_rules! vga_println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     WRITER.lock().write_fmt(args).unwrap()
+}
+
+#[cfg(test)]
+mod test {
+    use array_init::array_init;
+
+    use super::*;
+
+    fn create_writer() -> Writer {
+        Writer {
+            column: 0,
+            color: ColorCode::new(Color::Black, Color::White),
+            buffer: Box::leak(Box::new(create_buffer())),
+        }
+    }
+
+    fn create_buffer() -> Buffer {
+        Buffer {
+            characters: array_init(|_| {
+                array_init(|_| {
+                    Volatile::new(VgaChar {
+                        character: b' ',
+                        color: ColorCode::new(Color::Black, Color::White),
+                    })
+                })
+            }),
+        }
+    }
+
+    #[test]
+    fn write_byte() {
+        let mut writer = create_writer();
+        writer.write_byte(b'S');
+        writer.write_byte(b'Z');
+
+        for (i, row) in writer.buffer.characters.iter().enumerate() {
+            for (j, c) in row.iter().enumerate() {
+                let c = c.read();
+                assert_eq!(c.color, writer.color);
+                if i == BUFFER_HEIGHT - 1 {
+                    if j == 0 {
+                        assert_eq!(c.character, b'S');
+                    } else if j == 1 {
+                        assert_eq!(c.character, b'Z');
+                    }
+                } else {
+                    assert_eq!(
+                        c,
+                        VgaChar {
+                            character: b' ',
+                            color: ColorCode::new(Color::Black, Color::White)
+                        }
+                    );
+                }
+            }
+        }
+    }
 }

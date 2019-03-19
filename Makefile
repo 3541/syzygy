@@ -55,24 +55,30 @@ clean:
 	cargo clean
 
 run: $(iso)
+	@echo [run] $(iso)
 	$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: $(rust_src)
-	cargo test
+	@echo [test] unit tests
+	cargo test --target $(arch)-unknown-linux-gnu
 
 $(iso): $(kernel) $(grub_cfg)
+	@echo [build] $@
 	mkdir -p build/isofiles/boot/grub
 	cp $(kernel) build/isofiles/boot/kernel.bin
 	cp $(grub_cfg) build/isofiles/boot/grub
 	grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
 
 $(kernel): $(asm_obj) $(ldscript) $(libkernel)
+	@echo [link] $@
 	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
 
 $(libkernel): $(rust_src) $(target).json
+	@echo [build] $@
 	RUST_TARGET_PATH=$(PWD) xargo build --target $(target) $(xargo_flags)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
+	@echo [build] $@
 	@mkdir -p $(dir $@)
 	nasm $(nasm_flags) $< -o $@ 
 
