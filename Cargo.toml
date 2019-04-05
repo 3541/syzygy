@@ -17,5 +17,8 @@ multiboot2 = "*"
 [dev-dependencies]
 array-init = "*"
 
+[features]
+integration-tests = []
+
 [profile.release]
 lto = "thin"

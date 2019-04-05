@@ -25,6 +25,7 @@ const KERNEL_BASE: usize = 0xC0000000;
 #[cfg(target_arch = "x86_64")]
 const KERNEL_BASE: usize = 0xFFFFC00000000000;
 
+#[cfg(not(feature = "integration-tests"))]
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info_addr: usize) {
     vga_text::WRITER.lock().clear_screen();
@@ -141,6 +142,15 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     }
 }
 
+#[cfg(feature = "integration-tests")]
+#[no_mangle]
+pub extern "C" fn kmain(multiboot_info_addr: usize) {
+    integration_tests::run();
+}
+
+#[cfg(feature = "integration-tests")]
+mod integration_tests;
+
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
@@ -161,8 +171,18 @@ macro_rules! println {
 }
 
 #[allow(dead_code)]
-unsafe fn exit_qemu() {
-    hardware::Port::<u8>::new(0xF4).write(0);
+fn exit_qemu(code: u8) -> ! {
+    if code == 0 {
+        unsafe {
+            hardware::Port::<u32>::new(0x604).write(0x2000);
+        }
+    } else {
+        unsafe {
+            hardware::Port::<u8>::new(0xF4).write(code >> 1);
+        }
+    }
+    // NOTE: meaningless, makes ! work.
+    loop {}
 }
 
 #[panic_handler]
