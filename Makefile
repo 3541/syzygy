@@ -6,6 +6,14 @@ build_type ?= debug
 qemu := qemu-system-$(arch)
 qemu_memory ?= 4G
 
+ifneq (, $(shell which grub-mkrescue 2> /dev/null))
+	grub_mkrescue := grub-mkrescue
+else ifneq (, $(shell which grub2-mkrescue 2> /dev/null))
+	grub_mkrescue := grub2-mkrescue
+else
+	$(error Cannot find grub-mkrescue)
+endif
+
 arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
@@ -100,7 +108,7 @@ $(iso): $(kernel) $(grub_cfg)
 	mkdir -p build/isofiles/boot/grub
 	cp $(kernel) build/isofiles/boot/kernel.bin
 	cp $(grub_cfg) build/isofiles/boot/grub
-	grub-mkrescue -o $(iso) build/isofiles 2> /dev/null
+	$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
 
 $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 	@echo [link] $(kernel)
