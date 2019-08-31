@@ -17,8 +17,6 @@ mod hardware;
 mod memory;
 mod vga_text;
 
-use crate::memory::FrameAllocator;
-
 #[cfg(target_arch = "x86")]
 const KERNEL_BASE: usize = 0xC0000000;
 

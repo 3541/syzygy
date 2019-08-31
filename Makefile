@@ -37,6 +37,8 @@ endif
 
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
 kernel := build/kernel-$(arch)-$(build_type).bin
+base_kernel := $(kernel)
+test_kernel := $(basename $(kernel))-test.bin
 kernel_debug := build/kernel-$(arch).sym
 iso := build/$(arch).iso
 
@@ -66,22 +68,31 @@ test: xargo_flags += --features 'integration-tests'
 test: export RUSTFLAGS=-A dead_code -A unused_imports -A unused_variables
 test: rust_src += $(integration_test_src)
 #test: kernel := build/kernel-$(arch)-$(build_type)-test.bin
-test: kernel := $(basename $(kernel))-test.bin
+test: kernel := $(test_kernel)
 test: iso := $(basename $(iso))-test.iso
 test: temp := $(shell mktemp -d)
 test: qemu_pipe := $(temp)/qemu_pipe
-test: $(rust_src) $(iso) 
+test: $(rust_src) $(iso)
 	@echo [test] unit tests
 	cargo test --target $(arch)-unknown-linux-gnu
 	@echo [test] integration tests
-	for t in $(integration_tests); do 					\
-		echo [integration test] $$t; 					\
+	for t in $(integration_tests); do 						\
+		echo [integration test] $$t; 						\
 		mkfifo $(qemu_pipe).in;							\
 		mkfifo $(qemu_pipe).out;						\
-		$(qemu) -cdrom $(iso) -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0	-m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04 &	\
-		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &	\
-		sleep 2;										\
-		echo $$t_ > $(qemu_pipe).in;					\
+		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &				\
+		echo "a$${t}_" > $(qemu_pipe).in	&				\
+		$(qemu) -cdrom $(iso) -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0 -m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04; 	\
+		status=$$(cat $(qemu_pipe).out_nb);					\
+		echo $$status;								\
+		case $$status in 							\
+			*ok) ;;								\
+			*) exit 255;;							\
+		esac									\
+#		if [ $$qemu_status -ne 0 ]; then					\
+#			echo "QEMU exited unexpectedly.";				\
+#			exit 254;							\
+#		fi;									\
 	done
 
 $(iso): $(kernel) $(grub_cfg)
