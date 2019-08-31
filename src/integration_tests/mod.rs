@@ -6,7 +6,7 @@ pub fn run() {
     let test = unsafe { get_test_name() };
     println!("TEST: {}", test);
     let res = match test {
-        "boot" => boot::run(),
+        "boot " => boot::run(),
         _ => Err("Invalid test specification."),
     };
 
@@ -21,10 +21,11 @@ pub fn run() {
     crate::exit_qemu(exit_status);
 }
 
-static mut TEST_NAME: [u8; 100] = [0; 100];
+const TEST_NAME_MAX_LEN: usize = 5;
+static mut TEST_NAME: [u8; TEST_NAME_MAX_LEN] = [0; TEST_NAME_MAX_LEN];
 unsafe fn get_test_name<'a>() -> &'a str {
-    for i in 0..100 {
-        TEST_NAME[i] = 0;
+    for i in 0..TEST_NAME_MAX_LEN {
+        TEST_NAME[i] = ' ' as u8;
     }
     let mut serial = crate::hardware::serial::SERIAL1.lock();
     let mut i = 0;

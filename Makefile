@@ -38,6 +38,7 @@ else
 	nasm_flags += -wno-number-overflow
 endif
 
+
 ifeq ($(debug), true)
 	qemu_flags += -S
 endif
@@ -45,10 +46,8 @@ endif
 
 libkernel := target/$(target)/$(build_type)/libsyzygy.a
 kernel := build/kernel-$(arch)-$(build_type).bin
-base_kernel := $(kernel)
-test_kernel := $(basename $(kernel))-test.bin
 kernel_debug := build/kernel-$(arch).sym
-iso := build/$(arch).iso
+iso := build/$(arch)-$(build_type).iso
 
 asm_src := $(wildcard src/arch/$(arch)/*.asm)
 asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
@@ -58,6 +57,13 @@ grub_cfg := src/arch/$(arch_common)/grub.cfg
 
 integration_test_src := $(shell find src/integration_tests -type f \( -name '*.rs' ! -name 'mod.rs' \))
 integration_tests := $(basename $(notdir $(integration_test_src)))
+
+ifeq ($(build_type), test)
+	xargo_flags += --features 'integration-tests'
+	export RUSTFLAGS=-A dead_code -A unused_imports -A unused_variables
+	rust_src += $(integration_tests_src)
+	libkernel := target/$(target)/debug/libsyzygy.a
+endif
 
 
 .PHONY: all clean run test
@@ -72,36 +78,59 @@ run: $(iso)
 	@echo [run] $(iso)
 	$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
-test: xargo_flags += --features 'integration-tests'
-test: export RUSTFLAGS=-A dead_code -A unused_imports -A unused_variables
-test: rust_src += $(integration_test_src)
-#test: kernel := build/kernel-$(arch)-$(build_type)-test.bin
-test: kernel := $(test_kernel)
-test: iso := $(basename $(iso))-test.iso
-test: temp := $(shell mktemp -d)
-test: qemu_pipe := $(temp)/qemu_pipe
-test: $(rust_src) $(iso)
-	@echo [test] unit tests
-	cargo test --target $(arch)-unknown-linux-gnu
-	@echo [test] integration tests
-	for t in $(integration_tests); do 						\
+#test: xargo_flags += --features 'integration-tests'
+#test: export RUSTFLAGS=-A dead_code -A unused_imports -A unused_variables
+#test: rust_src += $(integration_test_src)
+##test: kernel := build/kernel-$(arch)-$(build_type)-test.bin
+#test: kernel := $(test_kernel)
+#test: iso := $(basename $(iso))-test.iso
+#test: temp := $(shell mktemp -d)
+#test: qemu_pipe := $(temp)/qemu_pipe
+#test: $(rust_src) $(iso)
+#	@echo [test] unit tests
+#	cargo test --target $(arch)-unknown-linux-gnu
+#	@echo [test] integration tests
+#	for t in $(integration_tests); do 						\
 		echo [integration test] $$t; 						\
-		mkfifo $(qemu_pipe).in;							\
-		mkfifo $(qemu_pipe).out;						\
-		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &				\
+		mkfifo $(qemu_pipe).in;								\
+		mkfifo $(qemu_pipe).out;							\
+		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &		\
 		echo "a$${t}_" > $(qemu_pipe).in	&				\
 		$(qemu) -cdrom $(iso) -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0 -m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04; 	\
 		status=$$(cat $(qemu_pipe).out_nb);					\
-		echo $$status;								\
-		case $$status in 							\
-			*ok) ;;								\
-			*) exit 255;;							\
-		esac									\
+		echo $$status;										\
+		case $$status in 									\
+			*ok) ;;											\
+			*) exit 255;;									\
+		esac												\
 #		if [ $$qemu_status -ne 0 ]; then					\
 #			echo "QEMU exited unexpectedly.";				\
-#			exit 254;							\
-#		fi;									\
+#			exit 254;										\
+#		fi;													\
 	done
+
+test: temp := $(shell mktemp -d)
+test: qemu_pipe := $(temp)/qemu_pipe
+test: $(rust_src)
+	@echo [test] unit tests
+	cargo test --target $(arch)-unknown-linux-gnu
+	@echo [test] integration tests
+	$(MAKE) build_type=test
+	for t in $(integration_tests); do						\
+		echo [integration test] $$t;						\
+		mkfifo $(qemu_pipe).in;								\
+		mkfifo $(qemu_pipe).out;							\
+		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &		\
+		echo "a$${t}_" > $(qemu_pipe).in &					\
+		$(qemu) -cdrom build/$(arch)-test.iso -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0 -m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04;	\
+		status=$$(cat $(qemu_pipe).out_nb);					\
+		echo $$status;										\
+		case $$status in									\
+			*ok) ;;											\
+			*) exit 255;;									\
+		esac;												\
+	done
+		
 
 $(iso): $(kernel) $(grub_cfg)
 	@echo [build] $(iso)
@@ -123,4 +152,6 @@ build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common
 	@mkdir -p $(dir $@)
 	nasm $(nasm_flags) $< -o $@ 
 
-#.SILENT:
+ifndef verbose
+.SILENT:
+endif
