@@ -1,4 +1,5 @@
 mod boot;
+mod vga;
 
 use crate::println;
 
@@ -7,6 +8,7 @@ pub fn run() {
     println!("TEST: {}", test);
     let res = match test {
         "boot " => boot::run(),
+        "vga  " => vga::run(),
         _ => Err("Invalid test specification."),
     };
 

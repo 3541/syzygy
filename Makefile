@@ -115,11 +115,18 @@ test: $(rust_src)
 	@echo [test] unit tests
 	cargo test --target $(arch)-unknown-linux-gnu
 	@echo [test] integration tests
+	@echo [awful hack] swap $(libkernel)
+	@-mv $(libkernel){,.bk} &> /dev/null
+	@-mv $(libkernel){.t,} &> /dev/null
 	$(MAKE) build_type=test
+	@echo [awful hack] revert
+	@-mv $(libkernel){,.t} &> /dev/null
+	@- mv $(libkernel){.bk,} &> /dev/null
+	@echo [create] $(qemu_pipe)
+	mkfifo $(qemu_pipe).in
+	mkfifo $(qemu_pipe).out
 	for t in $(integration_tests); do						\
 		echo [integration test] $$t;						\
-		mkfifo $(qemu_pipe).in;								\
-		mkfifo $(qemu_pipe).out;							\
 		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &		\
 		echo "a$${t}_" > $(qemu_pipe).in &					\
 		$(qemu) -cdrom build/$(arch)-test.iso -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0 -m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04;	\
