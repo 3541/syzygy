@@ -7,7 +7,7 @@ use crate::KERNEL_BASE;
 pub struct WatermarkFrameAllocator {
     next_frame: usize,
     area: Option<&'static MemoryArea>,
-    areas: MemoryAreaIter,
+    areas: MemoryAreaIter<'static>,
     kernel_start: usize,
     kernel_end: usize,
     multiboot_info_start: usize,
@@ -35,7 +35,7 @@ impl WatermarkFrameAllocator {
         kernel_end: usize,
         multiboot_info_start: usize,
         multiboot_info_end: usize,
-        areas: MemoryAreaIter,
+        areas: MemoryAreaIter<'static>,
     ) -> Self {
         let mut alloc = WatermarkFrameAllocator {
             kernel_start: kernel_start - KERNEL_BASE,

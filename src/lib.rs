@@ -3,7 +3,6 @@
 #![cfg_attr(test, allow(dead_code))]
 #![feature(asm)]
 #![feature(const_fn)]
-#![feature(type_alias_enum_variants)]
 
 #[macro_use]
 extern crate bitflags;
@@ -16,6 +15,7 @@ extern crate volatile;
 mod hardware;
 mod memory;
 mod vga_text;
+
 
 #[cfg(target_arch = "x86")]
 const KERNEL_BASE: usize = 0xC0000000;
