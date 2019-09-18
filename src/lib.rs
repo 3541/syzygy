@@ -3,6 +3,7 @@
 #![cfg_attr(test, allow(dead_code))]
 #![feature(asm)]
 #![feature(const_fn)]
+#![feature(abi_x86_interrupt)]
 
 #[macro_use]
 extern crate bitflags;
@@ -15,7 +16,6 @@ extern crate volatile;
 mod hardware;
 mod memory;
 mod vga_text;
-
 
 #[cfg(target_arch = "x86")]
 const KERNEL_BASE: usize = 0xC0000000;
@@ -124,7 +124,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         )
     };*/
 
-    let test_addr = KERNEL_BASE + 0x400;
+    /*    let test_addr = KERNEL_BASE + 0x400;
     println!(
         "Test address translation 0x{:x} -> 0x{:x}",
         test_addr,
@@ -137,7 +137,16 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
             Some(b) => vga_println!("received: {}", b),
             None => {}
         }
+    }*/
+
+    hardware::interrupt::init();
+
+    unsafe {
+        asm!("ud2" :::: "volatile");
     }
+
+    println!("Didn't crash!");
+    loop {}
 }
 
 #[cfg(feature = "integration-tests")]
