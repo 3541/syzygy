@@ -1,6 +1,6 @@
-use core::mem::size_of;
+use core::mem::{size_of, transmute};
 
-use super::Handler;
+use super::{Handler, HandlerErr};
 
 pub struct IDT([Entry; 16]);
 
@@ -12,6 +12,10 @@ impl IDT {
     pub fn set_handler(&mut self, index: u8, handler: Handler) -> &mut EntryOptions {
         self.0[index as usize] = Entry::new(current_cs(), handler);
         &mut self.0[index as usize].options
+    }
+
+    pub fn set_handler_errc(&mut self, index: u8, handler: HandlerErr) -> &mut EntryOptions {
+        self.set_handler(index, unsafe { transmute(handler) })
     }
 
     pub fn load(&'static self) {

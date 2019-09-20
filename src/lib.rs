@@ -145,8 +145,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         asm!("ud2" :::: "volatile");
     }
 
-    println!("Didn't crash!");
-    loop {}
+    //    unsafe { *(0xdeadffff as *mut u64) = 0 };
 }
 
 #[cfg(feature = "integration-tests")]

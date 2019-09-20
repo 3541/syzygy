@@ -15,7 +15,7 @@ lazy_static! {
         idt.set_handler(3, exception::breakpoint);
         idt.set_handler(6, exception::invalid_opcode);
         idt.set_handler(8, exception::double_fault);
-        idt.set_handler(14, exception::page_fault);
+        idt.set_handler_errc(14, exception::page_fault);
         idt
     };
 }
