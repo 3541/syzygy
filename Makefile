@@ -137,6 +137,8 @@ test: $(rust_src)
 			*) exit 255;;									\
 		esac;												\
 	done
+	@echo [clean] $(temp)
+	rm -r $(temp)
 		
 
 $(iso): $(kernel) $(grub_cfg)
