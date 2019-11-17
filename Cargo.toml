@@ -3,6 +3,7 @@ name = "syzygy"
 version = "0.1.0"
 authors = ["Alex O'Brien <alex@emobrien.com>"]
 edition = "2018"
+license = "GPL-3.0-only"
 
 [lib]
 crate-type = ["staticlib"]
