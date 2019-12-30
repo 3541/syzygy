@@ -38,7 +38,7 @@ impl logc::Log for Log {
 }
 
 static LOG: Log = Log {
-    level: LevelFilter::Warn,
+    level: LevelFilter::Trace,
 };
 
 pub fn init() {

@@ -3,7 +3,7 @@ use super::InterruptStackFrame;
 macro_rules! generic_handler_ret {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame) {
-            crate::println!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
+            error!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
         }
     };
 }
@@ -11,16 +11,17 @@ macro_rules! generic_handler_ret {
 macro_rules! generic_handler_halt {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame) {
-            crate::println!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
+            error!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
             loop {}
         }
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! errc_handler_ret {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame, err: usize) {
-            crate::println!(
+            error!(
                 "EXCEPTION: {}, {:x} - \n {:#x?}",
                 stringify!($n),
                 err,
@@ -30,10 +31,11 @@ macro_rules! errc_handler_ret {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! errc_handler_halt {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame, err: usize) {
-            crate::println!(
+            error!(
                 "EXCEPTION: {}, {:x} - \n {:#x?}",
                 stringify!($n),
                 err,
@@ -62,9 +64,8 @@ generic_handler_halt!(invalid_opcode);
 
 generic_handler_ret!(breakpoint);
 
-//errc_handler_halt!(page_fault);
 pub extern "x86-interrupt" fn page_fault(stack: &mut InterruptStackFrame, err: usize) {
-    let mut cr2: usize = 0;
+    let mut cr2: usize;
     unsafe { asm!("mov %cr2, $0" : "=r"(cr2)) };
     crate::println!(
         "EXCEPTION: page_fault accessing 0x{:x}\n\

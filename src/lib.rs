@@ -89,8 +89,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 #[cfg(not(feature = "integration-tests"))]
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info_addr: usize) {
-    vga_text::WRITER.lock().clear_screen();
-    println!("kmain start");
+    log::init();
+    info!("kmain start");
 
     let multiboot_info_addr = multiboot_info_addr + KERNEL_BASE;
     let multiboot_info = unsafe { multiboot2::load(multiboot_info_addr) };
@@ -98,10 +98,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
 
-    println!("Memory areas (PHYSICAL)");
+    debug!("Memory areas (PHYSICAL)");
 
     for a in mmap.memory_areas() {
-        println!(
+        debug!(
             "\t0x{:x} - 0x{:x} (0x{:x})",
             a.start_address(),
             a.end_address(),
@@ -113,9 +113,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .elf_sections_tag()
         .expect("ELF sections tag is malformed/missing.");
 
-    println!("Kernel sections (FUCKED):");
+    debug!("Kernel sections (FUCKED):");
     for s in elf_sections.sections() {
-        println!(
+        debug!(
             "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0x{:x}",
             s.start_address(),
             s.end_address(),
@@ -136,24 +136,24 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         .max()
         .unwrap();
 
-    println!(
+    debug!(
         "Kernel (VIRTUAL): 0x{:x} - 0x{:x}",
         kernel_start_addr, kernel_end_addr
     );
 
-    println!(
+    debug!(
         "Kernel (PHYSICAL): 0x{:x} - 0x{:x}",
         kernel_start_addr as usize - KERNEL_BASE,
         kernel_end_addr as usize - KERNEL_BASE
     );
 
-    println!(
+    debug!(
         "Multiboot (VIRTUAL): 0x{:x} - 0x{:x}",
         multiboot_info_addr,
         multiboot_info.end_address()
     );
 
-    println!(
+    debug!(
         "Multiboot (PHYSICAL): 0x{:x} - 0x{:x}",
         multiboot_info_addr - KERNEL_BASE,
         multiboot_info.end_address() - KERNEL_BASE
@@ -202,9 +202,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         }
     }*/
 
-    log::init();
-    warn!("test warn");
-    error!("test error");
     hardware::interrupt::init();
 
     unsafe {
