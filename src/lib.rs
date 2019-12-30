@@ -15,8 +15,13 @@ extern crate lazy_static;
 extern crate multiboot2;
 extern crate spin;
 extern crate volatile;
+#[macro_use]
+extern crate logc;
+extern crate ansi_rgb;
+extern crate rgb;
 
 mod hardware;
+mod log;
 mod memory;
 mod vga_text;
 

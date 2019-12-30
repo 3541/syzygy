@@ -1,5 +1,7 @@
 use core::fmt::{self, Write};
 
+use rgb::RGB8;
+
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
@@ -26,8 +28,31 @@ pub enum Color {
     White = 15,
 }
 
+impl Into<RGB8> for Color {
+    fn into(self) -> RGB8 {
+        match self {
+            Color::Black => ansi_rgb::black(),
+            Color::Blue => ansi_rgb::blue(),
+            Color::Green => ansi_rgb::green(),
+            Color::Cyan => ansi_rgb::cyan(),
+            Color::Red => ansi_rgb::red(),
+            Color::Magenta => ansi_rgb::magenta(),
+            Color::Brown => RGB8::new(139, 69, 19),
+            Color::LightGray => RGB8::new(98, 98, 98),
+            Color::DarkGray => RGB8::new(200, 200, 200),
+            Color::LightBlue => ansi_rgb::cyan_blue(),
+            Color::LightGreen => ansi_rgb::yellow_green(),
+            Color::LightCyan => RGB8::new(224, 255, 255),
+            Color::LightRed => RGB8::new(255, 99, 71),
+            Color::Pink => RGB8::new(255, 192, 203),
+            Color::Yellow => ansi_rgb::yellow(),
+            Color::White => ansi_rgb::white(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct ColorCode(u8);
+pub struct ColorCode(u8);
 
 impl ColorCode {
     const fn new(fg: Color, bg: Color) -> Self {
@@ -36,7 +61,7 @@ impl ColorCode {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-#[repr(C)]
+#[repr(C, packed)]
 struct VgaChar {
     character: u8,
     color: ColorCode,
@@ -64,6 +89,18 @@ pub struct Writer {
 }
 
 impl Writer {
+    pub fn color(&self) -> ColorCode {
+        self.color
+    }
+
+    pub fn set_color(&mut self, fg: Color, bg: Color) {
+        self.color = ColorCode::new(fg, bg);
+    }
+
+    pub fn set_color_code(&mut self, c: ColorCode) {
+        self.color = c;
+    }
+
     fn new_line(&mut self) {
         for row in 1..BUFFER_HEIGHT {
             for column in 0..BUFFER_WIDTH {

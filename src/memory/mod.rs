@@ -67,9 +67,9 @@ pub trait FrameAllocator {
 }
 
 pub fn next_aligned_addr(mut base: PhysicalAddress, align: usize) -> PhysicalAddress {
-    if base % align != 0 {
+    /*    if base % align != 0 {
         //        base = (base / align + 1) * align
         base -= base % align;
-    }
-    base
+    }*/
+    base - base % align
 }
