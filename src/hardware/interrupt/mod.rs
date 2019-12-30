@@ -21,8 +21,8 @@ lazy_static! {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[repr(packed)]
-#[derive(Clone, Debug)]
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
 pub struct InterruptStackFrame {
     instruction_pointer: VirtualAddress,
     code_segment: u64,

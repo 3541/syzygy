@@ -31,7 +31,7 @@ impl IDT {
 }
 
 fn current_cs() -> u16 {
-    let mut ret: u16 = 0;
+    let mut ret: u16;
     unsafe {
         asm!("mov %cs, $0" : "=r"(ret));
     }
