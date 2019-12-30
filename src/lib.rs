@@ -4,9 +4,9 @@
 #![feature(asm)]
 #![feature(const_fn)]
 #![feature(abi_x86_interrupt)]
-//#![feature(alloc_error_handler)]
+#![feature(alloc_error_handler)]
 
-//extern crate alloc;
+extern crate alloc;
 
 #[macro_use]
 extern crate bitflags;
@@ -19,6 +19,7 @@ extern crate volatile;
 extern crate logc;
 extern crate ansi_rgb;
 extern crate rgb;
+extern crate rlibc;
 
 mod hardware;
 mod log;
@@ -74,15 +75,15 @@ fn exit_qemu(code: u8) -> ! {
     loop {}
 }
 
-/*#[alloc_error_handler]
-fn oom(_l: Layout) -> ! {
+#[alloc_error_handler]
+fn oom(_l: alloc::alloc::Layout) -> ! {
     panic!("Out of memory!");
-}*/
+}
 
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    println!("{}", info);
+    error!("{}", info);
     loop {}
 }
 

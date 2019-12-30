@@ -1,3 +1,4 @@
+mod fake;
 pub mod paging;
 mod watermark_frame_allocator;
 
@@ -7,6 +8,9 @@ use paging::PhysicalAddress;
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
+
+#[global_allocator]
+static ALLOCATOR: fake::FakeAllocator = fake::FakeAllocator;
 
 #[cfg(target_arch = "x86_64")]
 #[derive(Debug, Copy, Clone)]

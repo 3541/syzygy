@@ -17,6 +17,7 @@ multiboot2 = "*"
 logc = { package = "log", version = "*", features = [] }
 ansi_rgb = "*"
 rgb = "*"
+rlibc = "*"
 
 [dev-dependencies]
 array-init = "*"
