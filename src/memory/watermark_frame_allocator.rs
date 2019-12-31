@@ -4,17 +4,17 @@ use crate::memory::{
     next_aligned_addr, Frame, FrameAllocator, FrameSize, /*MemoryArea,*/ FRAME_ALIGN,
 };
 use crate::KERNEL_BASE;
-pub struct WatermarkFrameAllocator {
+pub struct WatermarkFrameAllocator<'a> {
     next_frame: usize,
-    area: Option<&'static MemoryArea>,
-    areas: MemoryAreaIter<'static>,
+    area: Option<&'a MemoryArea>,
+    areas: MemoryAreaIter<'a>,
     kernel_start: usize,
     kernel_end: usize,
     multiboot_info_start: usize,
     multiboot_info_end: usize,
 }
 
-impl WatermarkFrameAllocator {
+impl<'a> WatermarkFrameAllocator<'a> {
     fn next_area(&mut self, min_size: usize) {
         self.area = self
             .areas
@@ -35,7 +35,7 @@ impl WatermarkFrameAllocator {
         kernel_end: usize,
         multiboot_info_start: usize,
         multiboot_info_end: usize,
-        areas: MemoryAreaIter<'static>,
+        areas: MemoryAreaIter<'a>,
     ) -> Self {
         let mut alloc = WatermarkFrameAllocator {
             kernel_start: kernel_start - KERNEL_BASE,
@@ -52,13 +52,15 @@ impl WatermarkFrameAllocator {
 }
 
 // Physical frame allocator
-impl FrameAllocator for WatermarkFrameAllocator {
+impl FrameAllocator for WatermarkFrameAllocator<'_> {
     fn alloc(&mut self, size: FrameSize) -> Option<Frame> {
+        trace!("ENTERED WatermarkFrameAllocator::alloc");
         if let Some(area) = self.area {
             let frame = Frame {
                 address: self.next_frame,
                 size,
             };
+            debug!("Allocating frame {:#x?}", frame);
 
             if frame.end_address() > area.end_address() as usize {
                 self.next_area(frame.size as usize);
@@ -87,6 +89,6 @@ impl FrameAllocator for WatermarkFrameAllocator {
     }
 
     fn free(&mut self, _frame: Frame) {
-        unimplemented!()
+        unimplemented!("WatermarkFrameAllocator cannot free.")
     }
 }

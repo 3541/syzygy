@@ -5,6 +5,7 @@
 #![feature(const_fn)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(ptr_internals)]
 
 extern crate alloc;
 
@@ -25,6 +26,9 @@ mod hardware;
 mod log;
 mod memory;
 mod vga_text;
+
+use memory::paging::{ActiveTopLevelTable, EntryFlags};
+use memory::FrameAllocator;
 
 #[cfg(target_arch = "x86")]
 const KERNEL_BASE: usize = 0xC0000000;
@@ -76,8 +80,8 @@ fn exit_qemu(code: u8) -> ! {
 }
 
 #[alloc_error_handler]
-fn oom(_l: alloc::alloc::Layout) -> ! {
-    panic!("Out of memory!");
+fn alloc_err(layout: alloc::alloc::Layout) -> ! {
+    panic!("Allocator error!\n\t{:?}", layout);
 }
 
 #[panic_handler]
@@ -91,14 +95,17 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info_addr: usize) {
     vga_text::WRITER.lock().clear_screen();
+    println!("ENTERED kmain");
     log::init();
-    info!("kmain start");
+    debug!("INITIALIZED log");
 
     let multiboot_info_addr = multiboot_info_addr + KERNEL_BASE;
     let multiboot_info = unsafe { multiboot2::load(multiboot_info_addr) };
     let mmap = multiboot_info
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
+
+    debug!("INITIALIZED memory map");
 
     debug!("Memory areas (PHYSICAL)");
 
@@ -161,13 +168,15 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
         multiboot_info.end_address() - KERNEL_BASE
     );
 
-    /*let mut allocator = memory::WatermarkFrameAllocator::new(
+    let mut allocator = memory::WatermarkFrameAllocator::new(
         kernel_start_addr as usize,
         kernel_end_addr as usize,
         multiboot_info_addr as usize,
         multiboot_info.end_address() as usize,
         mmap.memory_areas(),
-    );*/
+    );
+
+    trace!("INITIALIZED WatermarkFrameAllocator");
 
     /*    let mem = allocator
         .alloc(memory::FrameSize::Large)
@@ -205,11 +214,36 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     }*/
 
     hardware::interrupt::init();
+    debug!("INITIALIZED interrupts");
 
-    unsafe {
-        asm!("ud2" :::: "volatile");
-    }
-    //    let v = Box::new(2);
+    let mut table = unsafe { ActiveTopLevelTable::new() };
+    debug!("INITIALIZED top-level page table");
 
-    //    unsafe { *(0xdeadffff as *mut u64) = 0 };
+    debug!("TEST mapping");
+    let addr = 42 * 512 * 512 * 4096 as usize;
+    let frame = allocator
+        .alloc(memory::FrameSize::Small)
+        .expect("Failed to allocate frame");
+    debug!("{:#x} translates to {:#x?}", addr, table.translate(addr));
+    debug!("Mapping {:#x} to {:#x?}", addr, frame);
+    let page = table.map_to(addr, frame, EntryFlags::empty(), &mut allocator);
+    debug!("Got page {:#x?}", page);
+    debug!(
+        "Now {:#x} translates to {:#x?}",
+        addr,
+        table.translate(addr)
+    );
+    debug!(
+        "Next free frame: {:#x?}",
+        allocator.alloc(memory::FrameSize::Small)
+    );
+
+    debug!("Read {:#x} from new page", unsafe {
+        *(page.address() as *const usize)
+    });
+    debug!("Unmapping page.");
+    table.unmap(page.clone(), &mut allocator);
+    debug!("Read {:#x} from unmapped page", unsafe {
+        *(page.address() as *const usize)
+    });
 }

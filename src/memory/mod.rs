@@ -5,6 +5,7 @@ mod watermark_frame_allocator;
 use core::ops::{Add, AddAssign};
 
 use paging::PhysicalAddress;
+
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
@@ -25,6 +26,16 @@ pub enum FrameSize {
 pub enum FrameSize {
     Small = 0x1000,    // 4K
     Large = 0x40_0000, // 4M
+}
+
+impl FrameSize {
+    pub fn level_index(&self) -> usize {
+        match self {
+            FrameSize::Small => 0,
+            FrameSize::Large => 1,
+            FrameSize::Huge => 2,
+        }
+    }
 }
 
 impl Add<usize> for FrameSize {
@@ -49,7 +60,7 @@ impl AddAssign<FrameSize> for usize {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Frame {
     address: PhysicalAddress,
     size: FrameSize,

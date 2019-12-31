@@ -38,7 +38,10 @@ impl logc::Log for Log {
 }
 
 static LOG: Log = Log {
-    level: LevelFilter::Trace,
+    #[cfg(debug_assertions)]
+    level: LevelFilter::Debug,
+    #[cfg(not(debug_assertions))]
+    level: LevelFilter::Warn,
 };
 
 pub fn init() {
