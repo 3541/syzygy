@@ -122,6 +122,8 @@ init64:
 	jmp start64
 
 start64:
+    ; pass guard page address
+    mov rsi, guard_page
 	extern kmain
 	call kmain
 

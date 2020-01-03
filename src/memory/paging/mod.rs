@@ -1,5 +1,7 @@
 pub mod table;
 
+use multiboot2::ElfSectionIter;
+
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
 use crate::memory::{Frame, FrameAllocator, FRAME_ALIGN};
@@ -75,4 +77,10 @@ impl Page {
     pub fn address(&self) -> VirtualAddress {
         self.address
     }
+}
+
+pub fn remap_kernel<A: FrameAllocator>(allocator: &mut A, elf_tag: ElfSectionIter) {
+    // make new PDP, PT tables, map to kernel
+
+    unimplemented!()
 }

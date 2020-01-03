@@ -93,7 +93,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[cfg(not(feature = "integration-tests"))]
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info_addr: usize) {
+pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
     vga_text::WRITER.lock().clear_screen();
     println!("ENTERED kmain");
     log::init();
@@ -125,11 +125,12 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     debug!("Kernel sections (FUCKED):");
     for s in elf_sections.sections() {
         debug!(
-            "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0x{:x}",
+            "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0x{:x} (ALLOCATED: {})",
             s.start_address(),
             s.end_address(),
             s.size(),
-            s.flags()
+            s.flags(),
+            s.is_allocated(),
         );
     }
 
@@ -243,7 +244,26 @@ pub extern "C" fn kmain(multiboot_info_addr: usize) {
     });
     debug!("Unmapping page.");
     table.unmap(page.clone(), &mut allocator);
-    debug!("Read {:#x} from unmapped page", unsafe {
-        *(page.address() as *const usize)
-    });
+
+    debug!(
+        "Guard page at {:#x} -> {:#x?}?",
+        guard_page_address,
+        table.translate(guard_page_address).unwrap()
+    );
+
+    let pml4_address = table.get() as *const memory::paging::table::Table<_> as usize;
+    debug!(
+        "PML4 at {:#x} -> {:#x}",
+        pml4_address,
+        table.translate(pml4_address).unwrap()
+    );
+    debug!("Trying to unmap guard page.");
+    /*    table.unmap(
+        table
+            .translate_page(guard_page_address)
+            .expect("Guard page not mapped"),
+        &mut allocator,
+    );*/
+
+    memory::paging::remap_kernel(&mut allocator, elf_sections.sections());
 }
