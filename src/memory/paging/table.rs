@@ -18,6 +18,12 @@ pub const ACTIVE_TOP_LEVEL_TABLE_ADDRESS: *mut Table<PML4> = ACTIVE_PML4_ADDRESS
 #[cfg(target_arch = "x86")]
 pub const ACTIVE_TOP_LEVEL_TABLE_ADDRESS: *mut Table<PD> = ACTIVE_PD_ADDRESS;
 
+#[cfg(target_arch = "x86_64")]
+pub const TABLE_LEVELS: usize = 3;
+
+#[cfg(target_arch = "x86")]
+pub const TABLE_LEVELS: usize = 2;
+
 //#[cfg(target_arch = "x86_64")]
 //pub const KERNEL_INDEX: usize = 511;
 
@@ -58,32 +64,47 @@ impl ActiveTopLevelTable {
 
         let top = self.get_mut();
         let level = ret.size().level_index();
-        let t1 = top.next_table_or_create(ret.pml4_index(), allocator);
+        //        let t1 = top.next_table_or_create(ret.pml4_index(), allocator);
+        let mut bottom = top.next_table_or_create(ret.pml4_index(), allocator);
 
-        fn set_mapping(t: &mut Table<impl TableType>, p: &Page, flags: EntryFlags, level: usize) {
-            let index = p.table_index(level);
-            assert!(t[index].is_unused());
-            t[p.table_index(level)].set(p.frame.address(), flags | EntryFlags::PRESENT);
+        let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
+
+        for i in 0..(TABLE_LEVELS - level - 1) {
+            assert!(!bottom[indices[i]].is_leaf());
+            bottom =
+                unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i], allocator)) };
         }
 
-        match level {
-            2 => set_mapping(t1, &ret, flags, level),
-            1 => set_mapping(
-                t1.next_table_or_create(ret.pdp_index(), allocator),
-                &ret,
-                flags,
-                level,
-            ),
-            0 => set_mapping(
-                t1.next_table_or_create(ret.pdp_index(), allocator)
-                    .next_table_or_create(ret.pd_index(), allocator),
-                &ret,
-                flags,
-                level,
-            ),
-            _ => panic!(),
-        };
+        let index = ret.table_index(level);
+        assert!(bottom[index].is_unused());
+        bottom[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
+        /*
+                fn set_mapping(t: &mut Table<impl TableType>, p: &Page, flags: EntryFlags, level: usize) {
+                    let index = p.table_index(level);
+                    debug!("b2: {:x}", t as *const _ as usize);
+                    assert!(t[index].is_unused());
+                    t[p.table_index(level)].set(p.frame.address(), flags | EntryFlags::PRESENT);
+                }
+
+                match level {
+                    2 => set_mapping(t1, &ret, flags, level),
+                    1 => set_mapping(
+                        t1.next_table_or_create(ret.pdp_index(), allocator),
+                        &ret,
+                        flags,
+                        level,
+                    ),
+                    0 => set_mapping(
+                        t1.next_table_or_create(ret.pdp_index(), allocator)
+                            .next_table_or_create(ret.pd_index(), allocator),
+                        &ret,
+                        flags,
+                        level,
+                    ),
+                    _ => panic!(),
+                };
+        */
         ret
     }
 
@@ -118,7 +139,17 @@ impl ActiveTopLevelTable {
             unsafe { asm!("invlpg $0" : : "m"(address)) };
         }
 
-        let res = self
+        let mut table = self.get_mut().next_table_mut(page.pml4_index()).unwrap();
+        for i in (1..(TABLE_LEVELS - level)).rev() {
+            assert!(!table[page.table_index(i)].is_leaf());
+            table =
+                unsafe { core::mem::transmute(table.next_table_mut(page.table_index(i)).unwrap()) };
+        }
+
+        table[page.table_index(level)].set_unused();
+        unsafe { asm!("invlpg $0" : : "m"(page.address())) };
+
+        /*        let res = self
             .get_mut()
             .next_table_mut(page.pml4_index())
             .and_then(|pdp| pdp.next_table_mut(page.pdp_index()))
@@ -148,7 +179,7 @@ impl ActiveTopLevelTable {
             }
             info!("Cannot actually deallocate frame");
             // allocator.free(page.frame);
-        }
+        }*/
     }
 
     pub fn translate_page(&self, addr: VirtualAddress) -> Option<Page> {
@@ -263,7 +294,7 @@ impl ActiveTopLevelTable {
 
     pub fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
         self.translate_page(addr).and_then(|page| {
-            Some(page.frame.address + addr & super::page_addr_offset_mask(page.size()))
+            Some(page.frame.address + (addr & super::page_addr_offset_mask(page.size())))
         })
     }
 }
@@ -284,7 +315,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Entry(usize);
 
 impl Entry {
