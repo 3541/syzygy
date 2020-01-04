@@ -19,8 +19,8 @@ extern crate volatile;
 #[macro_use]
 extern crate logc;
 extern crate ansi_rgb;
+extern crate compiler_builtins;
 extern crate rgb;
-extern crate rlibc;
 
 mod hardware;
 mod log;
