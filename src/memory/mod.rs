@@ -75,6 +75,46 @@ impl Frame {
     pub fn end_address(&self) -> PhysicalAddress {
         self.address + self.size as usize
     }
+
+    pub fn containing_address(address: PhysicalAddress, size: FrameSize) -> Frame {
+        Frame {
+            address: address - address % size as usize,
+            size,
+        }
+    }
+
+    fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
+        assert!(
+            from.size == to.size,
+            "Cannot make a range between frames of different sizes"
+        );
+
+        FrameIterator {
+            from,
+            to,
+            size: from.size,
+        }
+    }
+}
+
+struct FrameIterator {
+    from: Frame,
+    to: Frame,
+    size: FrameSize,
+}
+
+impl Iterator for FrameIterator {
+    type Item = Frame;
+
+    fn next(&mut self) -> Option<Frame> {
+        if self.from.address() <= self.to.address() {
+            let frame = self.from.clone();
+            self.from.address += self.size;
+            Some(frame)
+        } else {
+            None
+        }
+    }
 }
 
 pub trait FrameAllocator {

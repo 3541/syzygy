@@ -221,7 +221,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
     let mut table = unsafe { ActiveTopLevelTable::new() };
     debug!("INITIALIZED top-level page table");
 
-    debug!("TEST mapping");
+    /*    debug!("TEST mapping");
     let addr = 42 * 512 * 512 * 4096 as usize;
     let frame = allocator
         .alloc(memory::FrameSize::Small)
@@ -250,7 +250,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         "Guard page at {:#x} -> {:#x?}?",
         guard_page_address,
         table.translate(guard_page_address).unwrap()
-    );
+    );*/
 
     let pml4_address = table.get() as *const memory::paging::table::Table<_> as usize;
     debug!(
@@ -265,5 +265,12 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         &mut allocator,
     );*/
 
-    memory::paging::remap_kernel(&mut allocator, elf_sections.sections());
+    memory::paging::remap_kernel(
+        &mut allocator,
+        &mut table,
+        elf_sections.sections(),
+        &multiboot_info,
+    );
+    allocator.alloc(memory::FrameSize::Small);
+    debug!("Alive after remapping???");
 }
