@@ -10,8 +10,12 @@ SECTIONS {
         *(.text .text.*)
     }
 
+    .data ALIGN(4K) : AT(ADDR(.data) - KERNEL_BASE) {
+        *(.data .data.*)
+    }
+
     .bss ALIGN(4K) : AT(ADDR(.bss) - KERNEL_BASE) {
-        *(.bss)
+        *(.bss .bss.*)
     }
 
     .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_BASE) {
