@@ -27,7 +27,8 @@ mod log;
 mod memory;
 mod vga_text;
 
-use memory::paging::{ActiveTopLevelTable, EntryFlags};
+use memory::paging::table::ActiveTopLevelTable;
+use memory::paging::EntryFlags;
 use memory::FrameAllocator;
 
 #[cfg(target_arch = "x86")]
@@ -257,7 +258,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         pml4_address,
         table.translate(pml4_address).unwrap()
     );
-    debug!("Trying to unmap guard page.");
     /*    table.unmap(
         table
             .translate_page(guard_page_address)

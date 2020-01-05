@@ -4,8 +4,6 @@ mod watermark_frame_allocator;
 
 use core::ops::{Add, AddAssign};
 
-use paging::PhysicalAddress;
-
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
@@ -13,8 +11,11 @@ const FRAME_ALIGN: usize = 4096;
 #[global_allocator]
 static ALLOCATOR: fake::FakeAllocator = fake::FakeAllocator;
 
+pub type PhysicalAddress = usize;
+pub type VirtualAddress = usize;
+
 #[cfg(target_arch = "x86_64")]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FrameSize {
     Small = 0x1000,     // 4K
     Large = 0x20_0000,  // 2M
@@ -22,7 +23,7 @@ pub enum FrameSize {
 }
 
 #[cfg(target_arch = "x86")]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum FrameSize {
     Small = 0x1000,    // 4K
     Large = 0x40_0000, // 4M

@@ -1,4 +1,4 @@
-use crate::memory::paging::VirtualAddress;
+use crate::memory::VirtualAddress;
 
 mod exception;
 mod idt;

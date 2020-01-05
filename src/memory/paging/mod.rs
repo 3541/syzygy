@@ -1,10 +1,16 @@
+pub mod mapper;
 pub mod table;
+mod temp_page;
 
 use multiboot2::ElfSectionIter;
 
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
-use crate::memory::{Frame, FrameAllocator, FRAME_ALIGN};
+use crate::memory::{
+    Frame, FrameAllocator, FrameSize, PhysicalAddress, VirtualAddress, FRAME_ALIGN,
+};
+use table::InactiveTopLevelTable;
+use temp_page::TempPage;
 
 #[cfg(target_arch = "x86")]
 const ENTRIES: usize = 1024;
@@ -34,8 +40,6 @@ fn page_addr_offset_mask(size: PageSize) -> usize {
         - 1
 }
 
-pub type PhysicalAddress = usize;
-pub type VirtualAddress = usize;
 pub type PageSize = super::FrameSize;
 
 #[derive(Debug, Clone)]

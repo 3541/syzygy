@@ -6,6 +6,8 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
+pub const VGA_BUFFER_ADDRESS: usize = 0xB8000;
+
 #[derive(Copy, Clone)]
 #[repr(u8)]
 #[allow(dead_code)]
@@ -78,7 +80,7 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column: 0,
         color: ColorCode::new(Color::Black, Color::White),
-        buffer: unsafe { &mut *((crate::KERNEL_BASE + 0xB8000) as *mut Buffer) },
+        buffer: unsafe { &mut *((crate::KERNEL_BASE + VGA_BUFFER_ADDRESS) as *mut Buffer) },
     });
 }
 

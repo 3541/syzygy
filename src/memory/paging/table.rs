@@ -1,8 +1,9 @@
 use core::marker::PhantomData;
-use core::ops::{Index, IndexMut};
-use core::ptr::Unique;
+use core::ops::{Deref, DerefMut, Index, IndexMut};
 
-use crate::memory::paging::{Page, PageSize, PhysicalAddress, VirtualAddress};
+use super::mapper::Mapper;
+use super::temp_page::TempPage;
+use super::PhysicalAddress;
 use crate::memory::{Frame, FrameAllocator, FrameSize};
 
 // NOTE: Magic virtual addresses
@@ -348,7 +349,7 @@ impl Entry {
         self.0 = address | flags.bits();
     }
 
-    fn set_unused(&mut self) {
+    pub fn set_unused(&mut self) {
         self.0 = 0;
     }
 
