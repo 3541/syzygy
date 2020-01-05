@@ -128,7 +128,7 @@ pub fn remap_kernel<A: FrameAllocator>(
                 "Kernel sections must be 4K aligned."
             );
 
-            debug!(
+            trace!(
                 "Mapping section 0x{:x}-0x{:x} (0x{:x})",
                 section.start_address(),
                 section.end_address(),

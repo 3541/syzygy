@@ -28,7 +28,6 @@ mod memory;
 mod vga_text;
 
 use memory::paging::table::ActiveTopLevelTable;
-use memory::paging::EntryFlags;
 use memory::FrameAllocator;
 
 #[cfg(target_arch = "x86")]
@@ -98,7 +97,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
     vga_text::WRITER.lock().clear_screen();
     println!("ENTERED kmain");
     log::init();
-    debug!("INITIALIZED log");
+    info!("INITIALIZED log");
 
     let multiboot_info_addr = multiboot_info_addr + KERNEL_BASE;
     let multiboot_info = unsafe { multiboot2::load(multiboot_info_addr) };
@@ -106,7 +105,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
 
-    debug!("INITIALIZED memory map");
+    info!("INITIALIZED memory map");
 
     debug!("Memory areas (PHYSICAL)");
 
@@ -178,92 +177,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         mmap.memory_areas(),
     );
 
-    trace!("INITIALIZED WatermarkFrameAllocator");
-
-    /*    let mem = allocator
-        .alloc(memory::FrameSize::Large)
-        .expect("Failed to allocate.");
-    println!("0x{:x} - 0x{:x}", mem.address(), mem.end_address());*/
-
-    /*    for i in 0.. {
-        if let None = allocator.alloc(memory::FrameSize::Large) {
-            println!("Allocated {} frames", i);
-            break;
-        }
-    }*/
-
-    /*    unsafe {
-        println!(
-            "{:x?}",
-            (*memory::paging::table::TOP_LEVEL_TABLE)[memory::paging::table::KERNEL_INDEX]
-                .address()
-        )
-    };*/
-
-    /*    let test_addr = KERNEL_BASE + 0x400;
-    println!(
-        "Test address translation 0x{:x} -> 0x{:x}",
-        test_addr,
-        memory::paging::translate(test_addr)
-    );
-
-    let mut s = hardware::serial::SERIAL1.lock();
-    loop {
-        match s.recv_byte() {
-            Some(b) => vga_println!("received: {}", b),
-            None => {}
-        }
-    }*/
+    info!("INITIALIZED WatermarkFrameAllocator");
 
     hardware::interrupt::init();
-    debug!("INITIALIZED interrupts");
+    info!("INITIALIZED interrupts");
 
     let mut table = unsafe { ActiveTopLevelTable::new() };
-    debug!("INITIALIZED top-level page table");
-
-    /*    debug!("TEST mapping");
-    let addr = 42 * 512 * 512 * 4096 as usize;
-    let frame = allocator
-        .alloc(memory::FrameSize::Small)
-        .expect("Failed to allocate frame");
-    debug!("{:#x} translates to {:#x?}", addr, table.translate(addr));
-    debug!("Mapping {:#x} to {:#x?}", addr, frame);
-    let page = table.map_to(addr, frame, EntryFlags::empty(), &mut allocator);
-    debug!("Got page {:#x?}", page);
-    debug!(
-        "Now {:#x} translates to {:#x?}",
-        addr,
-        table.translate(addr)
-    );
-    debug!(
-        "Next free frame: {:#x?}",
-        allocator.alloc(memory::FrameSize::Small)
-    );
-
-    debug!("Read {:#x} from new page", unsafe {
-        *(page.address() as *const usize)
-    });
-    debug!("Unmapping page.");
-    table.unmap(page.clone(), &mut allocator);
-
-    debug!(
-        "Guard page at {:#x} -> {:#x?}?",
-        guard_page_address,
-        table.translate(guard_page_address).unwrap()
-    );*/
-
-    let pml4_address = table.get() as *const memory::paging::table::Table<_> as usize;
-    debug!(
-        "PML4 at {:#x} -> {:#x}",
-        pml4_address,
-        table.translate(pml4_address).unwrap()
-    );
-    /*    table.unmap(
-        table
-            .translate_page(guard_page_address)
-            .expect("Guard page not mapped"),
-        &mut allocator,
-    );*/
+    info!("INITIALIZED top-level page table");
 
     memory::paging::remap_kernel(
         &mut allocator,
@@ -272,5 +192,5 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
         &multiboot_info,
     );
     allocator.alloc(memory::FrameSize::Small);
-    debug!("Alive after remapping???");
+    info!("REMAPPED the kernel address space");
 }

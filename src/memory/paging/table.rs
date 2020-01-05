@@ -156,7 +156,7 @@ impl Entry {
 
     pub fn set(&mut self, address: PhysicalAddress, flags: EntryFlags) {
         trace!("ENTERED set");
-        debug!(
+        trace!(
             "Address: {:#x}, address & !ADDRESS_MASK: {:#x}",
             address,
             address & !Self::ADDRESS_MASK
@@ -225,7 +225,7 @@ impl<T: TableType + NestedTableType> Table<T> {
                 if self.entries[index].flags().contains(EntryFlags::LARGE) {
                     panic!("Tried to take next table on an entry pointing to a huge page")
                 } else {
-                    debug!(
+                    trace!(
                         "Creating new table at {} in {:#x}",
                         index,
                         (self as *mut _) as usize

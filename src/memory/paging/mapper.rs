@@ -41,7 +41,6 @@ impl Mapper {
 
         let top = self.get_mut();
         let level = ret.size().level_index();
-        //        let t1 = top.next_table_or_create(ret.pml4_index(), allocator);
         let mut bottom = top.next_table_or_create(ret.pml4_index(), allocator);
 
         let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
@@ -56,32 +55,6 @@ impl Mapper {
         assert!(bottom[index].is_unused());
         bottom[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
-        /*
-                fn set_mapping(t: &mut Table<impl TableType>, p: &Page, flags: EntryFlags, level: usize) {
-                    let index = p.table_index(level);
-                    debug!("b2: {:x}", t as *const _ as usize);
-                    assert!(t[index].is_unused());
-                    t[p.table_index(level)].set(p.frame.address(), flags | EntryFlags::PRESENT);
-                }
-
-                match level {
-                    2 => set_mapping(t1, &ret, flags, level),
-                    1 => set_mapping(
-                        t1.next_table_or_create(ret.pdp_index(), allocator),
-                        &ret,
-                        flags,
-                        level,
-                    ),
-                    0 => set_mapping(
-                        t1.next_table_or_create(ret.pdp_index(), allocator)
-                            .next_table_or_create(ret.pd_index(), allocator),
-                        &ret,
-                        flags,
-                        level,
-                    ),
-                    _ => panic!(),
-                };
-        */
         ret
     }
 
@@ -106,7 +79,7 @@ impl Mapper {
         flags: EntryFlags,
         allocator: &mut A,
     ) -> Page {
-        debug!("Going to map in kernel address space: {:#x?}", frame);
+        trace!("Going to map in kernel address space: {:#x?}", frame);
         self.map_to(frame.address + crate::KERNEL_BASE, frame, flags, allocator)
     }
 
@@ -126,38 +99,6 @@ impl Mapper {
 
         table[page.table_index(level)].set_unused();
         unsafe { asm!("invlpg $0" : : "m"(page.address())) };
-
-        /*        let res = self
-            .get_mut()
-            .next_table_mut(page.pml4_index())
-            .and_then(|pdp| pdp.next_table_mut(page.pdp_index()))
-            .and_then(|pd| pd.next_table_mut(page.pd_index()))
-            .and_then(|pt| {
-                set_unmap(pt, page.pt_index(), page.address());
-                //                allocator.free(page.frame);
-                info!("Cannot actually deallocate frame");
-                Some(())
-            });
-        if res.is_none() {
-            let pdp = self
-                .get_mut()
-                .next_table_mut(page.pml4_index())
-                .expect("Tried to free on an unmapped PML4 entry");
-            if pdp[page.pdp_index()].is_leaf() {
-                set_unmap(pdp, page.pdp_index(), page.address());
-            } else {
-                let pd = pdp
-                    .next_table_mut(page.pdp_index())
-                    .expect("Tried to free on an unmapped PDP index");
-                if pd[page.pd_index()].is_leaf() {
-                    set_unmap(pd, page.pd_index(), page.address());
-                } else {
-                    panic!("Tried to unmap a nonexistent page.");
-                }
-            }
-            info!("Cannot actually deallocate frame");
-            // allocator.free(page.frame);
-        }*/
     }
 
     pub fn translate_page(&self, addr: VirtualAddress) -> Option<Page> {

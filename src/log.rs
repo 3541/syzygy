@@ -21,7 +21,7 @@ impl logc::Log for Log {
             let prev_color = writer.color();
             let color = match record.level() {
                 Level::Debug | Level::Trace => Color::Cyan,
-                Level::Info => Color::Black,
+                Level::Info => Color::LightGreen,
                 Level::Warn => Color::Yellow,
                 Level::Error => Color::Red,
             };
