@@ -128,6 +128,11 @@ start64:
     or rax, 1 << 11
     wrmsr
 
+    ; Enable WP
+    mov rax, cr0
+    or rax, 1 << 16
+    mov cr0, rax
+
     ; pass guard page address
     mov rsi, guard_page
 	extern kmain
