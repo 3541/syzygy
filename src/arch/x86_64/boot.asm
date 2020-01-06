@@ -122,6 +122,12 @@ init64:
 	jmp start64
 
 start64:
+    ; Enable NX
+    mov rcx, 0xC0000080
+    rdmsr
+    or rax, 1 << 11
+    wrmsr
+
     ; pass guard page address
     mov rsi, guard_page
 	extern kmain

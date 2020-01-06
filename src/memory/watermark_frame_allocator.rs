@@ -60,7 +60,7 @@ impl FrameAllocator for WatermarkFrameAllocator<'_> {
                 address: self.next_frame,
                 size,
             };
-            debug!("Allocating frame {:#x?}", frame);
+            trace!("Allocating frame {:#x?}", frame);
 
             if frame.end_address() > area.end_address() as usize {
                 self.next_area(frame.size as usize);

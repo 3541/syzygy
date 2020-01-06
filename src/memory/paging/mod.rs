@@ -146,8 +146,10 @@ pub fn remap_kernel<A: FrameAllocator>(
                 size: FrameSize::Small,
             };
 
+            let flags = EntryFlags::from_elf(&section);
+
             for frame in Frame::range_inclusive(from, to) {
-                m.map_kernel_space(frame, EntryFlags::WRITABLE, allocator);
+                m.map_kernel_space(frame, flags, allocator);
             }
         }
 

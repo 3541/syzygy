@@ -1,6 +1,8 @@
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 
+use multiboot2::{ElfSection, ElfSectionFlags};
+
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
 use super::PhysicalAddress;
@@ -129,6 +131,29 @@ bitflags! {
         const GLOBAL = 1 << 8;
         #[cfg(target_arch = "x86_64")]
         const NO_EXECUTE = 1 << 63;
+    }
+}
+
+impl EntryFlags {
+    pub fn from_elf(section: &ElfSection) -> EntryFlags {
+        let mut ret = EntryFlags::empty();
+
+        let flags = section.flags();
+
+        if flags.contains(ElfSectionFlags::ALLOCATED) {
+            ret |= EntryFlags::PRESENT;
+        }
+        if flags.contains(ElfSectionFlags::WRITABLE) {
+            ret |= EntryFlags::WRITABLE;
+        }
+        if !flags.contains(ElfSectionFlags::EXECUTABLE) {
+            ret |= EntryFlags::NO_EXECUTE;
+            debug!("Section NX");
+        } else {
+            debug!("Section executable");
+        }
+
+        ret
     }
 }
 
