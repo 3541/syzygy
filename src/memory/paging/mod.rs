@@ -180,6 +180,12 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     debug!("Finished remapping.");
     let old = top.switch(new_table);
-
     debug!("Switched to new table.");
+
+    let guard = Page {
+        frame: old.frame(),
+        address: old.address() + crate::KERNEL_BASE,
+    };
+    top.unmap(guard, allocator);
+    trace!("Guard page at 0x{:x}", old.address() + crate::KERNEL_BASE);
 }

@@ -113,8 +113,12 @@ impl InactiveTopLevelTable {
         InactiveTopLevelTable(frame)
     }
 
-    fn frame(&self) -> Frame {
+    pub fn frame(&self) -> Frame {
         self.0
+    }
+
+    pub fn address(&self) -> PhysicalAddress {
+        self.0.address
     }
 }
 

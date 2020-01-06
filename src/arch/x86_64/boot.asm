@@ -133,6 +133,9 @@ start64:
     or rax, 1 << 16
     mov cr0, rax
 
+    ; pass stack_bottom
+    mov rsi, stack_bottom
+
 	extern kmain
 	call kmain
 

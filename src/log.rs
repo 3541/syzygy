@@ -39,7 +39,7 @@ impl logc::Log for Log {
 
 static LOG: Log = Log {
     #[cfg(debug_assertions)]
-    level: LevelFilter::Debug,
+    level: LevelFilter::Trace,
     #[cfg(not(debug_assertions))]
     level: LevelFilter::Warn,
 };
