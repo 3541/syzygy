@@ -148,9 +148,6 @@ impl EntryFlags {
         }
         if !flags.contains(ElfSectionFlags::EXECUTABLE) {
             ret |= EntryFlags::NO_EXECUTE;
-            debug!("Section NX");
-        } else {
-            debug!("Section executable");
         }
 
         ret

@@ -93,7 +93,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 #[cfg(not(feature = "integration-tests"))]
 #[no_mangle]
-pub extern "C" fn kmain(multiboot_info_addr: usize, guard_page_address: usize) {
+pub extern "C" fn kmain(multiboot_info_addr: usize) {
     vga_text::WRITER.lock().clear_screen();
     println!("ENTERED kmain");
     log::init();
