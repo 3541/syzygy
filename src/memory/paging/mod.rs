@@ -6,6 +6,7 @@ use multiboot2::ElfSectionIter;
 
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
+use crate::constants::KERNEL_BASE;
 use crate::memory::{
     Frame, FrameAllocator, FrameSize, PhysicalAddress, VirtualAddress, FRAME_ALIGN,
 };
@@ -120,7 +121,7 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     top.with(&mut new_table, &mut temp, |m| {
         for section in elf_sections {
-            if !section.is_allocated() || (section.start_address() as usize) < crate::KERNEL_BASE {
+            if !section.is_allocated() || (section.start_address() as usize) < KERNEL_BASE {
                 continue;
             }
             assert!(
@@ -136,13 +137,13 @@ pub fn remap_kernel<A: FrameAllocator>(
             );
 
             let from = Frame {
-                address: section.start_address() as usize - crate::KERNEL_BASE,
+                address: section.start_address() as usize - KERNEL_BASE,
                 size: FrameSize::Small,
             };
             let to = Frame {
                 address: (section.end_address() as usize - 1)
                     - (section.end_address() as usize - 1) % FrameSize::Small as usize
-                    - crate::KERNEL_BASE,
+                    - KERNEL_BASE,
                 size: FrameSize::Small,
             };
 
@@ -165,11 +166,11 @@ pub fn remap_kernel<A: FrameAllocator>(
 
         debug!("Mapping Multiboot info structure");
         let from = Frame::containing_address(
-            multiboot_info.start_address() - crate::KERNEL_BASE,
+            multiboot_info.start_address() - KERNEL_BASE,
             FrameSize::Small,
         );
         let to = Frame::containing_address(
-            multiboot_info.end_address() - crate::KERNEL_BASE - 1,
+            multiboot_info.end_address() - KERNEL_BASE - 1,
             FrameSize::Small,
         );
 
@@ -184,8 +185,8 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     let guard = Page {
         frame: old.frame(),
-        address: old.address() + crate::KERNEL_BASE,
+        address: old.address() + KERNEL_BASE,
     };
     top.unmap(guard, allocator);
-    trace!("Guard page at 0x{:x}", old.address() + crate::KERNEL_BASE);
+    trace!("Guard page at 0x{:x}", old.address() + KERNEL_BASE);
 }

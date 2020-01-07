@@ -4,6 +4,7 @@ use super::table::{
     EntryFlags, Table, TableType, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PD, PML4, TABLE_LEVELS,
 };
 use super::{Page, PageSize};
+use crate::constants::KERNEL_BASE;
 use crate::memory::{Frame, FrameAllocator, FrameSize, PhysicalAddress, VirtualAddress};
 
 #[cfg(target_arch = "x86_64")]
@@ -80,7 +81,7 @@ impl Mapper {
         allocator: &mut A,
     ) -> Page {
         trace!("Going to map in kernel address space: {:#x?}", frame);
-        self.map_to(frame.address + crate::KERNEL_BASE, frame, flags, allocator)
+        self.map_to(frame.address + KERNEL_BASE, frame, flags, allocator)
     }
 
     pub fn unmap<A: FrameAllocator>(&mut self, page: Page, allocator: &mut A) {

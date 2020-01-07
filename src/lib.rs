@@ -22,19 +22,16 @@ extern crate ansi_rgb;
 extern crate compiler_builtins;
 extern crate rgb;
 
+mod arch;
+mod constants;
 mod hardware;
 mod log;
 mod memory;
 mod vga_text;
 
+use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::FrameAllocator;
-
-#[cfg(target_arch = "x86")]
-const KERNEL_BASE: usize = 0xC0000000;
-
-#[cfg(target_arch = "x86_64")]
-const KERNEL_BASE: usize = 0xFFFFC00000000000;
 
 #[cfg(feature = "integration-tests")]
 #[no_mangle]

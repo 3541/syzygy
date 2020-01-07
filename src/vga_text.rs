@@ -2,6 +2,7 @@ use core::fmt::{self, Write};
 
 use rgb::RGB8;
 
+use crate::constants::KERNEL_BASE;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
@@ -80,7 +81,7 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column: 0,
         color: ColorCode::new(Color::Black, Color::White),
-        buffer: unsafe { &mut *((crate::KERNEL_BASE + VGA_BUFFER_ADDRESS) as *mut Buffer) },
+        buffer: unsafe { &mut *((KERNEL_BASE + VGA_BUFFER_ADDRESS) as *mut Buffer) },
     });
 }
 

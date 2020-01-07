@@ -1,9 +1,10 @@
 use multiboot2::{MemoryArea, MemoryAreaIter};
 
+use crate::constants::KERNEL_BASE;
 use crate::memory::{
     next_aligned_addr, Frame, FrameAllocator, FrameSize, /*MemoryArea,*/ FRAME_ALIGN,
 };
-use crate::KERNEL_BASE;
+
 pub struct WatermarkFrameAllocator<'a> {
     next_frame: usize,
     area: Option<&'a MemoryArea>,
