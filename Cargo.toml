@@ -17,7 +17,6 @@ multiboot2 = "*"
 logc = { package = "log", version = "*", features = [] }
 ansi_rgb = "*"
 rgb = "*"
-compiler_builtins = { git = "https://github.com/rust-lang/compiler-builtins", features = ["mem"] }
 
 [dev-dependencies]
 array-init = "*"

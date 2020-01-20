@@ -152,7 +152,7 @@ $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 	@echo [link] $(kernel)
 	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
 
-$(libkernel): $(rust_src) $(target).json Cargo.toml Xargo.toml
+$(libkernel): $(rust_src) $(target).json Cargo.toml Xargo.toml Cargo.lock
 	@echo [build] $@
 	RUST_TARGET_PATH=$(PWD) xargo build --target $(target) $(xargo_flags)
 
