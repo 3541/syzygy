@@ -23,6 +23,7 @@ array-init = "*"
 
 [features]
 integration-tests = []
+trace = []
 
 [profile.release]
 lto = "thin"
