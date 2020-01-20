@@ -1,9 +1,7 @@
 use multiboot2::{MemoryArea, MemoryAreaIter};
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{
-    next_aligned_addr, Frame, FrameAllocator, FrameSize, /*MemoryArea,*/ FRAME_ALIGN,
-};
+use crate::memory::{next_aligned_addr, Frame, FrameAllocator, FRAME_SIZE};
 
 pub struct WatermarkFrameAllocator<'a> {
     next_frame: usize,
@@ -16,17 +14,17 @@ pub struct WatermarkFrameAllocator<'a> {
 }
 
 impl<'a> WatermarkFrameAllocator<'a> {
-    fn next_area(&mut self, min_size: usize) {
+    fn next_area(&mut self) {
         self.area = self
             .areas
             .clone()
-            .filter(|a| a.end_address() as usize >= self.next_frame + min_size)
+            .filter(|a| a.end_address() as usize >= self.next_frame + FRAME_SIZE)
             .min_by_key(|a| a.start_address());
 
         if let Some(area) = self.area {
             self.next_frame = core::cmp::max(
                 self.next_frame,
-                next_aligned_addr(area.start_address() as usize, FRAME_ALIGN),
+                next_aligned_addr(area.start_address() as usize, FRAME_SIZE),
             );
         }
     }
@@ -47,30 +45,27 @@ impl<'a> WatermarkFrameAllocator<'a> {
             area: None,
             next_frame: 0,
         };
-        alloc.next_area(FrameSize::Small as usize);
+        alloc.next_area();
         alloc
     }
 }
 
 // Physical frame allocator
 impl FrameAllocator for WatermarkFrameAllocator<'_> {
-    fn alloc(&mut self, size: FrameSize) -> Option<Frame> {
+    fn alloc(&mut self) -> Option<Frame> {
         trace!("ENTERED WatermarkFrameAllocator::alloc");
         if let Some(area) = self.area {
-            let frame = Frame {
-                address: self.next_frame,
-                size,
-            };
+            let frame = Frame(self.next_frame);
             trace!("Allocating frame {:#x?}", frame);
 
             if frame.end_address() > area.end_address() as usize {
-                self.next_area(frame.size as usize);
+                self.next_area();
             } else if (frame.address() >= self.kernel_start && frame.address() <= self.kernel_end)
                 || (frame.end_address() <= self.kernel_end
                     && frame.end_address() >= self.kernel_start)
                 || (frame.address() <= self.kernel_start && frame.end_address() >= self.kernel_end)
             {
-                self.next_frame = next_aligned_addr(self.kernel_end + 1, FRAME_ALIGN);
+                self.next_frame = next_aligned_addr(self.kernel_end + 1, FRAME_SIZE);
             } else if (frame.address() > self.multiboot_info_start
                 && frame.address() < self.multiboot_info_end)
                 || (frame.end_address() < self.multiboot_info_end
@@ -78,12 +73,12 @@ impl FrameAllocator for WatermarkFrameAllocator<'_> {
                 || (frame.address() <= self.multiboot_info_start
                     && frame.end_address() >= self.multiboot_info_end)
             {
-                self.next_frame = next_aligned_addr(self.multiboot_info_end + 1, FRAME_ALIGN);
+                self.next_frame = next_aligned_addr(self.multiboot_info_end + 1, FRAME_SIZE);
             } else {
-                self.next_frame += frame.size;
+                self.next_frame += FRAME_SIZE;
                 return Some(frame);
             }
-            self.alloc(size)
+            self.alloc()
         } else {
             None
         }

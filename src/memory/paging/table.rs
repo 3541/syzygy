@@ -6,7 +6,7 @@ use multiboot2::{ElfSection, ElfSectionFlags};
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
 use super::PhysicalAddress;
-use crate::memory::{Frame, FrameAllocator, FrameSize};
+use crate::memory::{Frame, FrameAllocator};
 
 // NOTE: Magic virtual addresses
 #[cfg(target_arch = "x86_64")]
@@ -64,10 +64,7 @@ impl ActiveTopLevelTable {
         let prev_pml4_address: usize;
         unsafe { asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
 
-        temp.page.frame = Frame {
-            address: prev_pml4_address,
-            size: FrameSize::Small,
-        };
+        temp.page.frame = Frame(prev_pml4_address);
         let prev_pml4 = temp.map_and_pun_frame(self);
 
         self.get_mut()[511].set(
@@ -90,10 +87,7 @@ impl ActiveTopLevelTable {
     pub fn switch(&mut self, new: InactiveTopLevelTable) -> InactiveTopLevelTable {
         let mut cr3: usize;
         unsafe { asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
-        let old = InactiveTopLevelTable(Frame {
-            address: cr3,
-            size: FrameSize::Small,
-        });
+        let old = InactiveTopLevelTable(Frame(cr3));
 
         unsafe { asm!("mov %rax, %cr3" :: "{rax}"(new.frame().address()) :: "volatile") };
 
@@ -118,7 +112,7 @@ impl InactiveTopLevelTable {
     }
 
     pub fn address(&self) -> PhysicalAddress {
-        self.0.address
+        self.0.address()
     }
 }
 
@@ -256,10 +250,9 @@ impl<T: TableType + NestedTableType> Table<T> {
                         index,
                         (self as *mut _) as usize
                     );
-                    let f = allocator
-                        .alloc(FrameSize::Small)
-                        .expect("No frames available?");
-                    self.entries[index].set(f.address, EntryFlags::PRESENT | EntryFlags::WRITABLE);
+                    let f = allocator.alloc().expect("No frames available?");
+                    self.entries[index]
+                        .set(f.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
                     let t = self.next_table_mut(index).unwrap();
                     t.zero();
                     t

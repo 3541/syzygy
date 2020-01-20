@@ -3,9 +3,9 @@ use core::ptr::Unique;
 use super::table::{
     EntryFlags, Table, TableType, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PD, PML4, TABLE_LEVELS,
 };
-use super::{Page, PageSize};
+use super::Page;
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Frame, FrameAllocator, FrameSize, PhysicalAddress, VirtualAddress};
+use crate::memory::{Frame, FrameAllocator, PhysicalAddress, VirtualAddress};
 
 #[cfg(target_arch = "x86_64")]
 type TopLevelTableType = PML4;
@@ -35,24 +35,25 @@ impl Mapper {
         flags: EntryFlags,
         allocator: &mut A,
     ) -> Page {
-        assert!(address % super::FRAME_ALIGN == 0);
+        assert!(address % super::FRAME_SIZE == 0);
 
         trace!("Attempting to map 0x{:x} -> {:#x?}", address, frame);
         let ret = Page { frame, address };
 
         let top = self.get_mut();
-        let level = ret.size().level_index();
+        //        let level = ret.size().level_index();
         let mut bottom = top.next_table_or_create(ret.pml4_index(), allocator);
 
         let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
 
-        for i in 0..(TABLE_LEVELS - level - 1) {
+        for i in 0..(TABLE_LEVELS - /* level - */ 1) {
             assert!(!bottom[indices[i]].is_leaf());
             bottom =
                 unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i], allocator)) };
         }
 
-        let index = ret.table_index(level);
+        //        let index = ret.table_index(level);
+        let index = ret.pt_index();
         assert!(bottom[index].is_unused());
         bottom[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
@@ -62,13 +63,12 @@ impl Mapper {
     pub fn map<A: FrameAllocator>(
         &mut self,
         addr: VirtualAddress,
-        size: PageSize,
         flags: EntryFlags,
         allocator: &mut A,
     ) -> Page {
         self.map_to(
             addr,
-            allocator.alloc(size).expect("Out of frames"),
+            allocator.alloc().expect("Out of frames"),
             flags,
             allocator,
         )
@@ -81,24 +81,25 @@ impl Mapper {
         allocator: &mut A,
     ) -> Page {
         trace!("Going to map in kernel address space: {:#x?}", frame);
-        self.map_to(frame.address + KERNEL_BASE, frame, flags, allocator)
+        self.map_to(frame.address() + KERNEL_BASE, frame, flags, allocator)
     }
 
     pub fn unmap<A: FrameAllocator>(&mut self, page: Page, allocator: &mut A) {
-        let level = page.size().level_index();
+        //        let level = page.size().level_index();
         fn set_unmap(table: &mut Table<impl TableType>, index: usize, address: usize) {
             table[index].set_unused();
             unsafe { asm!("invlpg $0" : : "m"(address)) };
         }
 
         let mut table = self.get_mut().next_table_mut(page.pml4_index()).unwrap();
-        for i in (1..(TABLE_LEVELS - level)).rev() {
+        for i in (1..(TABLE_LEVELS/*- level*/)).rev() {
             assert!(!table[page.table_index(i)].is_leaf());
             table =
                 unsafe { core::mem::transmute(table.next_table_mut(page.table_index(i)).unwrap()) };
         }
 
-        table[page.table_index(level)].set_unused();
+        //        table[page.table_index(level)].set_unused();
+        table[page.pt_index()].set_unused();
         unsafe { asm!("invlpg $0" : : "m"(page.address())) };
     }
 
@@ -114,10 +115,7 @@ impl Mapper {
         fn resolve_page(tl: &Mapper, addr: VirtualAddress) -> Option<Page> {
             let tmp = Page {
                 // Garbage
-                frame: Frame {
-                    address: 0,
-                    size: FrameSize::Small,
-                },
+                frame: Frame(0),
                 address: addr,
             };
             let pdp = if let Some(t) = tl.get().next_table(tmp.pml4_index()) {
@@ -134,10 +132,7 @@ impl Mapper {
                     return None;
                 };
                 return Some(Page {
-                    frame: Frame {
-                        address,
-                        size: PageSize::Huge,
-                    },
+                    frame: Frame(address),
                     address: addr,
                 });
             }
@@ -151,10 +146,7 @@ impl Mapper {
                     return None;
                 };
                 return Some(Page {
-                    frame: Frame {
-                        address,
-                        size: PageSize::Large,
-                    },
+                    frame: Frame(address),
                     address: addr,
                 });
             }
@@ -165,10 +157,7 @@ impl Mapper {
                 return None;
             };
             Some(Page {
-                frame: Frame {
-                    address,
-                    size: PageSize::Small,
-                },
+                frame: Frame(address),
                 address: addr,
             })
         }
@@ -213,8 +202,7 @@ impl Mapper {
     }
 
     pub fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        self.translate_page(addr).and_then(|page| {
-            Some(page.frame.address + (addr & super::page_addr_offset_mask(page.size())))
-        })
+        self.translate_page(addr)
+            .and_then(|page| Some(page.frame.address() + (addr & super::PAGE_ADDR_OFFSET_MASK)))
     }
 }

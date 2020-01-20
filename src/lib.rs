@@ -187,6 +187,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, stack_bottom: usize) {
         elf_sections.sections(),
         &multiboot_info,
     );
-    allocator.alloc(memory::FrameSize::Small);
+    allocator.alloc();
     info!("REMAPPED the kernel address space");
 }

@@ -7,9 +7,7 @@ use multiboot2::ElfSectionIter;
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{
-    Frame, FrameAllocator, FrameSize, PhysicalAddress, VirtualAddress, FRAME_ALIGN,
-};
+use crate::memory::{Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_SIZE};
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
 
@@ -28,20 +26,7 @@ const PAGE_ADDR_INDEX_SHIFT: usize = 10;
 const PAGE_ADDR_INDEX_MASK: usize = (1 << PAGE_ADDR_INDEX_SHIFT) - 1;
 
 const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
-//const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
-#[inline]
-fn page_addr_offset_mask(size: PageSize) -> usize {
-    (1 << PAGE_ADDR_OFFSET_SHIFT
-        * match size {
-            PageSize::Small => 1,
-            PageSize::Large => 2,
-            #[cfg(target_arch = "x86_64")]
-            PageSize::Huge => 3,
-        })
-        - 1
-}
-
-pub type PageSize = super::FrameSize;
+const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
 
 #[derive(Debug, Clone)]
 pub struct Page {
@@ -75,10 +60,6 @@ impl Page {
         (self.address >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
     }
 
-    pub fn size(&self) -> PageSize {
-        self.frame.size
-    }
-
     pub fn address(&self) -> VirtualAddress {
         self.address
     }
@@ -99,9 +80,7 @@ pub fn remap_kernel<A: FrameAllocator>(
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,
 ) {
-    let frame = allocator
-        .alloc(FrameSize::Small)
-        .expect("Need free frame to remap kernel.");
+    let frame = allocator.alloc().expect("Need free frame to remap kernel.");
     let mut temp = TempPage::new(
         Page {
             address: 0xe000e000,
@@ -114,7 +93,7 @@ pub fn remap_kernel<A: FrameAllocator>(
     let mut temp = TempPage::new(
         Page {
             address: 0xe000e000,
-            frame: allocator.alloc(FrameSize::Small).unwrap(),
+            frame: allocator.alloc().unwrap(),
         },
         allocator,
     );
@@ -125,7 +104,7 @@ pub fn remap_kernel<A: FrameAllocator>(
                 continue;
             }
             assert!(
-                section.start_address() as usize % FrameSize::Small as usize == 0,
+                section.start_address() as usize % FRAME_SIZE == 0,
                 "Kernel sections must be 4K aligned."
             );
 
@@ -136,16 +115,12 @@ pub fn remap_kernel<A: FrameAllocator>(
                 section.size()
             );
 
-            let from = Frame {
-                address: section.start_address() as usize - KERNEL_BASE,
-                size: FrameSize::Small,
-            };
-            let to = Frame {
-                address: (section.end_address() as usize - 1)
-                    - (section.end_address() as usize - 1) % FrameSize::Small as usize
+            let from = Frame(section.start_address() as usize - KERNEL_BASE);
+            let to = Frame(
+                (section.end_address() as usize - 1)
+                    - (section.end_address() as usize - 1) % FRAME_SIZE
                     - KERNEL_BASE,
-                size: FrameSize::Small,
-            };
+            );
 
             let flags = EntryFlags::from_elf(&section);
 
@@ -156,23 +131,14 @@ pub fn remap_kernel<A: FrameAllocator>(
 
         debug!("Mapping VGA buffer");
         m.map_kernel_space(
-            Frame {
-                address: crate::vga_text::VGA_BUFFER_ADDRESS,
-                size: FrameSize::Small,
-            },
+            Frame(crate::vga_text::VGA_BUFFER_ADDRESS),
             EntryFlags::WRITABLE,
             allocator,
         );
 
         debug!("Mapping Multiboot info structure");
-        let from = Frame::containing_address(
-            multiboot_info.start_address() - KERNEL_BASE,
-            FrameSize::Small,
-        );
-        let to = Frame::containing_address(
-            multiboot_info.end_address() - KERNEL_BASE - 1,
-            FrameSize::Small,
-        );
+        let from = Frame::containing_address(multiboot_info.start_address() - KERNEL_BASE);
+        let to = Frame::containing_address(multiboot_info.end_address() - KERNEL_BASE - 1);
 
         for frame in Frame::range_inclusive(from, to) {
             m.map_kernel_space(frame, EntryFlags::PRESENT, allocator);

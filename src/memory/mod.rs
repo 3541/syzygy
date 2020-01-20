@@ -7,6 +7,7 @@ use core::ops::{Add, AddAssign};
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_ALIGN: usize = 4096;
+const FRAME_SIZE: usize = 4096;
 
 #[global_allocator]
 static ALLOCATOR: fake::FakeAllocator = fake::FakeAllocator;
@@ -14,93 +15,30 @@ static ALLOCATOR: fake::FakeAllocator = fake::FakeAllocator;
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
 
-#[cfg(target_arch = "x86_64")]
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum FrameSize {
-    Small = 0x1000,     // 4K
-    Large = 0x20_0000,  // 2M
-    Huge = 0x4000_0000, // 1G
-}
-
-#[cfg(target_arch = "x86")]
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum FrameSize {
-    Small = 0x1000,    // 4K
-    Large = 0x40_0000, // 4M
-}
-
-impl FrameSize {
-    pub fn level_index(&self) -> usize {
-        match self {
-            FrameSize::Small => 0,
-            FrameSize::Large => 1,
-            FrameSize::Huge => 2,
-        }
-    }
-}
-
-impl Add<usize> for FrameSize {
-    type Output = usize;
-
-    fn add(self, other: usize) -> usize {
-        self as usize + other
-    }
-}
-
-impl Add<FrameSize> for usize {
-    type Output = usize;
-
-    fn add(self, other: FrameSize) -> usize {
-        self + other as usize
-    }
-}
-
-impl AddAssign<FrameSize> for usize {
-    fn add_assign(&mut self, other: FrameSize) {
-        *self = *self + other as usize;
-    }
-}
-
 #[derive(Debug, Copy, Clone)]
-pub struct Frame {
-    address: PhysicalAddress,
-    size: FrameSize,
-}
+pub struct Frame(PhysicalAddress);
 
 impl Frame {
     pub fn address(&self) -> PhysicalAddress {
-        self.address
+        self.0
     }
 
     pub fn end_address(&self) -> PhysicalAddress {
-        self.address + self.size as usize
+        self.0 + FRAME_SIZE
     }
 
-    pub fn containing_address(address: PhysicalAddress, size: FrameSize) -> Frame {
-        Frame {
-            address: address - address % size as usize,
-            size,
-        }
+    pub fn containing_address(address: PhysicalAddress) -> Frame {
+        Frame(prev_aligned_addr(address, FRAME_SIZE))
     }
 
     fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
-        assert!(
-            from.size == to.size,
-            "Cannot make a range between frames of different sizes"
-        );
-
-        FrameIterator {
-            from,
-            to,
-            size: from.size,
-        }
+        FrameIterator { from, to }
     }
 }
 
 struct FrameIterator {
     from: Frame,
     to: Frame,
-    size: FrameSize,
 }
 
 impl Iterator for FrameIterator {
@@ -109,7 +47,7 @@ impl Iterator for FrameIterator {
     fn next(&mut self) -> Option<Frame> {
         if self.from.address() <= self.to.address() {
             let frame = self.from.clone();
-            self.from.address += self.size;
+            self.from.0 += FRAME_SIZE;
             Some(frame)
         } else {
             None
@@ -118,10 +56,14 @@ impl Iterator for FrameIterator {
 }
 
 pub trait FrameAllocator {
-    fn alloc(&mut self, size: FrameSize) -> Option<Frame>;
+    fn alloc(&mut self) -> Option<Frame>;
     fn free(&mut self, frame: Frame);
 }
 
-pub fn next_aligned_addr(base: PhysicalAddress, align: usize) -> PhysicalAddress {
+pub fn prev_aligned_addr(base: PhysicalAddress, align: usize) -> PhysicalAddress {
     base - base % align
+}
+
+pub fn next_aligned_addr(base: PhysicalAddress, align: usize) -> PhysicalAddress {
+    prev_aligned_addr(base, align) + align
 }

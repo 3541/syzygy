@@ -1,7 +1,7 @@
 use super::mapper::Mapper;
 use super::table::{ActiveTopLevelTable, Table, PML4};
 use super::{EntryFlags, Page};
-use crate::memory::{Frame, FrameAllocator, FrameSize};
+use crate::memory::{Frame, FrameAllocator};
 
 pub struct TempPage {
     pub page: Page,
@@ -40,14 +40,13 @@ struct TempAllocator([Option<Frame>; 3]);
 
 impl TempAllocator {
     fn new(allocator: &mut impl FrameAllocator) -> TempAllocator {
-        let mut a = || allocator.alloc(FrameSize::Small);
+        let mut a = || allocator.alloc();
         TempAllocator([a(), a(), a()])
     }
 }
 
 impl FrameAllocator for TempAllocator {
-    fn alloc(&mut self, size: FrameSize) -> Option<Frame> {
-        assert!(size == FrameSize::Small);
+    fn alloc(&mut self) -> Option<Frame> {
         for f in &mut self.0 {
             if f.is_some() {
                 return f.take();
@@ -57,7 +56,6 @@ impl FrameAllocator for TempAllocator {
     }
 
     fn free(&mut self, frame: Frame) {
-        assert!(frame.size == FrameSize::Small);
         for f in &mut self.0 {
             if f.is_none() {
                 *f = Some(frame);
