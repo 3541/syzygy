@@ -6,7 +6,6 @@ use core::ops::{Add, AddAssign};
 
 pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
-const FRAME_ALIGN: usize = 4096;
 const FRAME_SIZE: usize = 4096;
 
 #[global_allocator]

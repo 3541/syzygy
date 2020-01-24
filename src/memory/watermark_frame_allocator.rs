@@ -1,16 +1,16 @@
 use multiboot2::{MemoryArea, MemoryAreaIter};
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{next_aligned_addr, Frame, FrameAllocator, FRAME_SIZE};
+use crate::memory::{next_aligned_addr, Frame, FrameAllocator, PhysicalAddress, FRAME_SIZE};
 
 pub struct WatermarkFrameAllocator<'a> {
-    next_frame: usize,
+    next_frame: PhysicalAddress,
     area: Option<&'a MemoryArea>,
     areas: MemoryAreaIter<'a>,
-    kernel_start: usize,
-    kernel_end: usize,
-    multiboot_info_start: usize,
-    multiboot_info_end: usize,
+    kernel_start: PhysicalAddress,
+    kernel_end: PhysicalAddress,
+    multiboot_info_start: PhysicalAddress,
+    multiboot_info_end: PhysicalAddress,
 }
 
 impl<'a> WatermarkFrameAllocator<'a> {
@@ -84,7 +84,10 @@ impl FrameAllocator for WatermarkFrameAllocator<'_> {
         }
     }
 
-    fn free(&mut self, _frame: Frame) {
-        unimplemented!("WatermarkFrameAllocator cannot free.")
+    fn free(&mut self, frame: Frame) {
+        warn!(
+            "WatermarkFrameAllocator cannot free. Tried to free {:x?}",
+            frame
+        )
     }
 }

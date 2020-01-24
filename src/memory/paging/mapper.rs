@@ -100,6 +100,7 @@ impl Mapper {
 
         //        table[page.table_index(level)].set_unused();
         table[page.pt_index()].set_unused();
+        allocator.free(page.frame);
         unsafe { asm!("invlpg $0" : : "m"(page.address())) };
     }
 
