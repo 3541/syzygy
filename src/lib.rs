@@ -165,15 +165,24 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, stack_bottom: usize) {
         multiboot_info.end_address() - KERNEL_BASE
     );
 
-    let mut allocator = memory::WatermarkFrameAllocator::new(
+    /*    let mut allocator = memory::WatermarkFrameAllocator::new(
         kernel_start_addr as usize,
         kernel_end_addr as usize,
         multiboot_info_addr as usize,
         multiboot_info.end_address() as usize,
         mmap.memory_areas(),
     );
+    info!("INITIALIZED WatermarkFrameAllocator");*/
 
-    info!("INITIALIZED WatermarkFrameAllocator");
+    let mut allocator = memory::BitmapFrameAllocator::new(
+        kernel_start_addr as usize,
+        kernel_end_addr as usize,
+        multiboot_info_addr as usize,
+        multiboot_info.end_address() as usize,
+        mmap.memory_areas(),
+        unsafe { &mut memory::bitmap_frame_allocator::BITMAP },
+    );
+    info!("INITIALIZED BitmapFrameAllocator");
 
     hardware::interrupt::init();
     info!("INITIALIZED interrupts");
