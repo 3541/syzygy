@@ -6,13 +6,41 @@ use logc::{Level, LevelFilter, Metadata, Record};
 use crate::vga_text::{self, Color};
 use crate::{serial_print, serial_println};
 
+const LOG_MODULE_LEVELS: [(&'static str, LevelFilter); 1] =
+    [("syzygy::memory::bitmap_frame_allocator", LevelFilter::Trace)];
+
 struct Log {
-    level: LevelFilter,
+    default_level: LevelFilter,
 }
 
 impl logc::Log for Log {
+    #[inline]
     fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= self.level
+        /*        (metadata.level() <= self.default_level) || {
+            serial_println!(
+                "given level {}, target {}",
+                metadata.level(),
+                metadata.target()
+            );
+            for (target, level) in LOG_MODULE_LEVELS.iter() {
+                if metadata.target().starts_with(target) {
+                    return metadata.level() <= *level;
+                }
+            }
+            false
+        }*/
+
+        let message_level = metadata.level();
+        if message_level <= self.default_level {
+            true
+        } else {
+            for (target, level) in LOG_MODULE_LEVELS.iter() {
+                if metadata.target().starts_with(target) {
+                    return message_level <= *level;
+                }
+            }
+            false
+        }
     }
 
     fn log(&self, record: &Record) {
@@ -29,8 +57,8 @@ impl logc::Log for Log {
             write!(*writer, "{}", record.level()).unwrap();
             serial_print!("{}", record.level().fg(color.into()));
             writer.set_color_code(prev_color);
-            writeln!(*writer, ": {}", record.args()).unwrap();
-            serial_println!(": {}", record.args());
+            writeln!(*writer, " ({}): {}", record.target(), record.args()).unwrap();
+            serial_println!(" ({}): {}", record.target(), record.args());
         }
     }
 
@@ -39,15 +67,15 @@ impl logc::Log for Log {
 
 static LOG: Log = Log {
     #[cfg(all(debug_assertions, feature = "trace"))]
-    level: LevelFilter::Trace,
+    default_level: LevelFilter::Trace,
     #[cfg(all(debug_assertions, not(feature = "trace")))]
-    level: LevelFilter::Debug,
+    default_level: LevelFilter::Debug,
     #[cfg(not(debug_assertions))]
-    level: LevelFilter::Warn,
+    default_level: LevelFilter::Error,
 };
 
 pub fn init() {
     logc::set_logger(&LOG)
-        .map(|()| logc::set_max_level(LOG.level))
+        .map(|()| logc::set_max_level(LevelFilter::Trace))
         .expect("Failed to init log.");
 }
