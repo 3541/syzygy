@@ -103,33 +103,23 @@ impl FrameAllocator for BitmapFrameAllocator {
             ret
         }
 
+        trace!("Allocating...");
+
         for (i, field) in (**self.bitmap.lock()).iter_mut().enumerate() {
-            if *field == 0 {
-                let unset = first_unset_bit(*field);
-                let r_addr = self.address(i, unset);
-                *field |= 1 << unset;
-                trace!(
-                    "Allocated 0x{:x} from index {} bit {}",
-                    self.address(i, unset),
-                    i,
-                    unset
-                );
-                return Some(Frame(self.address(i, unset)));
+            let bit = if *field == 0 {
+                trace!("Empty field.");
+                0
             } else if *field == core::usize::MAX {
                 trace!("Full field");
                 continue;
             } else {
-                let unset = first_unset_bit(*field);
-                let r_addr = self.address(i, unset);
-                *field |= 1 << unset;
-                trace!(
-                    "Allocated 0x{:x} from index {} bit {}",
-                    self.address(i, unset),
-                    i,
-                    unset
-                );
-                return Some(Frame(self.address(i, unset)));
-            }
+                first_unset_bit(*field)
+            };
+
+            *field |= 1 << bit;
+            let address = self.address(i, bit);
+            trace!("Allocated 0x{:x} from index {} bit {}", address, i, bit);
+            return Some(Frame(address));
         }
         None
     }
