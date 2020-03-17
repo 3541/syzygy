@@ -17,7 +17,7 @@ endif
 arch_common := $(arch)
 nasm_flags ?=
 ld_flags ?=
-qemu_flags ?= 
+qemu_flags ?=
 xargo_flags ?=
 debug ?=
 
@@ -139,7 +139,6 @@ test: $(rust_src)
 	done
 	@echo [clean] $(temp)
 	rm -r $(temp)
-		
 
 $(iso): $(kernel) $(grub_cfg)
 	@echo [build] $(iso)
@@ -159,7 +158,7 @@ $(libkernel): $(rust_src) $(target).json Cargo.toml Xargo.toml Cargo.lock
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@echo [build] $@
 	@mkdir -p $(dir $@)
-	nasm $(nasm_flags) $< -o $@ 
+	nasm $(nasm_flags) $< -o $@
 
 ifndef verbose
 .SILENT:
