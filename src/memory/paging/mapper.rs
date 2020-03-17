@@ -85,12 +85,6 @@ impl Mapper {
     }
 
     pub fn unmap<A: FrameAllocator>(&mut self, page: Page, allocator: &mut A) {
-        //        let level = page.size().level_index();
-        fn set_unmap(table: &mut Table<impl TableType>, index: usize, address: usize) {
-            table[index].set_unused();
-            unsafe { asm!("invlpg $0" : : "m"(address)) };
-        }
-
         let mut table = self.get_mut().next_table_mut(page.pml4_index()).unwrap();
         for i in (1..(TABLE_LEVELS/*- level*/)).rev() {
             assert!(!table[page.table_index(i)].is_leaf());
@@ -98,7 +92,6 @@ impl Mapper {
                 unsafe { core::mem::transmute(table.next_table_mut(page.table_index(i)).unwrap()) };
         }
 
-        //        table[page.table_index(level)].set_unused();
         table[page.pt_index()].set_unused();
         allocator.free(page.frame);
         unsafe { asm!("invlpg $0" : : "m"(page.address())) };
