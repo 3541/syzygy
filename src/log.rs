@@ -14,6 +14,7 @@ struct Log {
 }
 
 impl logc::Log for Log {
+    #[cfg(debug_assertions)]
     #[inline]
     fn enabled(&self, metadata: &Metadata) -> bool {
         /*        (metadata.level() <= self.default_level) || {
@@ -43,6 +44,12 @@ impl logc::Log for Log {
         }
     }
 
+    #[cfg(not(debug_assertions))]
+    #[inline]
+    fn enabled(&self, _metadata: &Metadata) -> bool {
+        true
+    }
+
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let mut writer = vga_text::WRITER.lock();
@@ -67,16 +74,20 @@ impl logc::Log for Log {
 }
 
 static LOG: Log = Log {
-    #[cfg(all(debug_assertions, feature = "trace"))]
-    default_level: LevelFilter::Trace,
-    #[cfg(all(debug_assertions, not(feature = "trace")))]
+    #[cfg(debug_assertions)]
     default_level: LevelFilter::Debug,
     #[cfg(not(debug_assertions))]
-    default_level: LevelFilter::Error,
+    default_level: LevelFilter::Info,
 };
+
+#[cfg(debug_assertions)]
+const COMPILE_LEVEL_FILTER: LevelFilter = LevelFilter::Trace;
+
+#[cfg(not(debug_assertions))]
+const COMPILE_LEVEL_FILTER: LevelFilter = LevelFilter::Info;
 
 pub fn init() {
     logc::set_logger(&LOG)
-        .map(|()| logc::set_max_level(LevelFilter::Trace))
+        .map(|()| logc::set_max_level(COMPILE_LEVEL_FILTER))
         .expect("Failed to init log.");
 }
