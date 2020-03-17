@@ -48,7 +48,8 @@ impl logc::Log for Log {
             let mut writer = vga_text::WRITER.lock();
             let prev_color = writer.color();
             let color = match record.level() {
-                Level::Debug | Level::Trace => Color::Cyan,
+                Level::Trace => Color::LightGray,
+                Level::Debug => Color::Cyan,
                 Level::Info => Color::LightGreen,
                 Level::Warn => Color::Yellow,
                 Level::Error => Color::Red,
