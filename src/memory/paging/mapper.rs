@@ -1,8 +1,6 @@
 use core::ptr::Unique;
 
-use super::table::{
-    EntryFlags, Table, TableType, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PD, PML4, TABLE_LEVELS,
-};
+use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, TABLE_LEVELS};
 use super::Page;
 use crate::constants::KERNEL_BASE;
 use crate::memory::{Frame, FrameAllocator, PhysicalAddress, VirtualAddress};

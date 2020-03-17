@@ -17,20 +17,6 @@ impl logc::Log for Log {
     #[cfg(debug_assertions)]
     #[inline]
     fn enabled(&self, metadata: &Metadata) -> bool {
-        /*        (metadata.level() <= self.default_level) || {
-            serial_println!(
-                "given level {}, target {}",
-                metadata.level(),
-                metadata.target()
-            );
-            for (target, level) in LOG_MODULE_LEVELS.iter() {
-                if metadata.target().starts_with(target) {
-                    return metadata.level() <= *level;
-                }
-            }
-            false
-        }*/
-
         let message_level = metadata.level();
         if message_level <= self.default_level {
             true

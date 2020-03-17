@@ -31,7 +31,7 @@ impl BitmapFrameAllocator {
                     && *a + FRAME_SIZE >= multiboot_info_start)
                 || (*a <= multiboot_info_start && *a + FRAME_SIZE >= multiboot_info_end)
         };
-        let mut ret = BitmapFrameAllocator {
+        let ret = BitmapFrameAllocator {
             bitmap: Mutex::new(bitmap),
             base: next_aligned_addr(
                 areas

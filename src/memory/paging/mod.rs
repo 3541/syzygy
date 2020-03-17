@@ -81,7 +81,7 @@ pub fn remap_kernel<A: FrameAllocator>(
     multiboot_info: &multiboot2::BootInformation,
 ) {
     let frame = allocator.alloc().expect("Need free frame to remap kernel.");
-    let mut temp = TempPage::new(
+    let temp = TempPage::new(
         Page {
             address: 0xe000e000,
             frame,

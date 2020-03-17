@@ -1,10 +1,10 @@
 pub mod bitmap_frame_allocator;
 mod fake;
 pub mod paging;
-mod watermark_frame_allocator;
+//mod watermark_frame_allocator;
 
 pub use bitmap_frame_allocator::BitmapFrameAllocator;
-pub use watermark_frame_allocator::WatermarkFrameAllocator;
+//pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_SIZE: usize = 4096;
 
