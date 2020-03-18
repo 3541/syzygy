@@ -2,7 +2,7 @@ use super::paging::mapper::Mapper;
 use super::paging::table::EntryFlags;
 use super::{FrameAllocator, VirtualAddress, PAGE_SIZE};
 
-pub const HEAP_BASE: VirtualAddress = 0xFFFF_4EA6_0000_0000;
+pub const HEAP_BASE: VirtualAddress = 0x0000_4EA6_0000_0000;
 pub const HEAP_SIZE: usize = 64 * 1024; // 64 KiB
 
 pub fn init_heap(mapper: &mut Mapper, frame_allocator: &mut impl FrameAllocator) {

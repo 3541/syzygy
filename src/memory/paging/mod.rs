@@ -36,19 +36,19 @@ pub struct Page {
 
 impl Page {
     #[cfg(target_arch = "x86_64")]
-    fn pml4_index(&self) -> usize {
+    pub fn pml4_index(&self) -> usize {
         self.table_index(3)
     }
 
-    fn pdp_index(&self) -> usize {
+    pub fn pdp_index(&self) -> usize {
         self.table_index(2)
     }
 
-    fn pd_index(&self) -> usize {
+    pub fn pd_index(&self) -> usize {
         self.table_index(1)
     }
 
-    fn pt_index(&self) -> usize {
+    pub fn pt_index(&self) -> usize {
         self.table_index(0)
     }
 

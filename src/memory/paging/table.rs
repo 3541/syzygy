@@ -67,6 +67,8 @@ impl ActiveTopLevelTable {
         temp.page.frame = Frame(prev_pml4_address);
         let prev_pml4 = temp.map_and_pun_frame(self);
 
+        trace!("NEW TABLE IS AT 0x{:x}", table.frame().address());
+
         self.get_mut()[511].set(
             table.frame().address(),
             EntryFlags::PRESENT | EntryFlags::WRITABLE,
@@ -89,6 +91,7 @@ impl ActiveTopLevelTable {
         unsafe { asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
         let old = InactiveTopLevelTable(Frame(cr3));
 
+        trace!("Writing 0x{:x} to cr3", new.frame().address());
         unsafe { asm!("mov %rax, %cr3" :: "{rax}"(new.frame().address()) :: "volatile") };
 
         old

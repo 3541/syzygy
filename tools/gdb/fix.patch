@@ -27,4 +27,3 @@ diff -Nru gdb-9.1/gdb/remote.c gdb_patched/gdb/remote.c
 +  if (buf_len != 2 * rsa->sizeof_g_packet)
      {
        long sizeof_g_packet = buf_len / 2;
- 

@@ -40,15 +40,18 @@ impl Mapper {
 
         let top = self.get_mut();
         //        let level = ret.size().level_index();
-        let mut bottom = top.next_table_or_create(ret.pml4_index(), allocator);
+        let mut bottom = top
+            .next_table_or_create(ret.pml4_index(), allocator)
+            .next_table_or_create(ret.pdp_index(), allocator)
+            .next_table_or_create(ret.pd_index(), allocator);
 
-        let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
+        /*        let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
 
         for i in 0..(TABLE_LEVELS - /* level - */ 1) {
             assert!(!bottom[indices[i]].is_leaf());
             bottom =
                 unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i], allocator)) };
-        }
+        }*/
 
         //        let index = ret.table_index(level);
         let index = ret.pt_index();
