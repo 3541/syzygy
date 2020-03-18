@@ -1,15 +1,15 @@
+mod alloc;
 pub mod bitmap_frame_allocator;
-mod fake;
+mod heap;
 pub mod paging;
 //mod watermark_frame_allocator;
 
 pub use bitmap_frame_allocator::BitmapFrameAllocator;
+pub use heap::init_heap;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_SIZE: usize = 4096;
-
-#[global_allocator]
-static ALLOCATOR: fake::FakeAllocator = fake::FakeAllocator;
+const PAGE_SIZE: usize = FRAME_SIZE;
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;
@@ -60,9 +60,9 @@ pub trait FrameAllocator {
 }
 
 pub fn prev_aligned_addr(base: PhysicalAddress, align: usize) -> PhysicalAddress {
-    base - base % align
+    base & !(align - 1)
 }
 
 pub fn next_aligned_addr(base: PhysicalAddress, align: usize) -> PhysicalAddress {
-    prev_aligned_addr(base, align) + align
+    prev_aligned_addr(base + align - 1, align)
 }

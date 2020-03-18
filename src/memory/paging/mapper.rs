@@ -35,7 +35,7 @@ impl Mapper {
     ) -> Page {
         assert!(address % super::FRAME_SIZE == 0);
 
-        trace!("Attempting to map 0x{:x} -> {:#x?}", address, frame);
+        trace!("Attempting to map 0x{:x} -> {:x?}", address, frame);
         let ret = Page { frame, address };
 
         let top = self.get_mut();
@@ -78,7 +78,7 @@ impl Mapper {
         flags: EntryFlags,
         allocator: &mut A,
     ) -> Page {
-        trace!("Going to map in kernel address space: {:#x?}", frame);
+        trace!("Going to map in kernel address space: {:x?}", frame);
         self.map_to(frame.address() + KERNEL_BASE, frame, flags, allocator)
     }
 

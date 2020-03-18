@@ -30,7 +30,6 @@ mod vga_text;
 
 use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;
-use memory::FrameAllocator;
 
 #[cfg(feature = "integration-tests")]
 #[no_mangle]
@@ -188,7 +187,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED interrupts");
 
     let mut table = unsafe { ActiveTopLevelTable::new() };
-    info!("INITIALIZED top-level page table");
+    info!("INITIALIZED PML4");
 
     memory::paging::remap_kernel(
         &mut allocator,
@@ -196,6 +195,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         elf_sections.sections(),
         &multiboot_info,
     );
-    allocator.alloc();
     info!("REMAPPED the kernel address space");
+
+    memory::init_heap(&mut table, &mut allocator);
+    info!("INITIALIZED kernel heap.");
+
+    alloc::boxed::Box::new(1);
 }
