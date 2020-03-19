@@ -3,10 +3,10 @@ use spin::{Mutex, MutexGuard};
 use super::heap::{HEAP_BASE, HEAP_SIZE};
 
 mod bump_allocator;
-mod fake_allocator;
+//mod fake_allocator;
 
 use bump_allocator::BumpAllocator;
-use fake_allocator::FakeAllocator;
+//use fake_allocator::FakeAllocator;
 
 //#[global_allocator]
 //static ALLOCATOR: FakeAllocator = FakeAllocator {};

@@ -1,8 +1,6 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr;
 
-use spin::Mutex;
-
 use super::MutexWrapper;
 use crate::memory::{Address, VirtualAddress};
 

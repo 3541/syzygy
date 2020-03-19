@@ -7,7 +7,7 @@ use spin::Mutex;
 use volatile::Volatile;
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Address, PhysicalAddress};
+use crate::memory::PhysicalAddress;
 
 pub const VGA_BUFFER_ADDRESS: PhysicalAddress = unsafe { PhysicalAddress::new_const(0xB8000) };
 
