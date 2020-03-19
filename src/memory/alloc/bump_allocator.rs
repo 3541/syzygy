@@ -4,7 +4,7 @@ use core::ptr;
 use spin::Mutex;
 
 use super::MutexWrapper;
-use crate::memory::{next_aligned_addr, VirtualAddress};
+use crate::memory::{Address, VirtualAddress};
 
 #[derive(Debug)]
 pub struct BumpAllocator {
@@ -18,7 +18,7 @@ impl BumpAllocator {
     pub const unsafe fn new(heap_base: VirtualAddress, heap_size: usize) -> Self {
         Self {
             heap_base,
-            heap_end: heap_base + heap_size,
+            heap_end: VirtualAddress::new_const(heap_base.raw() + heap_size),
             next: heap_base,
             count: 0,
         }
@@ -31,9 +31,9 @@ unsafe impl GlobalAlloc for MutexWrapper<BumpAllocator> {
 
         trace!("{:#x?} allocating {:x?}", *this, layout);
 
-        let ret = next_aligned_addr(this.next, layout.align());
+        let ret = this.next.next_aligned_addr(layout.align());
         let end = match ret.checked_add(layout.size()) {
-            Some(end) => end,
+            Some(end) => VirtualAddress::new(end),
             None => return ptr::null_mut(),
         };
 
@@ -42,8 +42,8 @@ unsafe impl GlobalAlloc for MutexWrapper<BumpAllocator> {
         } else {
             this.next = end;
             this.count += 1;
-            debug!("Allocated 0x{:x} to 0x{:x} (0x{:x})", ret, end, end - ret);
-            ret as *mut u8
+            debug!("Allocated {} to {} (0x{:x})", ret, end, end - ret);
+            *ret as *mut u8
         }
     }
 

@@ -1,9 +1,7 @@
 use multiboot2::MemoryAreaIter;
 use spin::{Mutex, MutexGuard};
 
-use super::{
-    next_aligned_addr, prev_aligned_addr, Frame, FrameAllocator, PhysicalAddress, FRAME_SIZE,
-};
+use super::{Address, Frame, FrameAllocator, PhysicalAddress, FRAME_SIZE};
 
 const INITIAL_BITMAP_SIZE: usize = 32768;
 // NOTE: temporary static allocation size
@@ -33,35 +31,35 @@ impl BitmapFrameAllocator {
         };
         let ret = BitmapFrameAllocator {
             bitmap: Mutex::new(bitmap),
-            base: next_aligned_addr(
+            base: PhysicalAddress::new(
                 areas
                     .clone()
                     .filter(|a| a.size() as usize >= FRAME_SIZE)
                     .min_by_key(|a| a.start_address())
                     .expect("No available areas to initialize")
                     .start_address() as usize,
-                FRAME_SIZE,
-            ),
+            )
+            .next_aligned_addr(FRAME_SIZE),
         };
         {
             let mut lock = ret.bitmap.lock();
             for area in areas.filter(|a| a.size() as usize >= FRAME_SIZE) {
-                let start_address = next_aligned_addr(area.start_address() as usize, FRAME_SIZE);
-                let end_address = prev_aligned_addr(area.end_address() as usize, FRAME_SIZE);
-                for frame_start in (start_address..=end_address)
+                let start_address = PhysicalAddress::new(area.start_address() as usize)
+                    .next_aligned_addr(FRAME_SIZE);
+                let end_address =
+                    PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(FRAME_SIZE);
+                for frame_start in (*start_address..=*end_address)
                     .step_by(FRAME_SIZE)
+                    .map(|a| PhysicalAddress::new(a))
                     .filter(frame_in_reserved_area)
                 {
                     if ret.field(frame_start) >= INITIAL_BITMAP_SIZE {
-                        error!("Index too large at frame 0x{:x}", frame_start);
+                        error!("Index too large at frame {}", frame_start);
                     }
 
                     ret.set_used(frame_start, &mut lock);
                 }
             }
-
-            // FIXME hack -- set used the original PML4 so it can be freed when we remap the kernel_end
-            ret.set_used(0x125000, &mut lock);
         }
 
         ret
@@ -72,11 +70,11 @@ impl BitmapFrameAllocator {
     }
 
     fn mask(address: PhysicalAddress) -> usize {
-        1 << (address % core::mem::size_of::<usize>())
+        1 << (*address / FRAME_SIZE % (core::mem::size_of::<usize>() * 8))
     }
 
     fn address(&self, index: usize, bit_index: usize) -> PhysicalAddress {
-        index * 8 * core::mem::size_of::<usize>() * FRAME_SIZE + self.base + bit_index * FRAME_SIZE
+        self.base + index * 8 * core::mem::size_of::<usize>() * FRAME_SIZE + bit_index * FRAME_SIZE
     }
 
     // FIXME: This is weird. self is immutable because there is an immutable reference to the lock.
@@ -85,11 +83,15 @@ impl BitmapFrameAllocator {
         let field = self.field(address);
         let mask = Self::mask(address);
 
-        if lock[field] & mask == 1 {
-            panic!("Tried to set an already used address as used.");
+        trace!("Setting {} used at {} with 0x{:x}", address, field, mask);
+
+        if lock[field] & mask != 0 {
+            panic!("Tried to set an already used address {} as used.", address);
         }
 
         lock[field] |= mask;
+
+        assert!(lock[field] & mask != 0, "Failed to set.");
     }
 }
 
@@ -118,19 +120,20 @@ impl FrameAllocator for BitmapFrameAllocator {
 
             *field |= 1 << bit;
             let address = self.address(i, bit);
-            trace!("Allocated 0x{:x} from index {} bit {}", address, i, bit);
+            trace!("Allocated {} from index {} bit {}", address, i, bit);
             return Some(Frame(address));
         }
         None
     }
 
     fn free(&mut self, frame: Frame) {
-        trace!("Freeing {:x?}", frame);
-
         let field = self.field(frame.address());
         let mask = Self::mask(frame.address());
+
+        trace!("Freeing {:x?} with {} 0x{:x}", frame, field, mask);
+
         let mut bitmap = self.bitmap.lock();
-        if bitmap[field] & mask != 1 {
+        if bitmap[field] & mask == 0 {
             panic!("DOUBLE FREE");
         }
 

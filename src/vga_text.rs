@@ -2,12 +2,14 @@ use core::fmt::{self, Write};
 
 use rgb::RGB8;
 
-use crate::constants::KERNEL_BASE;
 use lazy_static::lazy_static;
 use spin::Mutex;
 use volatile::Volatile;
 
-pub const VGA_BUFFER_ADDRESS: usize = 0xB8000;
+use crate::constants::KERNEL_BASE;
+use crate::memory::{Address, PhysicalAddress};
+
+pub const VGA_BUFFER_ADDRESS: PhysicalAddress = unsafe { PhysicalAddress::new_const(0xB8000) };
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -81,7 +83,7 @@ lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column: 0,
         color: ColorCode::new(Color::Black, Color::White),
-        buffer: unsafe { &mut *((KERNEL_BASE + VGA_BUFFER_ADDRESS) as *mut Buffer) },
+        buffer: unsafe { &mut *(*(VGA_BUFFER_ADDRESS + *KERNEL_BASE) as *mut Buffer) },
     });
 }
 

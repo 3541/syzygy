@@ -25,7 +25,7 @@ impl TempPage {
 
     pub fn map_and_pun_frame(&mut self, active: &mut ActiveTopLevelTable) -> &mut Table<PML4> {
         self.map(active);
-        unsafe { &mut *(self.page.address() as *mut Table<PML4>) }
+        unsafe { &mut *(*self.page.address() as *mut Table<PML4>) }
     }
 
     pub fn new(page: Page, allocator: &mut impl FrameAllocator) -> TempPage {

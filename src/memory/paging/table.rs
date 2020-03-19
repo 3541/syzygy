@@ -5,8 +5,9 @@ use multiboot2::{ElfSection, ElfSectionFlags};
 
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
-use super::PhysicalAddress;
-use crate::memory::{Frame, FrameAllocator};
+use crate::memory::{
+    Address, Frame, FrameAllocator, PhysicalAddress, RawVirtualAddress, VirtualAddress,
+};
 
 // NOTE: Magic virtual addresses
 #[cfg(target_arch = "x86_64")]
@@ -63,11 +64,12 @@ impl ActiveTopLevelTable {
     ) {
         let prev_pml4_address: usize;
         unsafe { asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
+        let prev_pml4_address = PhysicalAddress::new(prev_pml4_address);
 
         temp.page.frame = Frame(prev_pml4_address);
         let prev_pml4 = temp.map_and_pun_frame(self);
 
-        trace!("NEW TABLE IS AT 0x{:x}", table.frame().address());
+        trace!("NEW TABLE IS AT 0x{:x?}", table.frame().address());
 
         self.get_mut()[511].set(
             table.frame().address(),
@@ -89,10 +91,11 @@ impl ActiveTopLevelTable {
     pub fn switch(&mut self, new: InactiveTopLevelTable) -> InactiveTopLevelTable {
         let mut cr3: usize;
         unsafe { asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
-        let old = InactiveTopLevelTable(Frame(cr3));
+        let old = InactiveTopLevelTable(Frame(PhysicalAddress::new(cr3)));
+        trace!("Read {} from cr3", old.frame().address());
 
-        trace!("Writing 0x{:x} to cr3", new.frame().address());
-        unsafe { asm!("mov %rax, %cr3" :: "{rax}"(new.frame().address()) :: "volatile") };
+        trace!("Writing 0x{:x} to cr3", *new.frame().address());
+        unsafe { asm!("mov %rax, %cr3" :: "{rax}"(*new.frame().address()) :: "volatile") };
 
         old
     }
@@ -171,7 +174,7 @@ impl Entry {
 
     pub fn address(&self) -> Option<PhysicalAddress> {
         if self.flags().contains(EntryFlags::PRESENT) {
-            Some(self.0 & Self::ADDRESS_MASK)
+            Some(PhysicalAddress::new(self.0 & Self::ADDRESS_MASK))
         } else {
             None
         }
@@ -179,13 +182,9 @@ impl Entry {
 
     pub fn set(&mut self, address: PhysicalAddress, flags: EntryFlags) {
         trace!("ENTERED set");
-        trace!(
-            "Address: {:#x}, address & !ADDRESS_MASK: {:#x}",
-            address,
-            address & !Self::ADDRESS_MASK
-        );
-        assert_eq!(address & !Self::ADDRESS_MASK, 0);
-        self.0 = address | flags.bits();
+        trace!("Address: {:x?}", address,);
+        assert_eq!(*address & !Self::ADDRESS_MASK, 0);
+        self.0 = *address | flags.bits();
     }
 
     pub fn set_unused(&mut self) {
@@ -215,13 +214,13 @@ impl<T: TableType> Table<T> {
 }
 
 impl<T: TableType + NestedTableType> Table<T> {
-    pub fn next_table_addr(&self, index: usize) -> Option<PhysicalAddress> {
+    pub fn next_table_addr(&self, index: usize) -> Option<VirtualAddress> {
         let flags = self[index].flags();
         if flags.contains(EntryFlags::PRESENT) && !flags.contains(EntryFlags::LARGE) {
-            Some(
-                ((self as *const _ as PhysicalAddress) << super::PAGE_ADDR_INDEX_SHIFT)
+            Some(VirtualAddress::new(
+                ((self as *const _ as RawVirtualAddress) << super::PAGE_ADDR_INDEX_SHIFT)
                     | (index << 12),
-            )
+            ))
         } else {
             None
         }
@@ -229,12 +228,12 @@ impl<T: TableType + NestedTableType> Table<T> {
 
     pub fn next_table(&self, index: usize) -> Option<&Table<T::EntryType>> {
         self.next_table_addr(index)
-            .map(|a| unsafe { &*(a as *const _) })
+            .map(|a| unsafe { &*(*a as *const _) })
     }
 
     pub fn next_table_mut(&mut self, index: usize) -> Option<&mut Table<T::EntryType>> {
         self.next_table_addr(index)
-            .map(|a| unsafe { &mut *(a as *mut _) })
+            .map(|a| unsafe { &mut *(*a as *mut _) })
     }
 
     pub fn next_table_or_create<A: FrameAllocator>(

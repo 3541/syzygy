@@ -30,6 +30,7 @@ mod vga_text;
 
 use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;
+use memory::{Address, PhysicalAddress, VirtualAddress};
 
 #[cfg(feature = "integration-tests")]
 #[no_mangle]
@@ -91,11 +92,13 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     vga_text::WRITER.lock().clear_screen();
     println!("ENTERED kmain");
+
     log::init();
     info!("INITIALIZED log");
 
-    let multiboot_info_addr = multiboot_info_addr + KERNEL_BASE;
-    let multiboot_info = unsafe { multiboot2::load(multiboot_info_addr) };
+    let multiboot_info_addr_phys = PhysicalAddress::new(multiboot_info_addr);
+    let multiboot_info_addr = KERNEL_BASE + multiboot_info_addr;
+    let multiboot_info = unsafe { multiboot2::load(*multiboot_info_addr) };
     let mmap = multiboot_info
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
@@ -131,37 +134,38 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     let kernel_start_addr = elf_sections
         .sections()
-        .map(|s| s.start_address())
-        .filter(|s| *s as usize >= KERNEL_BASE)
+        .map(|s| VirtualAddress::new(s.start_address() as usize))
+        .filter(|s| *s >= KERNEL_BASE)
         .min()
         .unwrap();
+    let kernel_start_addr_phys = PhysicalAddress::new(kernel_start_addr - KERNEL_BASE);
     let kernel_end_addr = elf_sections
         .sections()
-        .map(|s| s.end_address())
+        .map(|s| VirtualAddress::new(s.end_address() as usize))
         .max()
         .unwrap();
+    let kernel_end_addr_phys = PhysicalAddress::new(kernel_end_addr - KERNEL_BASE);
 
     debug!(
-        "Kernel (VIRTUAL): 0x{:x} - 0x{:x}",
+        "Kernel (VIRTUAL): {} - {}",
         kernel_start_addr, kernel_end_addr
     );
 
     debug!(
-        "Kernel (PHYSICAL): 0x{:x} - 0x{:x}",
-        kernel_start_addr as usize - KERNEL_BASE,
-        kernel_end_addr as usize - KERNEL_BASE
+        "Kernel (PHYSICAL): {} - {}",
+        kernel_start_addr_phys, kernel_end_addr_phys,
     );
 
     debug!(
-        "Multiboot (VIRTUAL): 0x{:x} - 0x{:x}",
+        "Multiboot (VIRTUAL): {} - 0x{:x}",
         multiboot_info_addr,
         multiboot_info.end_address()
     );
 
     debug!(
-        "Multiboot (PHYSICAL): 0x{:x} - 0x{:x}",
-        multiboot_info_addr - KERNEL_BASE,
-        multiboot_info.end_address() - KERNEL_BASE
+        "Multiboot (PHYSICAL): {} - 0x{:x}",
+        multiboot_info_addr_phys,
+        multiboot_info.end_address() - *KERNEL_BASE
     );
 
     /*    let mut allocator = memory::WatermarkFrameAllocator::new(
@@ -174,10 +178,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED WatermarkFrameAllocator");*/
 
     let mut allocator = memory::BitmapFrameAllocator::new(
-        kernel_start_addr as usize,
-        kernel_end_addr as usize,
-        multiboot_info_addr as usize,
-        multiboot_info.end_address() as usize,
+        kernel_start_addr_phys,
+        kernel_end_addr_phys,
+        multiboot_info_addr_phys,
+        PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE),
         mmap.memory_areas(),
         unsafe { &mut memory::bitmap_frame_allocator::BITMAP },
     );

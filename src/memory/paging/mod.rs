@@ -7,7 +7,7 @@ use multiboot2::ElfSectionIter;
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_SIZE};
+use crate::memory::{Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_SIZE};
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
 
@@ -57,7 +57,7 @@ impl Page {
         // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
         // sort of broken for larger pages, because the total offset is still the same
         // if we want some specific table. e.g., PML4 index is always at the same place.
-        (self.address >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
+        (*self.address >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
     }
 
     pub fn address(&self) -> VirtualAddress {
@@ -83,7 +83,7 @@ pub fn remap_kernel<A: FrameAllocator>(
     let frame = allocator.alloc().expect("Need free frame to remap kernel.");
     let temp = TempPage::new(
         Page {
-            address: 0xe000e000,
+            address: VirtualAddress::new(0xe000e000),
             frame,
         },
         allocator,
@@ -92,7 +92,7 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     let mut temp = TempPage::new(
         Page {
-            address: 0xe000e000,
+            address: VirtualAddress::new(0xe000e000),
             frame: allocator.alloc().unwrap(),
         },
         allocator,
@@ -100,7 +100,9 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     top.with(&mut new_table, &mut temp, |m| {
         for section in elf_sections {
-            if !section.is_allocated() || (section.start_address() as usize) < KERNEL_BASE {
+            if !section.is_allocated()
+                || VirtualAddress::new(section.start_address() as usize) < KERNEL_BASE
+            {
                 continue;
             }
             assert!(
@@ -115,12 +117,14 @@ pub fn remap_kernel<A: FrameAllocator>(
                 section.size()
             );
 
-            let from = Frame(section.start_address() as usize - KERNEL_BASE);
-            let to = Frame(
+            let from = Frame(PhysicalAddress::new(
+                (section.start_address() as usize) - *KERNEL_BASE,
+            ));
+            let to = Frame(PhysicalAddress::new(
                 (section.end_address() as usize - 1)
                     - (section.end_address() as usize - 1) % FRAME_SIZE
-                    - KERNEL_BASE,
-            );
+                    - *KERNEL_BASE,
+            ));
 
             let flags = EntryFlags::from_elf(&section);
 
@@ -137,8 +141,12 @@ pub fn remap_kernel<A: FrameAllocator>(
         );
 
         debug!("Mapping Multiboot info structure");
-        let from = Frame::containing_address(multiboot_info.start_address() - KERNEL_BASE);
-        let to = Frame::containing_address(multiboot_info.end_address() - KERNEL_BASE - 1);
+        let from = Frame::containing_address(PhysicalAddress::new(
+            multiboot_info.start_address() - *KERNEL_BASE,
+        ));
+        let to = Frame::containing_address(PhysicalAddress::new(
+            multiboot_info.end_address() - *KERNEL_BASE - 1,
+        ));
 
         for frame in Frame::range_inclusive(from, to) {
             m.map_kernel_space(frame, EntryFlags::PRESENT, allocator);
@@ -151,8 +159,8 @@ pub fn remap_kernel<A: FrameAllocator>(
 
     let guard = Page {
         frame: old.frame(),
-        address: old.address() + KERNEL_BASE,
+        address: (KERNEL_BASE + *old.address()).into(),
     };
     top.unmap(guard, allocator);
-    trace!("Guard page at 0x{:x}", old.address() + KERNEL_BASE);
+    trace!("Guard page at {}", KERNEL_BASE + *old.address());
 }
