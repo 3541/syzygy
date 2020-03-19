@@ -28,7 +28,7 @@ _start:
 	mov ss, ax
 	mov ds, ax
 	mov es, ax
-	 
+
 	jmp gdt64.code:preinit64
 
 check_long_mode:
@@ -93,7 +93,7 @@ enable_paging:
 %include "src/arch/x86_common/util.asm"
 
 bits 64
-preinit64: 
+preinit64:
 	mov rax, init64
 	jmp rax
 
@@ -155,9 +155,16 @@ section .rodata
 gdt64:
 	dq 0
 .code: equ $ - gdt64
-	dq (1 << 41) | (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53)
+        ;; executable  type        present     x86_64 code
+	dq (1 << 43) | (1 << 44) | (1 << 47) | (1 << 53)
 .data: equ $ - gdt64
+        ;; writable
 	dq (1 << 41) | (1 << 44) | (1 << 47)
+.usercode:
+        ;;                         user        mode
+        dq (1 << 43) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47) | (1 << 53)
+.userdata:
+        dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
 .end:
 .pointer:
 	dw gdt64.end - gdt64 -1
