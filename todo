@@ -1,4 +1,0 @@
-* Break out architecture-specific bits into arch/
-    - then re-pub from normal path
-* Thin layers over registers (cr3)
-* Redo translate_page
