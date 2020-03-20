@@ -136,6 +136,10 @@ start64:
     ; pass stack_bottom
     mov rsi, stack_bottom
 
+
+    ; make rbp null so that there is an endpoint for stack walking
+    mov rbp, 0
+
 	extern kmain
 	call kmain
 

@@ -27,6 +27,7 @@ mod hardware;
 mod interrupt;
 mod log;
 mod memory;
+mod panic;
 mod vga_text;
 
 use constants::KERNEL_BASE;
@@ -79,13 +80,6 @@ fn exit_qemu(code: u8) -> ! {
 #[alloc_error_handler]
 fn alloc_err(layout: alloc::alloc::Layout) -> ! {
     panic!("Allocator error!\n\t{:?}", layout);
-}
-
-#[panic_handler]
-#[cfg(not(test))]
-fn panic(info: &core::panic::PanicInfo) -> ! {
-    error!("{}", info);
-    loop {}
 }
 
 #[cfg(not(feature = "integration-tests"))]

@@ -19,6 +19,7 @@ nasm_flags ?=
 ld_flags ?=
 qemu_flags ?=
 xargo_flags ?=
+rustc_flags ?=
 debug ?=
 
 ifeq ($(arch), x86_64)
@@ -36,6 +37,7 @@ ifeq ($(build_type), release)
 	debug = false
 else
 	nasm_flags += -wno-number-overflow
+	rustc_flags += -Cforce-frame-pointers=yes
 endif
 
 
@@ -122,7 +124,7 @@ $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 
 $(libkernel): $(rust_src) $(target).json Cargo.toml Xargo.toml Cargo.lock
 	@echo [build] $@
-	RUST_TARGET_PATH=$(PWD) xargo build --target $(target) $(xargo_flags)
+	RUST_TARGET_PATH=$(PWD) xargo rustc --target $(target) $(xargo_flags) -- $(rustc_flags)
 
 build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@echo [build] $@
