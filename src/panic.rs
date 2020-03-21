@@ -1,28 +1,31 @@
 use crate::memory::RawPhysicalAddress;
 
+#[derive(Debug)]
+#[repr(packed)]
+pub struct StackFrame {
+    rbp: *const StackFrame,
+    rip: *const u64,
+}
+
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    #[derive(Debug)]
-    #[repr(packed)]
-    struct StackFrame {
-        rbp: *const StackFrame,
-        rip: *const u64,
-    };
-
     error!("{}", info);
-    error!("-----");
 
     let rbp: *const StackFrame;
-
-    unsafe { asm!("movq %rbp, %rax" : "=r"(rbp)) };
-
-    let mut stack_frame: &StackFrame = unsafe { &*rbp };
-    while stack_frame.rbp as RawPhysicalAddress != 0 {
-        error!("{:x?}", stack_frame);
-        stack_frame = unsafe { &*stack_frame.rbp };
+    unsafe {
+        asm!("movq %rbp, %rax" : "=r"(rbp));
+        print_backtrace(&*rbp);
     }
 
-    error!("-----");
     loop {}
+}
+
+pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
+    error!("-----");
+    while stack_frame.rbp as RawPhysicalAddress != 0 {
+        error!("{:x?}", stack_frame);
+        stack_frame = &*stack_frame.rbp;
+    }
+    error!("-----");
 }

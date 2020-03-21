@@ -99,6 +99,7 @@ pub fn remap_kernel<A: FrameAllocator>(
     );
 
     top.with(&mut new_table, &mut temp, |m| {
+        debug!("Mapping kernel sections");
         for section in elf_sections {
             if !section.is_allocated()
                 || VirtualAddress::new(section.start_address() as usize) < KERNEL_BASE
