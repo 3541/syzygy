@@ -6,7 +6,8 @@ use logc::{Level, LevelFilter, Metadata, Record};
 use crate::vga_text::{self, Color};
 use crate::{serial_print, serial_println};
 
-const LOG_MODULE_LEVELS: [(&'static str, LevelFilter); 0] = [];
+const LOG_MODULE_LEVELS: [(&'static str, LevelFilter); 1] =
+    [("syzygy::memory::paging", LevelFilter::Debug)];
 
 struct Log {
     default_level: LevelFilter,
