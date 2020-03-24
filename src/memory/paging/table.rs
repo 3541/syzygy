@@ -1,6 +1,8 @@
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 
+use bitflags::bitflags;
+use logc::trace;
 use multiboot2::{ElfSection, ElfSectionFlags};
 
 use super::mapper::Mapper;

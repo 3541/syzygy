@@ -7,20 +7,6 @@
 #![feature(alloc_error_handler)]
 #![feature(ptr_internals)]
 
-extern crate alloc;
-
-#[macro_use]
-extern crate bitflags;
-#[macro_use]
-extern crate lazy_static;
-extern crate multiboot2;
-extern crate spin;
-extern crate volatile;
-#[macro_use]
-extern crate logc;
-extern crate ansi_rgb;
-extern crate rgb;
-
 mod arch;
 mod constants;
 mod hardware;
@@ -29,6 +15,9 @@ mod log;
 mod memory;
 mod panic;
 mod vga_text;
+
+extern crate alloc;
+use logc::{debug, info};
 
 use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;

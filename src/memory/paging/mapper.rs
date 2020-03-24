@@ -1,5 +1,7 @@
 use core::ptr::Unique;
 
+use logc::trace;
+
 use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, TABLE_LEVELS};
 use super::Page;
 use crate::constants::KERNEL_BASE;

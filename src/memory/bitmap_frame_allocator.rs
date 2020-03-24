@@ -1,3 +1,4 @@
+use logc::{error, trace};
 use multiboot2::MemoryAreaIter;
 use spin::{Mutex, MutexGuard};
 

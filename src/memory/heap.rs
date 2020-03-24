@@ -1,3 +1,5 @@
+use logc::trace;
+
 use super::paging::mapper::Mapper;
 use super::paging::table::EntryFlags;
 use super::{Address, FrameAllocator, VirtualAddress, PAGE_SIZE};

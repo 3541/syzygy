@@ -1,5 +1,7 @@
 use core::fmt;
 
+use bitflags::bitflags;
+use lazy_static::lazy_static;
 use spin::Mutex;
 
 use crate::hardware::port::Port;

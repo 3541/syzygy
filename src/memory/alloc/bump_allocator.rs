@@ -1,6 +1,8 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr;
 
+use logc::{debug, trace};
+
 use super::MutexWrapper;
 use crate::memory::{Address, VirtualAddress};
 

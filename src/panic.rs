@@ -1,3 +1,5 @@
+use logc::error;
+
 use crate::memory::RawPhysicalAddress;
 
 #[derive(Debug)]

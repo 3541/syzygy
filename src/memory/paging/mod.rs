@@ -2,6 +2,7 @@ pub mod mapper;
 pub mod table;
 mod temp_page;
 
+use logc::{debug, trace};
 use multiboot2::ElfSectionIter;
 
 pub use table::{ActiveTopLevelTable, EntryFlags};

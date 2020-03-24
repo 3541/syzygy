@@ -1,3 +1,5 @@
+use logc::error;
+
 use super::InterruptStackFrame;
 
 macro_rules! generic_handler_ret {
@@ -47,6 +49,7 @@ macro_rules! errc_handler_halt {
 }
 
 mod error_code {
+    use bitflags::bitflags;
     bitflags! {
         pub struct PageFault: usize {
             const PROTECTION_VIOLATION = 1;

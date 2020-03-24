@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+
 use crate::memory::VirtualAddress;
 
 mod exception;
