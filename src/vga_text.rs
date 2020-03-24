@@ -82,7 +82,10 @@ struct Buffer {
 lazy_static! {
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column: 0,
+        #[cfg(not(feature = "integration-tests"))]
         color: ColorCode::new(Color::Black, Color::White),
+        #[cfg(feature = "integration-tests")]
+        color: ColorCode::new(Color::Green, Color::Black),
         buffer: unsafe { &mut *(*(VGA_BUFFER_ADDRESS + *KERNEL_BASE) as *mut Buffer) },
     });
 }
