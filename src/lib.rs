@@ -66,6 +66,7 @@ fn exit_qemu(code: u8) -> ! {
     loop {}
 }
 
+#[cfg(not(test))]
 #[alloc_error_handler]
 fn alloc_err(layout: alloc::alloc::Layout) -> ! {
     panic!("Allocator error!\n\t{:?}", layout);

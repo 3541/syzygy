@@ -11,6 +11,7 @@ use bump_allocator::BumpAllocator;
 //#[global_allocator]
 //static ALLOCATOR: FakeAllocator = FakeAllocator {};
 
+#[cfg(not(test))]
 #[global_allocator]
 static ALLOCATOR: MutexWrapper<BumpAllocator> =
     unsafe { MutexWrapper::new(BumpAllocator::new(HEAP_BASE, HEAP_SIZE)) };
