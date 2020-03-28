@@ -9,8 +9,6 @@
 
 mod arch;
 mod constants;
-mod hardware;
-mod interrupt;
 mod log;
 mod memory;
 mod panic;
@@ -19,6 +17,8 @@ mod vga_text;
 extern crate alloc;
 use logc::{debug, info};
 
+use arch::port::Port;
+use arch::{interrupt, serial};
 use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::{Address, PhysicalAddress, VirtualAddress};
@@ -42,7 +42,7 @@ macro_rules! print {
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments) {
     vga_text::_print(args);
-    hardware::serial::_print(args);
+    serial::_print(args);
 }
 
 #[macro_export]
@@ -55,11 +55,11 @@ macro_rules! println {
 fn exit_qemu(code: u8) -> ! {
     if code == 0 {
         unsafe {
-            hardware::Port::<u32>::new(0x604).write(0x2000);
+            Port::<u32>::new(0x604).write(0x2000);
         }
     } else {
         unsafe {
-            hardware::Port::<u8>::new(0xF4).write(code >> 1);
+            Port::<u8>::new(0xF4).write(code >> 1);
         }
     }
     // NOTE: meaningless, makes ! work.
@@ -80,6 +80,8 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     log::init();
     info!("INITIALIZED log");
+
+    info!("This is {} v{}", constants::NAME, constants::VERSION);
 
     let multiboot_info_addr_phys = PhysicalAddress::new(multiboot_info_addr);
     let multiboot_info_addr = KERNEL_BASE + multiboot_info_addr;

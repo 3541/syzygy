@@ -1,3 +1,6 @@
+pub mod interrupt;
+pub mod port;
+pub mod serial;
 pub mod constants {
     use crate::memory::VirtualAddress;
 

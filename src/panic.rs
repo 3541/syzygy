@@ -2,7 +2,7 @@ use logc::error;
 
 use crate::memory::RawPhysicalAddress;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 pub struct StackFrame {
     rbp: *const StackFrame,

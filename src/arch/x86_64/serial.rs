@@ -4,7 +4,7 @@ use bitflags::bitflags;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::hardware::port::Port;
+use super::port::Port;
 
 const COM1: u16 = 0x3F8;
 
@@ -39,7 +39,7 @@ pub fn _print(args: fmt::Arguments) {
 #[macro_export]
 macro_rules! serial_print {
     ($($arg:tt)*) => {
-        $crate::hardware::serial::_print(format_args!($($arg)*));
+        $crate::arch::serial::_print(format_args!($($arg)*));
     };
 }
 
