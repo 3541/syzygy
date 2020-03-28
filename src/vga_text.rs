@@ -1,12 +1,12 @@
 use core::fmt::{self, Write};
 
-use rgb::RGB8;
-
 use lazy_static::lazy_static;
+use rgb::RGB8;
 use spin::Mutex;
 use volatile::Volatile;
 
 use crate::constants::KERNEL_BASE;
+use crate::interrupt::without_interrupts;
 use crate::memory::PhysicalAddress;
 
 pub const VGA_BUFFER_ADDRESS: PhysicalAddress = unsafe { PhysicalAddress::new_const(0xB8000) };
@@ -179,7 +179,7 @@ macro_rules! vga_println {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    WRITER.lock().write_fmt(args).unwrap()
+    without_interrupts(|| WRITER.lock().write_fmt(args).unwrap())
 }
 
 #[cfg(test)]

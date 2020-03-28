@@ -181,4 +181,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     memory::init_heap(&mut table, &mut allocator);
     info!("INITIALIZED kernel heap.");
+
+    arch::halt_loop()
 }
