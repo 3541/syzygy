@@ -46,6 +46,7 @@ pub trait Address: Deref<Target = usize> + Sized {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct PhysicalAddress(RawPhysicalAddress);
 impl PhysicalAddress {
@@ -118,6 +119,7 @@ impl Sub<PhysicalAddress> for PhysicalAddress {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct VirtualAddress(RawVirtualAddress);
 impl VirtualAddress {

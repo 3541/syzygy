@@ -5,10 +5,10 @@ use crate::memory::VirtualAddress;
 mod exception;
 mod idt;
 
-type Handler = extern "x86-interrupt" fn(_: &mut InterruptStackFrame);
+type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 
 #[cfg(target_arch = "x86_64")]
-type HandlerErr = extern "x86-interrupt" fn(_: &mut InterruptStackFrame, err: usize);
+type HandlerErr = extern "x86-interrupt" fn(&mut InterruptStackFrame, usize);
 
 lazy_static! {
     static ref IDT: idt::IDT = {
