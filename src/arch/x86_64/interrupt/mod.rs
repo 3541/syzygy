@@ -34,6 +34,7 @@ pub enum InterruptIndex {
     DoubleFault = 8,
     PageFault = 14,
     Timer = PIC1_OFFSET,
+    Keyboard,
 }
 
 impl Into<u8> for InterruptIndex {
@@ -63,6 +64,7 @@ lazy_static! {
         idt.set_handler_errc(InterruptIndex::PageFault, exception::page_fault);
 
         idt.set_handler(InterruptIndex::Timer, timer);
+        idt.set_handler(InterruptIndex::Keyboard, keyboard);
 
         idt
     };
@@ -70,6 +72,9 @@ lazy_static! {
 
 pic_handler!(InterruptIndex::Timer => fn timer(_stack) {
 //    print!(".")
+});
+
+pic_handler!(InterruptIndex::Keyboard => fn keyboard(_stack) {
 });
 
 static DISABLE_COUNT: AtomicUsize = AtomicUsize::new(1);

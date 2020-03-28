@@ -4,8 +4,8 @@ use bitflags::bitflags;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use super::interrupt::without_interrupts;
-use super::port::Port;
+use crate::arch::port::Port;
+use crate::interrupt::without_interrupts;
 
 const COM1: u16 = 0x3F8;
 
