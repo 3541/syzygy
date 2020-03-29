@@ -1,29 +1,7 @@
-[package]
-name = "syzygy"
-version = "0.1.0"
-authors = ["Alex O'Brien <alex@emobrien.com>"]
-edition = "2018"
-license = "GPL-3.0-only"
-
-[lib]
-crate-type = ["staticlib"]
-
-[dependencies]
-volatile = "*"
-spin = "*"
-lazy_static = { version = "*", features = ["spin_no_std"] }
-bitflags = "*"
-multiboot2 = "*"
-logc = { package = "log", version = "*", features = [] }
-ansi_rgb = "*"
-rgb = "*"
-
-[dev-dependencies]
-array-init = "*"
-
-[features]
-integration-tests = []
-trace = []
+[workspace]
+members = [
+    "kernel"
+]
 
 [profile.release]
 lto = "thin"

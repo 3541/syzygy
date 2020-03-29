@@ -20,7 +20,6 @@ ld_flags ?=
 qemu_flags ?=
 xargo_flags ?=
 rustc_flags ?=
-debug ?=
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
@@ -46,35 +45,31 @@ ifeq ($(debug), true)
 endif
 
 
-libkernel := target/$(target)/$(build_type)/libsyzygy.a
-kernel := build/kernel-$(arch)-$(build_type).bin
-kernel_debug := build/kernel-$(arch).sym
+# Build targets
 iso := build/$(arch)-$(build_type).iso
-
-asm_src := $(wildcard src/arch/$(arch)/*.asm)
-asm_obj := $(patsubst src/arch/$(arch)/%.asm, build/arch/$(arch)/%.o, $(asm_src))
-rust_src := $(shell find src/ -type f -name '*.rs')
-ldscript := src/arch/$(arch)/linker.ld
-grub_cfg := src/arch/$(arch_common)/grub.cfg
-
-integration_test_src := $(shell find src/integration_tests -type f \( -name '*.rs' ! -name 'mod.rs' \))
-integration_tests := $(basename $(notdir $(integration_test_src)))
-
-ifeq ($(build_type), test)
-	xargo_flags += --features 'integration-tests'
-	export RUSTFLAGS=-A dead_code -A unused_imports -A unused_variables
-	rust_src += $(integration_tests_src)
-	libkernel := target/$(target)/debug/libsyzygy.a
-endif
+kernel := build/kernel-$(arch)-$(build_type).elf
 
 
-.PHONY: all clean run test
+# Sources
+grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
+
+
+common_deps := $(shell find $(PWD)/targets/ -type f) $(PWD)/Cargo.lock $(PWD)/Xargo.toml
+
+# For the submake
+export arch target build_type arch_common nasm_flags ld_flags xargo_flags rust_flags
+
+
+.PHONY: all clean run test $(kernel)
 
 all: $(iso)
+	mkdir -p build
 
 clean:
+	@echo [clean] all
 	rm -r build
 	cargo clean
+	$(MAKE) -C kernel/ clean
 
 run: $(iso)
 	@echo [run] $(iso)
@@ -82,6 +77,7 @@ run: $(iso)
 
 test: temp := $(shell mktemp -d)
 test: qemu_pipe := $(temp)/qemu_pipe
+test: libkernel := build/$(target)/debug/libsyzygy.a
 test: $(rust_src)
 	@echo [test] unit tests
 	cargo test --target $(arch)-unknown-linux-gnu
@@ -89,7 +85,7 @@ test: $(rust_src)
 	@echo [awful hack] swap $(libkernel)
 	@-mv $(libkernel){,.bk} &> /dev/null
 	@-mv $(libkernel){.t,} &> /dev/null
-	$(MAKE) build_type=test
+	$(MAKE) -C kernel/ DEPS="$(common_deps)" BUILD_ROOT="$(PWD)" build_type=test
 	@echo [awful hack] revert
 	@-mv $(libkernel){,.t} &> /dev/null
 	@- mv $(libkernel){.bk,} &> /dev/null
@@ -118,18 +114,9 @@ $(iso): $(kernel) $(grub_cfg)
 	cp $(grub_cfg) build/isofiles/boot/grub
 	$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
 
-$(kernel): $(asm_obj) $(ldscript) $(libkernel)
-	@echo [link] $(kernel)
-	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
-
-$(libkernel): $(rust_src) $(target).json Cargo.toml Xargo.toml Cargo.lock
-	@echo [build] $@
-	RUST_TARGET_PATH=$(PWD) xargo rustc --target $(target) $(xargo_flags) -- $(rustc_flags)
-
-build/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
-	@echo [build] $@
-	@mkdir -p $(dir $@)
-	nasm $(nasm_flags) $< -o $@
+$(kernel):
+	@echo [submake] kernel
+	$(MAKE) -C kernel/ DEPS="$(common_deps)" BUILD_ROOT="$(PWD)"
 
 ifndef verbose
 .SILENT:
