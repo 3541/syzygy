@@ -27,6 +27,8 @@ qemu_flags ?=
 xargo_flags ?=
 rustc_flags ?=
 
+rustc_flags += -Zsymbol-mangling-version=v0
+
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
 	nasm_flags += -felf64
