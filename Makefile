@@ -1,3 +1,9 @@
+ifdef verbose
+	quiet ?=
+else
+	quiet ?= @
+endif
+
 arch ?= x86_64
 target ?= $(arch)-syzygy
 debug ?=
@@ -57,30 +63,30 @@ grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
 common_deps := $(shell find $(PWD)/targets/ -type f) $(PWD)/Cargo.lock $(PWD)/Xargo.toml
 
 # For the submake
-export arch target build_type arch_common nasm_flags ld_flags xargo_flags rust_flags
+export arch target build_type arch_common nasm_flags ld_flags xargo_flags rust_flags quiet
 
 
 .PHONY: all clean run test $(kernel)
 
 all: $(iso)
-	mkdir -p build
+	$(quiet)mkdir -p build
 
 clean:
 	@echo [clean] all
-	rm -r build
-	cargo clean
-	$(MAKE) -C kernel/ clean
+	$(quiet)rm -r build
+	$(quiet)cargo clean
+	$(quiet)$(MAKE) -C kernel/ clean
 
 run: $(iso)
 	@echo [run] $(iso)
-	$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
+	$(quiet)$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: temp := $(shell mktemp -d)
 test: qemu_pipe := $(temp)/qemu_pipe
 test: libkernel := build/$(target)/debug/libsyzygy.a
 test: $(rust_src)
 	@echo [test] unit tests
-	cargo test --target $(arch)-unknown-linux-gnu
+	$(quiet)cargo test --target $(arch)-unknown-linux-gnu
 	@echo [test] integration tests
 	@echo [awful hack] swap $(libkernel)
 	@-mv $(libkernel){,.bk} &> /dev/null
@@ -90,34 +96,30 @@ test: $(rust_src)
 	@-mv $(libkernel){,.t} &> /dev/null
 	@- mv $(libkernel){.bk,} &> /dev/null
 	@echo [create] $(qemu_pipe)
-	mkfifo $(qemu_pipe).in
-	mkfifo $(qemu_pipe).out
-	for t in $(integration_tests); do						\
+	$(quiet)mkfifo $(qemu_pipe).in
+	$(quiet)mkfifo $(qemu_pipe).out
+	$(quiet)for t in $(integration_tests); do					\
 		echo [integration test] $$t;						\
-		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &		\
+		cat $(qemu_pipe).out > $(qemu_pipe).out_nb &				\
 		echo "a$${t}_" > $(qemu_pipe).in &					\
 		$(qemu) -cdrom build/$(arch)-test.iso -s -chardev pipe,id=ch0,path=$(qemu_pipe) -serial chardev:ch0 -m 4G -device isa-debug-exit,iobase=0xF4,iosize=0x04;	\
 		status=$$(cat $(qemu_pipe).out_nb);					\
-		echo $$status;										\
-		case $$status in									\
-			*ok) ;;											\
-			*) exit 255;;									\
-		esac;												\
+		echo $$status;								\
+		case $$status in							\
+			*ok) ;;								\
+			*) exit 255;;							\
+		esac;									\
 	done
 	@echo [clean] $(temp)
-	rm -r $(temp)
+	$(quiet)rm -r $(temp)
 
 $(iso): $(kernel) $(grub_cfg)
 	@echo [build] $(iso)
-	mkdir -p build/isofiles/boot/grub
-	cp $(kernel) build/isofiles/boot/kernel.bin
-	cp $(grub_cfg) build/isofiles/boot/grub
-	$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
+	@mkdir -p build/isofiles/boot/grub
+	$(quiet)cp $(kernel) build/isofiles/boot/kernel.bin
+	$(quiet)cp $(grub_cfg) build/isofiles/boot/grub
+	$(quiet)$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
 
 $(kernel):
 	@echo [submake] kernel
-	$(MAKE) -C kernel/ DEPS="$(common_deps)" BUILD_ROOT="$(PWD)"
-
-ifndef verbose
-.SILENT:
-endif
+	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps)" BUILD_ROOT="$(PWD)"

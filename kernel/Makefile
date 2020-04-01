@@ -49,19 +49,19 @@ all: $(kernel)
 
 clean:
 	@echo [clean] $(PWD)
-	cargo clean
+	$(quiet)cargo clean
 
 $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 	@echo [link] $(notdir $@)
-	ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
+	$(quiet)ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
 
 $(libkernel): $(rust_src) $(DEPS)
 	@echo [build] $(notdir $@)
-	cd $(BUILD_ROOT) && \
+	$(quiet)cd $(BUILD_ROOT) && \
 	RUST_TARGET_PATH="$(TARGETS)" RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="$(OUT)" \
 	xargo build --target $(target) $(xargo_flags) -p syzygy
 
 $(OUT)/arch/$(arch)/%.o: src/arch/$(arch)/%.asm $(wildcard src/arch/$(arch_common)/*.asm)
 	@echo [build] $(notdir $@)
 	@mkdir -p $(dir $@)
-	nasm $(nasm_flags) $< -o $@
+	$(quiet)nasm $(nasm_flags) $< -o $@
