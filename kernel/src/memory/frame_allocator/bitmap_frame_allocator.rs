@@ -2,6 +2,7 @@ use core::mem::MaybeUninit;
 
 use logc::{debug, error, trace};
 use multiboot2::MemoryAreaIter;
+use spin::MutexGuard;
 
 use super::FrameAllocator;
 use crate::memory::{Address, Frame, PhysicalAddress, FRAME_SIZE};
@@ -103,7 +104,9 @@ impl BitmapFrameAllocator {
     }
 }
 
-impl FrameAllocator for BitmapFrameAllocator {
+// The trait is implemented on MutexGuard<BitmapFrameAllocator> to ensure that a
+// valid lock is held, and therefore that it has been initialized.
+impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator> {
     fn alloc(&mut self) -> Option<Frame> {
         fn first_unset_bit(field: usize) -> usize {
             let ret: usize;
@@ -136,7 +139,7 @@ impl FrameAllocator for BitmapFrameAllocator {
 
     fn free(&mut self, frame: Frame) {
         let field = self.field(frame.address());
-        let mask = Self::mask(frame.address());
+        let mask = BitmapFrameAllocator::mask(frame.address());
 
         trace!("Freeing {:x?} with {} 0x{:x}", frame, field, mask);
 
