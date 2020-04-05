@@ -5,7 +5,9 @@ use logc::trace;
 use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, TABLE_LEVELS};
 use super::Page;
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress};
+use crate::memory::{
+    Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_ALLOCATOR,
+};
 
 #[cfg(target_arch = "x86_64")]
 type TopLevelTableType = PML4;
@@ -28,13 +30,7 @@ impl Mapper {
         unsafe { self.0.as_mut() }
     }
 
-    pub fn map_to<A: FrameAllocator>(
-        &mut self,
-        address: VirtualAddress,
-        frame: Frame,
-        flags: EntryFlags,
-        allocator: &mut A,
-    ) -> Page {
+    pub fn map_to(&mut self, address: VirtualAddress, frame: Frame, flags: EntryFlags) -> Page {
         assert!(address.is_aligned(super::FRAME_SIZE));
 
         trace!("Attempting to map {} -> {:x?}", address, frame);
@@ -42,14 +38,13 @@ impl Mapper {
 
         let top = self.get_mut();
         //        let level = ret.size().level_index();
-        let mut bottom = top.next_table_or_create(ret.pml4_index(), allocator);
+        let mut bottom = top.next_table_or_create(ret.pml4_index());
 
         let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
 
         for i in 0..(TABLE_LEVELS - /* level - */ 1) {
             assert!(!bottom[indices[i]].is_leaf());
-            bottom =
-                unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i], allocator)) };
+            bottom = unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i])) };
         }
 
         //        let index = ret.table_index(level);
@@ -60,36 +55,25 @@ impl Mapper {
         ret
     }
 
-    pub fn map<A: FrameAllocator>(
-        &mut self,
-        addr: VirtualAddress,
-        flags: EntryFlags,
-        allocator: &mut A,
-    ) -> Page {
+    pub fn map(&mut self, addr: VirtualAddress, flags: EntryFlags) -> Page {
         self.map_to(
             addr,
-            allocator.alloc().expect("Out of frames"),
+            FRAME_ALLOCATOR.lock().alloc().expect("Out of frames"),
             flags,
-            allocator,
         )
     }
 
-    pub fn map_kernel_space<A: FrameAllocator>(
-        &mut self,
-        frame: Frame,
-        flags: EntryFlags,
-        allocator: &mut A,
-    ) -> Page {
+    // This is an evil function
+    pub fn map_kernel_space(&mut self, frame: Frame, flags: EntryFlags) -> Page {
         trace!("Going to map in kernel address space: {:#x?}", frame);
         self.map_to(
             VirtualAddress::new(*(frame.address() + *KERNEL_BASE)),
             frame,
             flags,
-            allocator,
         )
     }
 
-    pub fn unmap<A: FrameAllocator>(&mut self, page: Page, allocator: &mut A) {
+    pub fn unmap(&mut self, page: Page) {
         let mut table = self.get_mut().next_table_mut(page.pml4_index()).unwrap();
         for i in (1..(TABLE_LEVELS/*- level*/)).rev() {
             assert!(!table[page.table_index(i)].is_leaf());
@@ -98,7 +82,7 @@ impl Mapper {
         }
 
         table[page.pt_index()].set_unused();
-        allocator.free(page.frame);
+        FRAME_ALLOCATOR.lock().free(page.frame);
         unsafe { asm!("invlpg $0" : : "m"(page.address())) };
     }
 

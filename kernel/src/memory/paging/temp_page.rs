@@ -1,26 +1,21 @@
 use super::mapper::Mapper;
 use super::table::{ActiveTopLevelTable, Table, PML4};
 use super::{EntryFlags, Page};
-use crate::memory::{Frame, FrameAllocator};
+use crate::memory::Frame;
 
 pub struct TempPage {
     pub page: Page,
-    allocator: TempAllocator,
+    //    allocator: TempAllocator,
 }
 
 impl TempPage {
     pub fn map(&mut self, active: &mut ActiveTopLevelTable) {
         assert!(active.translate_page(self.page.address()).is_none());
-        active.map_to(
-            self.page.address(),
-            self.page.frame,
-            EntryFlags::WRITABLE,
-            &mut self.allocator,
-        );
+        active.map_to(self.page.address(), self.page.frame, EntryFlags::WRITABLE);
     }
 
     pub fn unmap(mut self, active: &mut Mapper) {
-        active.unmap(self.page, &mut self.allocator);
+        active.unmap(self.page);
     }
 
     pub fn map_and_pun_frame(&mut self, active: &mut ActiveTopLevelTable) -> &mut Table<PML4> {
@@ -28,15 +23,15 @@ impl TempPage {
         unsafe { &mut *(*self.page.address() as *mut Table<PML4>) }
     }
 
-    pub fn new(page: Page, allocator: &mut impl FrameAllocator) -> TempPage {
+    pub fn new(page: Page) -> TempPage {
         TempPage {
             page,
-            allocator: TempAllocator::new(allocator),
+            //            allocator: TempAllocator::new(allocator),
         }
     }
 }
 
-struct TempAllocator([Option<Frame>; 3]);
+/*struct TempAllocator([Option<Frame>; 3]);
 
 impl TempAllocator {
     fn new(allocator: &mut impl FrameAllocator) -> TempAllocator {
@@ -65,3 +60,4 @@ impl FrameAllocator for TempAllocator {
         panic!("Tried to free more than TempAllocator can fit. This shouldn't happen at all.");
     }
 }
+*/

@@ -1,26 +1,34 @@
-use logc::{error, trace};
+use core::mem::MaybeUninit;
+
+use logc::{debug, error, trace};
 use multiboot2::MemoryAreaIter;
-use spin::{Mutex, MutexGuard};
 
-use super::{Address, Frame, FrameAllocator, PhysicalAddress, FRAME_SIZE};
+use super::FrameAllocator;
+use crate::memory::{Address, Frame, PhysicalAddress, FRAME_SIZE};
 
-const INITIAL_BITMAP_SIZE: usize = 32768;
-// NOTE: temporary static allocation size
-pub static mut BITMAP: [usize; INITIAL_BITMAP_SIZE] = [0; INITIAL_BITMAP_SIZE];
 pub struct BitmapFrameAllocator {
-    bitmap: Mutex<&'static mut [usize]>,
+    bitmap: MaybeUninit<&'static mut [usize]>,
     base: PhysicalAddress,
 }
 
+// EVERYTHING in here is only safe if called through GlobalFrameAllocator.lock
 impl BitmapFrameAllocator {
-    pub fn new(
+    pub const unsafe fn empty() -> Self {
+        Self {
+            bitmap: MaybeUninit::uninit(),
+            base: PhysicalAddress::new_const(crate::memory::SIGN_EX_INVALID_BASE + 0x1000),
+        }
+    }
+
+    pub unsafe fn init(
+        &mut self,
         kernel_start: PhysicalAddress,
         kernel_end: PhysicalAddress,
         multiboot_info_start: PhysicalAddress,
         multiboot_info_end: PhysicalAddress,
         areas: MemoryAreaIter,
         bitmap: &'static mut [usize],
-    ) -> BitmapFrameAllocator {
+    ) {
         let frame_in_reserved_area = |a: &PhysicalAddress| {
             (*a >= kernel_start && *a <= kernel_end)
                 || (*a + FRAME_SIZE <= kernel_end && *a + FRAME_SIZE >= kernel_start)
@@ -30,40 +38,41 @@ impl BitmapFrameAllocator {
                     && *a + FRAME_SIZE >= multiboot_info_start)
                 || (*a <= multiboot_info_start && *a + FRAME_SIZE >= multiboot_info_end)
         };
-        let ret = BitmapFrameAllocator {
-            bitmap: Mutex::new(bitmap),
-            base: PhysicalAddress::new(
-                areas
-                    .clone()
-                    .filter(|a| a.size() as usize >= FRAME_SIZE)
-                    .min_by_key(|a| a.start_address())
-                    .expect("No available areas to initialize")
-                    .start_address() as usize,
-            )
-            .next_aligned_addr(FRAME_SIZE),
-        };
-        {
-            let mut lock = ret.bitmap.lock();
-            for area in areas.filter(|a| a.size() as usize >= FRAME_SIZE) {
-                let start_address = PhysicalAddress::new(area.start_address() as usize)
-                    .next_aligned_addr(FRAME_SIZE);
-                let end_address =
-                    PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(FRAME_SIZE);
-                for frame_start in (*start_address..=*end_address)
-                    .step_by(FRAME_SIZE)
-                    .map(|a| PhysicalAddress::new(a))
-                    .filter(frame_in_reserved_area)
-                {
-                    if ret.field(frame_start) >= INITIAL_BITMAP_SIZE {
-                        error!("Index too large at frame {}", frame_start);
-                    }
+        self.base = PhysicalAddress::new(
+            areas
+                .clone()
+                .filter(|a| a.size() as usize >= FRAME_SIZE)
+                .min_by_key(|a| a.start_address())
+                .expect("No available areas to initialize")
+                .start_address() as usize,
+        )
+        .next_aligned_addr(FRAME_SIZE);
+        self.bitmap.write(bitmap);
 
-                    ret.set_used(frame_start, &mut lock);
+        for area in areas.filter(|a| a.size() as usize >= FRAME_SIZE) {
+            let start_address =
+                PhysicalAddress::new(area.start_address() as usize).next_aligned_addr(FRAME_SIZE);
+            let end_address =
+                PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(FRAME_SIZE);
+            for frame_start in (*start_address..=*end_address)
+                .step_by(FRAME_SIZE)
+                .map(|a| PhysicalAddress::new(a))
+                .filter(frame_in_reserved_area)
+            {
+                if self.field(frame_start) >= self.bitmap().len() {
+                    error!("Index too large at frame {}", frame_start);
                 }
+                self.set_used(frame_start);
             }
         }
+    }
 
-        ret
+    unsafe fn bitmap(&mut self) -> &mut [usize] {
+        *(self.bitmap.as_mut_ptr())
+    }
+
+    pub fn is_uninitialized(&self) -> bool {
+        !self.base.is_valid()
     }
 
     fn field(&self, address: PhysicalAddress) -> usize {
@@ -78,21 +87,19 @@ impl BitmapFrameAllocator {
         self.base + index * 8 * core::mem::size_of::<usize>() * FRAME_SIZE + bit_index * FRAME_SIZE
     }
 
-    // FIXME: This is weird. self is immutable because there is an immutable reference to the lock.
-    // Does this actually make sense? Who knows...
-    fn set_used(&self, address: PhysicalAddress, lock: &mut MutexGuard<&'static mut [usize]>) {
+    unsafe fn set_used(&mut self, address: PhysicalAddress) {
         let field = self.field(address);
         let mask = Self::mask(address);
 
         trace!("Setting {} used at {} with 0x{:x}", address, field, mask);
 
-        if lock[field] & mask != 0 {
+        if self.bitmap()[field] & mask != 0 {
             panic!("Tried to set an already used address {} as used.", address);
         }
 
-        lock[field] |= mask;
+        self.bitmap()[field] |= mask;
 
-        assert!(lock[field] & mask != 0, "Failed to set.");
+        assert!(self.bitmap()[field] & mask != 0, "Failed to set.");
     }
 }
 
@@ -108,7 +115,7 @@ impl FrameAllocator for BitmapFrameAllocator {
 
         trace!("Allocating...");
 
-        for (i, field) in (**self.bitmap.lock()).iter_mut().enumerate() {
+        for (i, field) in unsafe { self.bitmap() }.iter_mut().enumerate() {
             let bit = if *field == 0 {
                 trace!("Empty field.");
                 0
@@ -133,11 +140,12 @@ impl FrameAllocator for BitmapFrameAllocator {
 
         trace!("Freeing {:x?} with {} 0x{:x}", frame, field, mask);
 
-        let mut bitmap = self.bitmap.lock();
-        if bitmap[field] & mask == 0 {
-            panic!("DOUBLE FREE");
-        }
+        unsafe {
+            if self.bitmap()[field] & mask == 0 {
+                panic!("DOUBLE FREE");
+            }
 
-        bitmap[field] ^= mask;
+            self.bitmap()[field] ^= mask;
+        }
     }
 }

@@ -1,14 +1,16 @@
+use logc::{debug, trace};
+use multiboot2::ElfSectionIter;
+
 pub mod mapper;
 pub mod table;
 mod temp_page;
 
-use logc::{debug, trace};
-use multiboot2::ElfSectionIter;
-
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_SIZE};
+use crate::memory::{
+    Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_ALLOCATOR, FRAME_SIZE,
+};
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
 
@@ -29,7 +31,7 @@ const PAGE_ADDR_INDEX_MASK: usize = (1 << PAGE_ADDR_INDEX_SHIFT) - 1;
 const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
 const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Page {
     frame: Frame,
     address: VirtualAddress,
@@ -75,29 +77,25 @@ fn flush_tlb() {
 }
 
 // make new PDP, PT tables, map to kernel
-pub fn remap_kernel<A: FrameAllocator>(
-    allocator: &mut A,
+pub fn remap_kernel(
     top: &mut ActiveTopLevelTable,
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,
 ) {
-    let frame = allocator.alloc().expect("Need free frame to remap kernel.");
-    let temp = TempPage::new(
-        Page {
-            address: VirtualAddress::new(0xe000e000),
-            frame,
-        },
-        allocator,
-    );
+    let frame = FRAME_ALLOCATOR
+        .lock()
+        .alloc()
+        .expect("Need free frame to remap kernel.");
+    let temp = TempPage::new(Page {
+        address: VirtualAddress::new(0xe000e000),
+        frame,
+    });
     let mut new_table = InactiveTopLevelTable::new(top, temp);
 
-    let mut temp = TempPage::new(
-        Page {
-            address: VirtualAddress::new(0xe000e000),
-            frame: allocator.alloc().unwrap(),
-        },
-        allocator,
-    );
+    let mut temp = TempPage::new(Page {
+        address: VirtualAddress::new(0xe000e000),
+        frame: FRAME_ALLOCATOR.lock().alloc().unwrap(),
+    });
 
     top.with(&mut new_table, &mut temp, |m| {
         debug!("Mapping kernel sections");
@@ -131,7 +129,7 @@ pub fn remap_kernel<A: FrameAllocator>(
             let flags = EntryFlags::from_elf(&section);
 
             for frame in Frame::range_inclusive(from, to) {
-                m.map_kernel_space(frame, flags, allocator);
+                m.map_kernel_space(frame, flags);
             }
         }
 
@@ -139,7 +137,6 @@ pub fn remap_kernel<A: FrameAllocator>(
         m.map_kernel_space(
             Frame(crate::vga_text::VGA_BUFFER_ADDRESS),
             EntryFlags::WRITABLE,
-            allocator,
         );
 
         debug!("Mapping Multiboot info structure");
@@ -151,7 +148,7 @@ pub fn remap_kernel<A: FrameAllocator>(
         ));
 
         for frame in Frame::range_inclusive(from, to) {
-            m.map_kernel_space(frame, EntryFlags::PRESENT, allocator);
+            m.map_kernel_space(frame, EntryFlags::PRESENT);
         }
     });
 
@@ -163,6 +160,6 @@ pub fn remap_kernel<A: FrameAllocator>(
         frame: old.frame(),
         address: (KERNEL_BASE + *old.address()).into(),
     };
-    top.unmap(guard, allocator);
+    top.unmap(guard);
     trace!("Guard page at {}", KERNEL_BASE + *old.address());
 }

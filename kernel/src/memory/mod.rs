@@ -4,45 +4,64 @@ use core::marker::Sized;
 use core::ops::{Add, AddAssign, Deref, Sub};
 
 mod alloc;
-pub mod bitmap_frame_allocator;
+pub mod frame_allocator;
 mod heap;
 pub mod paging;
 //mod watermark_frame_allocator;
 
-pub use bitmap_frame_allocator::BitmapFrameAllocator;
+pub use frame_allocator::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
 pub use heap::init_heap;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_SIZE: usize = 4096;
 const PAGE_SIZE: usize = FRAME_SIZE;
 
-const SIGN_EX_INVALID_BASE: usize = 0x0000_8000_0000_0000;
-const SIGN_EX_INVALID_TOP: usize = 0xFFFF_8000_0000_0000;
+pub const SIGN_EX_INVALID_BASE: usize = 0x0000_8000_0000_0000;
+pub const SIGN_EX_INVALID_TOP: usize = 0xFFFF_8000_0000_0000;
 
 pub type RawPhysicalAddress = usize;
 pub type RawVirtualAddress = usize;
 
-pub trait Address: Deref<Target = usize> + Sized {
+pub trait Address: Deref<Target = usize> + Sized + Eq {
     fn new(addr: usize) -> Self {
+        let ret = unsafe { Self::new_unchecked(addr) };
         assert!(
-            addr < SIGN_EX_INVALID_BASE || addr >= SIGN_EX_INVALID_TOP,
+            ret.is_valid(),
             "Invalid address! Sign extension set incorrectly."
         );
-        unsafe { Self::new_unchecked(addr) }
+        ret
     }
 
     unsafe fn new_unchecked(addr: usize) -> Self;
 
+    #[inline]
+    unsafe fn zero() -> Self {
+        Self::new_unchecked(0)
+    }
+
+    #[inline]
     fn is_aligned(&self, align: usize) -> bool {
         **self % align == 0
     }
 
+    #[inline]
     fn prev_aligned_addr(&self, align: usize) -> Self {
         Self::new(**self & !(align - 1))
     }
 
+    #[inline]
     fn next_aligned_addr(&self, align: usize) -> Self {
         Self::new(**self + align - 1).prev_aligned_addr(align)
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        *self == unsafe { Self::zero() }
+    }
+
+    #[inline]
+    fn is_valid(&self) -> bool {
+        **self < SIGN_EX_INVALID_BASE || **self >= SIGN_EX_INVALID_TOP
     }
 }
 
@@ -218,9 +237,4 @@ impl Iterator for FrameIterator {
             None
         }
     }
-}
-
-pub trait FrameAllocator {
-    fn alloc(&mut self) -> Option<Frame>;
-    fn free(&mut self, frame: Frame);
 }

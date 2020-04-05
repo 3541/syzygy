@@ -9,6 +9,7 @@ use super::mapper::Mapper;
 use super::temp_page::TempPage;
 use crate::memory::{
     Address, Frame, FrameAllocator, PhysicalAddress, RawVirtualAddress, VirtualAddress,
+    FRAME_ALLOCATOR,
 };
 
 // NOTE: Magic virtual addresses
@@ -238,11 +239,7 @@ impl<T: TableType + NestedTableType> Table<T> {
             .map(|a| unsafe { &mut *(*a as *mut _) })
     }
 
-    pub fn next_table_or_create<A: FrameAllocator>(
-        &mut self,
-        index: usize,
-        allocator: &mut A,
-    ) -> &mut Table<T::EntryType> {
+    pub fn next_table_or_create(&mut self, index: usize) -> &mut Table<T::EntryType> {
         match self.next_table(index) {
             Some(_) => self.next_table_mut(index).unwrap(),
             None => {
@@ -254,7 +251,10 @@ impl<T: TableType + NestedTableType> Table<T> {
                         index,
                         (self as *mut _) as usize
                     );
-                    let f = allocator.alloc().expect("No frames available?");
+                    let f = FRAME_ALLOCATOR
+                        .lock()
+                        .alloc()
+                        .expect("No frames available?");
                     self.entries[index]
                         .set(f.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
                     let t = self.next_table_mut(index).unwrap();

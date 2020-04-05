@@ -6,6 +6,7 @@
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
 #![feature(ptr_internals)]
+#![feature(maybe_uninit_extra)]
 
 mod arch;
 mod constants;
@@ -158,28 +159,24 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     interrupt::init();
     info!("INITIALIZED interrupts");
 
-    let mut allocator = memory::BitmapFrameAllocator::new(
-        kernel_start_addr_phys,
-        kernel_end_addr_phys,
-        multiboot_info_addr_phys,
-        PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE),
-        mmap.memory_areas(),
-        unsafe { &mut memory::bitmap_frame_allocator::BITMAP },
-    );
-    info!("INITIALIZED BitmapFrameAllocator");
+    unsafe {
+        memory::FRAME_ALLOCATOR.init(
+            kernel_start_addr_phys,
+            kernel_end_addr_phys,
+            multiboot_info_addr_phys,
+            PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE),
+            mmap.memory_areas(),
+        )
+    };
+    info!("INITIALIZED frame allocator");
 
     let mut table = unsafe { ActiveTopLevelTable::new() };
     info!("INITIALIZED PML4");
 
-    memory::paging::remap_kernel(
-        &mut allocator,
-        &mut table,
-        elf_sections.sections(),
-        &multiboot_info,
-    );
+    memory::paging::remap_kernel(&mut table, elf_sections.sections(), &multiboot_info);
     info!("REMAPPED the kernel address space");
 
-    memory::init_heap(&mut table, &mut allocator);
+    memory::init_heap(&mut table);
     info!("INITIALIZED kernel heap.");
 
     arch::halt_loop()
