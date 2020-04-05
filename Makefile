@@ -27,7 +27,7 @@ qemu_flags ?=
 xargo_flags ?=
 rustc_flags ?=
 
-rustc_flags += -Zsymbol-mangling-version=v0
+rustc_flags += -Zsymbol-mangling-version=v0 -Cforce-frame-pointers=yes
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
@@ -44,7 +44,6 @@ ifeq ($(build_type), release)
 	debug = false
 else
 	nasm_flags += -wno-number-overflow
-	rustc_flags += -Cforce-frame-pointers=yes
 endif
 
 
@@ -65,7 +64,7 @@ grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
 common_deps := $(shell find $(PWD)/targets/ -type f) $(PWD)/Cargo.lock $(PWD)/Xargo.toml
 
 # For the submake
-export arch target build_type arch_common nasm_flags ld_flags xargo_flags rust_flags quiet
+export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet
 
 
 .PHONY: all clean run test $(kernel)
