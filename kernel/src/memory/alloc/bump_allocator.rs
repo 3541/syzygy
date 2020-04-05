@@ -3,8 +3,8 @@ use core::ptr;
 
 use logc::{debug, trace};
 
-use super::MutexWrapper;
 use crate::memory::{Address, VirtualAddress};
+use crate::sync::SpinLocked;
 
 #[derive(Debug)]
 pub struct BumpAllocator {
@@ -25,7 +25,7 @@ impl BumpAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for MutexWrapper<BumpAllocator> {
+unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut this = self.lock();
 

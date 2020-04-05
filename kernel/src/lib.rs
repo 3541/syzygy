@@ -13,6 +13,7 @@ mod constants;
 mod log;
 mod memory;
 mod panic;
+mod sync;
 mod vga_text;
 
 extern crate alloc;
