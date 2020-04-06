@@ -199,7 +199,7 @@ impl Add<VirtualAddress> for VirtualAddress {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct Frame(PhysicalAddress);
 
 impl Frame {
@@ -217,6 +217,12 @@ impl Frame {
 
     fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
         FrameIterator { from, to }
+    }
+}
+
+impl fmt::Display for Frame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Frame({})", self.0)
     }
 }
 
