@@ -81,6 +81,8 @@ pub fn remap_kernel(
     top: &mut ActiveTopLevelTable,
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,
+    initramfs_start: PhysicalAddress,
+    initramfs_end: PhysicalAddress,
 ) {
     let frame = FRAME_ALLOCATOR
         .lock()
@@ -149,6 +151,17 @@ pub fn remap_kernel(
 
         for frame in Frame::range_inclusive(from, to) {
             m.map_kernel_space(frame, EntryFlags::PRESENT);
+        }
+
+        debug!("Mapping initramfs");
+        let initramfs_from = Frame::containing_address(initramfs_start);
+        let initramfs_to = Frame::containing_address(initramfs_end);
+        if from <= initramfs_from && initramfs_to <= to {
+            debug!("\t Already mapped");
+        } else {
+            for frame in Frame::range_inclusive(from, to) {
+                m.map_kernel_space(frame, EntryFlags::PRESENT);
+            }
         }
     });
 

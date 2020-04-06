@@ -1,6 +1,6 @@
 use core::mem::MaybeUninit;
 
-use logc::{debug, error, trace};
+use logc::{error, trace};
 use multiboot2::MemoryAreaIter;
 use spin::MutexGuard;
 
@@ -27,17 +27,22 @@ impl BitmapFrameAllocator {
         kernel_end: PhysicalAddress,
         multiboot_info_start: PhysicalAddress,
         multiboot_info_end: PhysicalAddress,
+        initramfs_start: PhysicalAddress,
+        initramfs_end: PhysicalAddress,
         areas: MemoryAreaIter,
         bitmap: &'static mut [usize],
     ) {
         let frame_in_reserved_area = |a: &PhysicalAddress| {
-            (*a >= kernel_start && *a <= kernel_end)
-                || (*a + FRAME_SIZE <= kernel_end && *a + FRAME_SIZE >= kernel_start)
-                || (*a <= kernel_start && *a + FRAME_SIZE >= kernel_end)
-                || (*a >= multiboot_info_start && *a <= multiboot_info_end)
-                || (*a + FRAME_SIZE <= multiboot_info_end
-                    && *a + FRAME_SIZE >= multiboot_info_start)
-                || (*a <= multiboot_info_start && *a + FRAME_SIZE >= multiboot_info_end)
+            (kernel_start <= *a && *a <= kernel_end)
+                || (kernel_start <= *a + FRAME_SIZE && *a + FRAME_SIZE <= kernel_end)
+                || (*a <= kernel_start && kernel_end <= *a + FRAME_SIZE)
+                || (multiboot_info_start <= *a && *a <= multiboot_info_end)
+                || (multiboot_info_start <= *a + FRAME_SIZE
+                    && *a + FRAME_SIZE <= multiboot_info_end)
+                || (*a <= multiboot_info_start && multiboot_info_end <= *a + FRAME_SIZE)
+                || (initramfs_start <= *a && *a <= initramfs_end)
+                || (initramfs_start <= *a + FRAME_SIZE && *a + FRAME_SIZE <= initramfs_end)
+                || (*a <= initramfs_start && initramfs_end <= *a + FRAME_SIZE)
         };
         self.base = PhysicalAddress::new(
             areas

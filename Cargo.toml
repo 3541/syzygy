@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "kernel"
+    "kernel",
+    "initramfs"
 ]
 
 [profile.release]

@@ -33,6 +33,8 @@ impl GlobalFrameAllocator {
         kernel_end: PhysicalAddress,
         multiboot_info_start: PhysicalAddress,
         multiboot_info_end: PhysicalAddress,
+        initramfs_start: PhysicalAddress,
+        initramfs_end: PhysicalAddress,
         areas: MemoryAreaIter,
     ) {
         self.0.lock().init(
@@ -40,6 +42,8 @@ impl GlobalFrameAllocator {
             kernel_end,
             multiboot_info_start,
             multiboot_info_end,
+            initramfs_start,
+            initramfs_end,
             areas,
             &mut BITMAP,
         );

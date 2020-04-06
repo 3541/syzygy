@@ -53,7 +53,7 @@ clean:
 
 $(kernel): $(asm_obj) $(ldscript) $(libkernel)
 	@echo [link] $(notdir $@)
-	$(quiet)ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $(kernel) $(asm_obj) $(libkernel)
+	$(quiet)ld $(ld_flags) -n --gc-sections -T $(ldscript) -o $@ $(asm_obj) $(libkernel)
 
 $(libkernel): $(rust_src) $(DEPS)
 	@echo [build] $(notdir $@)

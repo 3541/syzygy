@@ -14,6 +14,7 @@ mod log;
 mod memory;
 mod panic;
 mod sync;
+mod tree;
 mod vga_text;
 
 extern crate alloc;
@@ -91,6 +92,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     let mmap = multiboot_info
         .memory_map_tag()
         .expect("Memory map tag is malformed/missing.");
+    let initramfs_raw = multiboot_info
+        .module_tags()
+        .nth(0)
+        .expect("Missing initramfs");
+    assert_eq!(initramfs_raw.name(), "initramfs");
+    let initramfs_addr = PhysicalAddress::new(initramfs_raw.start_address() as usize);
+    let initramfs_end_addr = PhysicalAddress::new(initramfs_raw.end_address() as usize);
 
     info!("INITIALIZED memory map");
 
@@ -157,6 +165,11 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         multiboot_info.end_address() - *KERNEL_BASE
     );
 
+    debug!(
+        "Initramfs (PHYSICAL): {} - {}",
+        initramfs_addr, initramfs_end_addr
+    );
+
     interrupt::init();
     info!("INITIALIZED interrupts");
 
@@ -166,6 +179,8 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
             kernel_end_addr_phys,
             multiboot_info_addr_phys,
             PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE),
+            initramfs_addr,
+            initramfs_end_addr,
             mmap.memory_areas(),
         )
     };
@@ -174,7 +189,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     let mut table = unsafe { ActiveTopLevelTable::new() };
     info!("INITIALIZED PML4");
 
-    memory::paging::remap_kernel(&mut table, elf_sections.sections(), &multiboot_info);
+    memory::paging::remap_kernel(
+        &mut table,
+        elf_sections.sections(),
+        &multiboot_info,
+        initramfs_addr,
+        initramfs_end_addr,
+    );
     info!("REMAPPED the kernel address space");
 
     memory::init_heap(&mut table);

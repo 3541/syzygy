@@ -49,7 +49,12 @@ impl Mapper {
 
         //        let index = ret.table_index(level);
         let index = ret.pt_index();
-        assert!(bottom[index].is_unused());
+        assert!(
+            bottom[index].is_unused(),
+            "Bottom wasn't unused when trying to map {:x?} to {}",
+            frame,
+            address
+        );
         bottom[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
         ret

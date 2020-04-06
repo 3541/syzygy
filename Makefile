@@ -54,7 +54,17 @@ endif
 
 # Build targets
 iso := build/$(arch)-$(build_type).iso
+
 kernel := build/kernel-$(arch)-$(build_type).elf
+kernel_src := $(shell find kernel/src -type f)
+
+initramfs := build/initramfs-$(arch)-$(build_type).fs
+mkinitramfs := build/$(build_type)/mk
+mkinitramfs_src := $(shell find $(PWD)/initramfs/src -type f)
+initramfs_base := $(PWD)/initramfs/fs
+initramfs_files := $(shell find $(initramfs_base) -type f)
+
+kernel_src += $(mkinitramfs_src)
 
 
 # Sources
@@ -67,7 +77,7 @@ common_deps := $(shell find $(PWD)/targets/ -type f) $(PWD)/Cargo.lock $(PWD)/Xa
 export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet
 
 
-.PHONY: all clean run test $(kernel)
+.PHONY: all clean run test
 
 all: $(iso)
 	$(quiet)mkdir -p build
@@ -114,13 +124,22 @@ test: $(rust_src)
 	@echo [clean] $(temp)
 	$(quiet)rm -r $(temp)
 
-$(iso): $(kernel) $(grub_cfg)
+$(iso): $(kernel) $(grub_cfg) $(initramfs)
 	@echo [build] $(iso)
 	@mkdir -p build/isofiles/boot/grub
 	$(quiet)cp $(kernel) build/isofiles/boot/kernel.bin
 	$(quiet)cp $(grub_cfg) build/isofiles/boot/grub
+	$(quiet)cp $(initramfs) build/isofiles/boot/initramfs.fs
 	$(quiet)$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
 
-$(kernel):
+$(kernel): $(kernel_src)
 	@echo [submake] kernel
-	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps)" BUILD_ROOT="$(PWD)"
+	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps) $(mkinitramfs_src)" BUILD_ROOT="$(PWD)"
+
+$(initramfs): $(mkinitramfs) $(initramfs_files)
+	@echo [build] initramfs
+	$(quiet)$(mkinitramfs) $(initramfs_base) $@
+
+$(mkinitramfs): $(mkinitramfs_src)
+	@echo [build] mkinitramfs
+	$(quiet)RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="build" cargo build -p initramfs
