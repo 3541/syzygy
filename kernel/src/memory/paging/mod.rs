@@ -1,9 +1,11 @@
-use logc::{debug, trace};
-use multiboot2::ElfSectionIter;
-
 pub mod mapper;
 pub mod table;
 mod temp_page;
+
+use core::cmp::{max, min};
+
+use logc::{debug, trace};
+use multiboot2::ElfSectionIter;
 
 pub use table::{ActiveTopLevelTable, EntryFlags};
 
@@ -141,27 +143,18 @@ pub fn remap_kernel(
             EntryFlags::WRITABLE,
         );
 
-        debug!("Mapping Multiboot info structure");
-        let from = Frame::containing_address(PhysicalAddress::new(
-            multiboot_info.start_address() - *KERNEL_BASE,
+        debug!("Mapping Multiboot info structure and initramfs");
+        let from = Frame::containing_address(min(
+            PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE),
+            initramfs_start,
         ));
-        let to = Frame::containing_address(PhysicalAddress::new(
-            multiboot_info.end_address() - *KERNEL_BASE - 1,
+        let to = Frame::containing_address(max(
+            PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE - 1),
+            initramfs_end,
         ));
 
         for frame in Frame::range_inclusive(from, to) {
             m.map_kernel_space(frame, EntryFlags::PRESENT);
-        }
-
-        debug!("Mapping initramfs");
-        let initramfs_from = Frame::containing_address(initramfs_start);
-        let initramfs_to = Frame::containing_address(initramfs_end);
-        if from <= initramfs_from && initramfs_to <= to {
-            debug!("\t Already mapped");
-        } else {
-            for frame in Frame::range_inclusive(from, to) {
-                m.map_kernel_space(frame, EntryFlags::PRESENT);
-            }
         }
     });
 
