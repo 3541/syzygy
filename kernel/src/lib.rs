@@ -17,8 +17,12 @@ mod sync;
 mod tree;
 mod vga_text;
 
+use core::slice;
+
 extern crate alloc;
 use logc::{debug, info};
+
+use initramfs::Initramfs;
 
 use arch::port::Port;
 use arch::{interrupt, serial};
@@ -200,6 +204,22 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     memory::init_heap(&mut table);
     info!("INITIALIZED kernel heap.");
+
+    let initramfs = unsafe {
+        Initramfs::new(
+            slice::from_raw_parts(
+                (*initramfs_addr + *KERNEL_BASE) as *const u8,
+                initramfs_end_addr - initramfs_addr,
+            )
+            .into(),
+        )
+    };
+    info!("LOADED initramfs");
+
+    debug!("Initramfs contains:");
+    for (k, _) in initramfs.0 {
+        debug!("\t{}", k);
+    }
 
     arch::halt_loop()
 }
