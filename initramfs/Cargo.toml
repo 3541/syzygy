@@ -6,8 +6,7 @@ edition = "2018"
 
 
 [dependencies]
-syzygy = { version = "*", path = "../kernel", optional = true }
 hashbrown = { version = "*", features = ["nightly"] }
 
 [features]
-kernel = ["syzygy"]
+kernel = []

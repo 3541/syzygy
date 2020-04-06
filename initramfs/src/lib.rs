@@ -1,14 +1,18 @@
-#![cfg_attr(feature = "kernel", no_std)]
+#![no_std]
+
+extern crate alloc;
+
+use alloc::string::String;
 
 use core::mem::{size_of, transmute};
 
 use hashbrown::HashMap;
 
 #[repr(C)]
-pub struct File(Box<[u8]>);
+pub struct File<'a>(&'a [u8]);
 
 #[repr(C)]
-pub struct Initramfs(HashMap<String, Box<File>>);
+pub struct Initramfs<'a>(pub HashMap<String, &'a File<'a>>);
 
 #[repr(C)]
 pub struct Header {
@@ -31,8 +35,8 @@ fn end_index(haystack: &[u8]) -> usize {
     haystack.len() - 1
 }
 
-impl Initramfs {
-    pub unsafe fn new(data: Box<[u8]>) -> Self {
+impl Initramfs<'_> {
+    pub unsafe fn new(data: &'static [u8]) -> Self {
         let header: &Header = transmute(data.as_ptr());
         let mut data = &data[size_of::<Header>()..];
 
