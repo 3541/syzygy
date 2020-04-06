@@ -255,6 +255,7 @@ impl<T: TableType + NestedTableType> Table<T> {
                         .lock()
                         .alloc()
                         .expect("No frames available?");
+                    trace!("Got frame");
                     self.entries[index]
                         .set(f.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
                     let t = self.next_table_mut(index).unwrap();

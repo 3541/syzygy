@@ -1,9 +1,9 @@
-use logc::error;
-use multiboot2::MemoryAreaIter;
-use spin::{Mutex, MutexGuard};
-
 mod bitmap_frame_allocator;
 //mod watermark_frame_allocator;
+
+use logc::trace;
+use multiboot2::MemoryAreaIter;
+use spin::{Mutex, MutexGuard};
 
 use super::Frame;
 use crate::memory::PhysicalAddress;
@@ -50,10 +50,12 @@ impl GlobalFrameAllocator {
     }
 
     pub fn lock(&self) -> MutexGuard<BitmapFrameAllocator> {
+        trace!("Trying to get FRAME_ALLOCATOR lock");
         let ret = self.0.lock();
         if ret.is_uninitialized() {
             panic!("Attempted to lock frame allocator before initializing");
         }
+        trace!("Got FRAME_ALLOCATOR lock");
         ret
     }
 }

@@ -33,44 +33,44 @@ impl Mapper {
     pub fn map_to(&mut self, address: VirtualAddress, frame: Frame, flags: EntryFlags) -> Page {
         assert!(address.is_aligned(super::FRAME_SIZE));
 
-        trace!("Attempting to map {} -> {:x?}", address, frame);
+        trace!("Attempting to map {} -> {}", address, frame);
         let ret = Page { frame, address };
 
-        let top = self.get_mut();
         //        let level = ret.size().level_index();
-        let mut bottom = top.next_table_or_create(ret.pml4_index());
+        /*        let mut bottom = top.next_table_or_create(ret.pml4_index());
 
-        let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
+            let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
 
-        for i in 0..(TABLE_LEVELS - /* level - */ 1) {
-            assert!(!bottom[indices[i]].is_leaf());
-            bottom = unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i])) };
-        }
+            for i in 0..(TABLE_LEVELS - /* level - */ 1) {
+                assert!(!bottom[indices[i]].is_leaf());
+                bottom = unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i])) };
+        }*/
+        let table = self
+            .get_mut()
+            .next_table_or_create(ret.pml4_index())
+            .next_table_or_create(ret.pdp_index())
+            .next_table_or_create(ret.pd_index());
 
-        //        let index = ret.table_index(level);
         let index = ret.pt_index();
         assert!(
-            bottom[index].is_unused(),
+            table[index].is_unused(),
             "Bottom wasn't unused when trying to map {:x?} to {}",
             frame,
             address
         );
-        bottom[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
+        table[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
         ret
     }
 
     pub fn map(&mut self, addr: VirtualAddress, flags: EntryFlags) -> Page {
-        self.map_to(
-            addr,
-            FRAME_ALLOCATOR.lock().alloc().expect("Out of frames"),
-            flags,
-        )
+        let frame = FRAME_ALLOCATOR.lock().alloc().expect("Out of frames");
+        self.map_to(addr, frame, flags)
     }
 
     // This is an evil function
     pub fn map_kernel_space(&mut self, frame: Frame, flags: EntryFlags) -> Page {
-        trace!("Going to map in kernel address space: {:#x?}", frame);
+        trace!("Going to map in kernel address space: {}", frame);
         self.map_to(
             VirtualAddress::new(*(frame.address() + *KERNEL_BASE)),
             frame,
