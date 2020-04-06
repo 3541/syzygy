@@ -5,7 +5,7 @@ TARGETS ?= $(BUILD_ROOT)/targets
 DEPS ?=
 
 arch ?= x86_64
-target ?= $(arch)-syzygy
+target ?= $(arch)-elf
 debug ?=
 build_type ?= debug
 

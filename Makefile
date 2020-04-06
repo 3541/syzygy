@@ -5,7 +5,7 @@ else
 endif
 
 arch ?= x86_64
-target ?= $(arch)-syzygy
+target ?= $(arch)-elf
 debug ?=
 build_type ?= debug
 
@@ -71,7 +71,10 @@ kernel_src += $(mkinitramfs_src)
 grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
 
 
-common_deps := $(shell find $(PWD)/targets/ -type f) $(PWD)/Cargo.lock $(PWD)/Xargo.toml
+common_deps :=  $(PWD)/Cargo.lock $(PWD)/Xargo.toml
+
+targets := $(shell find $(PWD)/targets/ -type f)
+common_deps += $(targets)
 
 # For the submake
 export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet
@@ -142,4 +145,4 @@ $(initramfs): $(mkinitramfs) $(initramfs_files)
 
 $(mkinitramfs): $(mkinitramfs_src)
 	@echo [build] mkinitramfs
-	$(quiet)RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="build" cargo build -p initramfs
+	$(quiet)RUST_TARGET_PATH="$(targets)" RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="build" cargo build -p initramfs
