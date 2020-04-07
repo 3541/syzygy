@@ -44,14 +44,15 @@ fn main() {
     for file in files {
         let name = file.file_name().unwrap().to_string_lossy();
         assert!(name.as_bytes().len() <= 64);
+        let contents = fs::read(&file).unwrap();
         let mut file_header = FileHeader {
             name: [b'\0'; 64],
             content_offset,
+            len: contents.len(),
         };
         file_header.name[0..name.as_bytes().len()].clone_from_slice(name.as_bytes());
         buf.append(&mut to_byte_vec(file_header));
 
-        let contents = fs::read(file).unwrap();
         content_offset += contents.len();
         file_contents.push(contents);
 

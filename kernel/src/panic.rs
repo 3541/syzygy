@@ -1,6 +1,7 @@
 use logc::error;
 
-use crate::memory::RawPhysicalAddress;
+use crate::memory::{Address, RawVirtualAddress, VirtualAddress};
+use crate::sym::SYMBOLS;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
@@ -24,9 +25,14 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
+    let syms = SYMBOLS.get();
     error!("-----");
-    while stack_frame.rbp as RawPhysicalAddress != 0 {
-        error!("{:x?}", stack_frame);
+    while stack_frame.rbp as RawVirtualAddress != 0 {
+        //        error!("{:x?}", stack_frame);
+        error!(
+            "{}",
+            syms.find(VirtualAddress::new(stack_frame.rip as RawVirtualAddress))
+        );
         stack_frame = &*stack_frame.rbp;
     }
     error!("-----");

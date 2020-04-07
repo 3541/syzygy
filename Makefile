@@ -57,12 +57,14 @@ iso := build/$(arch)-$(build_type).iso
 
 kernel := build/kernel-$(arch)-$(build_type).elf
 kernel_src := $(shell find kernel/src -type f)
+kernel_symbols := build/kernel-$(arch)-$(build_type).sym
 
 initramfs := build/initramfs-$(arch)-$(build_type).fs
 mkinitramfs := build/$(build_type)/mk
 mkinitramfs_src := $(shell find $(PWD)/initramfs/src -type f)
 initramfs_base := $(PWD)/initramfs/fs
 initramfs_files := $(shell find $(initramfs_base) -type f)
+initramfs_files += $(kernel_symbols)
 
 kernel_src += $(mkinitramfs_src)
 
@@ -139,9 +141,15 @@ $(kernel): $(kernel_src)
 	@echo [submake] kernel
 	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps) $(mkinitramfs_src)" BUILD_ROOT="$(PWD)"
 
+$(kernel_symbols): $(kernel)
+	@echo [build] kernel symbols
+	$(quiet)nm -C $(kernel) | sort -r > $@
+
 $(initramfs): $(mkinitramfs) $(initramfs_files)
 	@echo [build] initramfs
-	$(quiet)$(mkinitramfs) $(initramfs_base) $@
+	@cp -r $(initramfs_base) build/
+	@cp $(kernel_symbols) build/fs/kernel.sym
+	$(quiet)$(mkinitramfs) build/fs $@
 
 $(mkinitramfs): $(mkinitramfs_src)
 	@echo [build] mkinitramfs

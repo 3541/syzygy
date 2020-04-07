@@ -5,14 +5,20 @@ extern crate alloc;
 use alloc::string::String;
 
 use core::mem::{size_of, transmute};
+use core::ops::Deref;
 
 use hashbrown::HashMap;
 
 #[repr(C)]
 pub struct File<'a>(&'a [u8]);
 
-#[repr(C)]
-pub struct Initramfs<'a>(pub HashMap<String, &'a File<'a>>);
+impl<'a> Deref for File<'a> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
 
 #[repr(C)]
 pub struct Header {
@@ -24,6 +30,7 @@ pub struct FileHeader {
     pub name: [u8; 64],
     // NOTE that this offset is from the END of this struct
     pub content_offset: usize,
+    pub len: usize,
 }
 
 fn end_index(haystack: &[u8]) -> usize {
@@ -34,6 +41,9 @@ fn end_index(haystack: &[u8]) -> usize {
     }
     haystack.len() - 1
 }
+
+#[repr(C)]
+pub struct Initramfs<'a>(pub HashMap<String, File<'a>>);
 
 impl Initramfs<'_> {
     pub unsafe fn new(data: &'static [u8]) -> Self {
@@ -50,7 +60,9 @@ impl Initramfs<'_> {
                 String::from_utf8_unchecked(
                     (&file_header.name[0..end_index(&file_header.name)]).to_vec(),
                 ),
-                transmute(&data[file_header.content_offset..].as_ptr()),
+                File(
+                    &data[file_header.content_offset..file_header.content_offset + file_header.len],
+                ),
             );
         }
 

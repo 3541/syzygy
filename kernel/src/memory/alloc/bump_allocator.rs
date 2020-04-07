@@ -42,7 +42,7 @@ unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
         } else {
             this.next = end;
             this.count += 1;
-            debug!("Allocated {} to {} (0x{:x})", ret, end, end - ret);
+            trace!("Allocated {} to {} (0x{:x})", ret, end, end - ret);
             *ret as *mut u8
         }
     }

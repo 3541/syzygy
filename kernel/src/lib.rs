@@ -13,6 +13,7 @@ mod constants;
 mod log;
 mod memory;
 mod panic;
+mod sym;
 mod sync;
 mod tree;
 mod vga_text;
@@ -29,6 +30,7 @@ use arch::{interrupt, serial};
 use constants::KERNEL_BASE;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::{Address, PhysicalAddress, VirtualAddress};
+use sym::SYMBOLS;
 
 #[cfg(feature = "integration-tests")]
 #[no_mangle]
@@ -217,9 +219,22 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("LOADED initramfs");
 
     debug!("Initramfs contains:");
-    for (k, _) in initramfs.0 {
+    for (k, _) in &initramfs.0 {
         debug!("\t{}", k);
     }
+
+    SYMBOLS.init(unsafe {
+        core::mem::transmute::<&'_ [u8], &'static [u8]>(
+            initramfs
+                .0
+                .get("kernel.sym")
+                .expect("Failed to get kernel symbols"),
+        )
+    });
+
+    debug!("INITIALIZED kernel symbols");
+
+    panic!("test backtrace");
 
     arch::halt_loop()
 }
