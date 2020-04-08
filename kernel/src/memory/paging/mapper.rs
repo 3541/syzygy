@@ -88,7 +88,7 @@ impl Mapper {
 
         table[page.pt_index()].set_unused();
         FRAME_ALLOCATOR.lock().free(page.frame);
-        unsafe { asm!("invlpg ($0)" : : "r"(*page.address()) : "memory") };
+        unsafe { page.flush() };
     }
 
     pub fn translate_page(&self, addr: VirtualAddress) -> Option<Page> {

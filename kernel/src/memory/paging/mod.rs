@@ -68,6 +68,11 @@ impl Page {
     pub fn address(&self) -> VirtualAddress {
         self.address
     }
+
+    #[inline]
+    unsafe fn flush(&self) {
+        asm!("invlpg ($0)" :: "r"(*self.address()) : "memory");
+    }
 }
 
 fn flush_tlb() {
