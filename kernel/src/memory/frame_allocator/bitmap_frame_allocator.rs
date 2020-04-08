@@ -55,21 +55,30 @@ impl BitmapFrameAllocator {
         .next_aligned_addr(FRAME_SIZE);
         self.bitmap.write(bitmap);
 
+        let mut last_area_end = PhysicalAddress::new(0);
+
         for area in areas.filter(|a| a.size() as usize >= FRAME_SIZE) {
             let start_address =
                 PhysicalAddress::new(area.start_address() as usize).next_aligned_addr(FRAME_SIZE);
+            let mut range_start = start_address;
             let end_address =
                 PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(FRAME_SIZE);
-            for frame_start in (*start_address..=*end_address)
+            if last_area_end < start_address {
+                range_start = last_area_end;
+            }
+
+            for frame_start in (*range_start..=*end_address)
                 .step_by(FRAME_SIZE)
                 .map(|a| PhysicalAddress::new(a))
-                .filter(frame_in_reserved_area)
+                .filter(|a| frame_in_reserved_area(a) || (range_start <= *a && *a < start_address))
             {
                 if self.field(frame_start) >= self.bitmap().len() {
                     error!("Index too large at frame {}", frame_start);
                 }
                 self.set_used(frame_start);
             }
+
+            last_area_end = end_address;
         }
     }
 
