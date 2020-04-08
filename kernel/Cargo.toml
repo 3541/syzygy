@@ -18,6 +18,7 @@ logc = { package = "log", version = "*", features = [] }
 ansi_rgb = "*"
 rgb = "*"
 initramfs = { version = "*", path = "../initramfs" }
+rustc-demangle = "*"
 
 [dev-dependencies]
 array-init = "*"

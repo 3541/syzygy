@@ -1,4 +1,7 @@
+use alloc::string::{String, ToString};
+
 use logc::error;
+use rustc_demangle::demangle;
 
 use crate::memory::{Address, RawVirtualAddress, VirtualAddress};
 use crate::sym::SYMBOLS;
@@ -28,11 +31,11 @@ pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
     let syms = SYMBOLS.get();
     error!("-----");
     while stack_frame.rbp as RawVirtualAddress != 0 {
-        //        error!("{:x?}", stack_frame);
-        error!(
-            "{}",
-            syms.find(VirtualAddress::new(stack_frame.rip as RawVirtualAddress))
-        );
+        if let Some(s) = syms.find(VirtualAddress::new(stack_frame.rip as RawVirtualAddress)) {
+            error!("{:#}", demangle(s));
+        } else {
+            error!("{:?} (No symbol found. Probably unloaded.)", stack_frame);
+        }
         stack_frame = &*stack_frame.rbp;
     }
     error!("-----");
