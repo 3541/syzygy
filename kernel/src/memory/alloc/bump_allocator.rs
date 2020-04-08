@@ -1,7 +1,7 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::ptr;
 
-use logc::{debug, trace};
+use logc::{error, trace};
 
 use crate::memory::{Address, VirtualAddress};
 use crate::sync::SpinLocked;
@@ -29,7 +29,7 @@ unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut this = self.lock();
 
-        trace!("{:#x?} allocating {:x?}", *this, layout);
+        trace!("{:x?} allocating {:x?}", *this, layout);
 
         let ret = this.next.next_aligned_addr(layout.align());
         let end = match ret.checked_add(layout.size()) {
@@ -38,6 +38,7 @@ unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
         };
 
         if end > this.heap_end {
+            error!("Out of kernel heap!");
             ptr::null_mut()
         } else {
             this.next = end;
@@ -49,6 +50,8 @@ unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
         let mut this = self.lock();
+
+        trace!("{:x?} deallocating", *this);
 
         this.count -= 1;
         if this.count == 0 {
