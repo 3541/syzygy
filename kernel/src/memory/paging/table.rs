@@ -1,3 +1,4 @@
+use core::fmt;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 
@@ -185,9 +186,10 @@ impl Entry {
 
     pub fn set(&mut self, address: PhysicalAddress, flags: EntryFlags) {
         trace!("ENTERED set");
-        trace!("Address: {:x?}", address,);
+        trace!("Address: {:x?}, Entry: {:x?}", address, self);
         assert_eq!(*address & !Self::ADDRESS_MASK, 0);
         self.0 = *address | flags.bits();
+        trace!("Self is now {:x?}", self);
     }
 
     pub fn set_unused(&mut self) {
@@ -206,6 +208,12 @@ impl Entry {
 pub struct Table<T: TableType> {
     entries: [Entry; super::ENTRIES],
     t: PhantomData<T>,
+}
+
+impl<T: TableType> fmt::Debug for Table<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Table @ {:?}", self as *const _)
+    }
 }
 
 impl<T: TableType> Table<T> {
@@ -288,9 +296,13 @@ pub trait NestedTableType {
 }
 
 #[cfg(target_arch = "x86_64")]
+#[derive(Debug)]
 pub enum PML4 {}
+#[derive(Debug)]
 pub enum PDP {}
+#[derive(Debug)]
 pub enum PD {}
+#[derive(Debug)]
 pub enum PT {}
 
 #[cfg(target_arch = "x86_64")]
