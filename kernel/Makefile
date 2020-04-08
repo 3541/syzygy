@@ -1,5 +1,5 @@
 # THIS IS A SUBMAKE FILE. IT SHOULD BE INVOKED FROM ELSEWHERE
-BUILD_ROOT ?= $(PWD)/..
+BUILD_ROOT ?= $(CURDIR)/..
 OUT ?= $(BUILD_ROOT)/build
 TARGETS ?= $(BUILD_ROOT)/targets
 DEPS ?=
@@ -48,7 +48,7 @@ all: $(kernel)
 	@mkdir -p build
 
 clean:
-	@echo [clean] $(PWD)
+	@echo [clean] $(CURDIR)
 	$(quiet)cargo clean
 
 $(kernel): $(asm_obj) $(ldscript) $(libkernel)
