@@ -68,6 +68,7 @@ initramfs_files += $(kernel_symbols)
 
 kernel_src += $(mkinitramfs_src)
 
+gdb := tools/bin/gdb
 
 # Sources
 grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
@@ -82,7 +83,7 @@ common_deps += $(targets)
 export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet
 
 
-.PHONY: all clean run test
+.PHONY: all clean run test tools
 
 all: $(iso)
 	$(quiet)mkdir -p build
@@ -143,7 +144,7 @@ $(kernel): $(kernel_src)
 
 $(kernel_symbols): $(kernel)
 	@echo [build] kernel symbols
-	$(quiet)nm -C $(kernel) | sort -r > $@
+	$(quiet)nm $(kernel) | sort -r > $@
 
 $(initramfs): $(mkinitramfs) $(initramfs_files)
 	@echo [build] initramfs
@@ -154,3 +155,10 @@ $(initramfs): $(mkinitramfs) $(initramfs_files)
 $(mkinitramfs): $(mkinitramfs_src)
 	@echo [build] mkinitramfs
 	$(quiet)RUST_TARGET_PATH="$(targets)" RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="build" cargo build -p initramfs
+
+tools: $(gdb)
+	@echo [build] tools
+
+$(gdb):
+	@echo [submake] gdb
+	$(quiet) make -C tools/gdb
