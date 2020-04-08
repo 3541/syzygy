@@ -60,6 +60,17 @@ impl Mapper {
         );
         table[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
 
+        if flags.contains(EntryFlags::WRITABLE) {
+            let new_mem = unsafe { &mut *(*ret.address() as *mut u8) };
+            let mut old = *new_mem;
+            core::mem::swap(new_mem, &mut 8);
+            core::mem::swap(new_mem, &mut old);
+            assert_eq!(
+                old, 8,
+                "Can't write to just-mapped writable page. Something is up.\ntable: {:x?}, index: {}", table, index
+            );
+        }
+
         ret
     }
 
