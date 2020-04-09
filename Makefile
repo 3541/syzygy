@@ -4,6 +4,8 @@ else
 	quiet ?= @
 endif
 
+BUILD_ROOT := $(CURDIR)
+
 arch ?= x86_64
 target ?= $(arch)-elf
 debug ?=
@@ -51,24 +53,10 @@ ifeq ($(debug), true)
 	qemu_flags += -S
 endif
 
-
-# Build targets
-iso := build/$(arch)-$(build_type).iso
-
-kernel := build/kernel-$(arch)-$(build_type).elf
-kernel_src := $(shell find kernel/src -type f)
-kernel_symbols := build/kernel-$(arch)-$(build_type).sym
-
-initramfs := build/initramfs-$(arch)-$(build_type).fs
-mkinitramfs := build/$(build_type)/mk
-mkinitramfs_src := $(shell find $(PWD)/initramfs/src -type f)
-initramfs_base := $(PWD)/initramfs/fs
-initramfs_files := $(shell find $(initramfs_base) -type f)
-initramfs_files += $(kernel_symbols)
-
-kernel_src += $(mkinitramfs_src)
-
 gdb := tools/bin/gdb
+
+
+include $(BUILD_ROOT)/make/targets.mk
 
 # Sources
 grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
@@ -80,7 +68,7 @@ targets := $(shell find $(PWD)/targets/ -type f)
 common_deps += $(targets)
 
 # For the submake
-export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet
+export arch target build_type arch_common nasm_flags ld_flags xargo_flags rustc_flags quiet BUILD_ROOT
 
 
 .PHONY: all clean run test tools
@@ -138,9 +126,9 @@ $(iso): $(kernel) $(grub_cfg) $(initramfs)
 	$(quiet)cp $(initramfs) build/isofiles/boot/initramfs.fs
 	$(quiet)$(grub_mkrescue) -o $(iso) build/isofiles 2> /dev/null
 
-$(kernel): $(kernel_src)
+$(kernel): $(kernel_src) $(mkinitramfs_src)
 	@echo [submake] kernel
-	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps) $(mkinitramfs_src)" BUILD_ROOT="$(PWD)"
+	$(quiet)$(MAKE) -C kernel/ DEPS="$(common_deps) $(mkinitramfs_src)"
 
 $(kernel_symbols): $(kernel)
 	@echo [build] kernel symbols
