@@ -22,3 +22,10 @@ libkernel_asm_src := $(wildcard $(BUILD_ROOT)/kernel/src/arch/$(arch)/*.asm)
 libkernel_asm_obj := $(patsubst $(BUILD_ROOT)/kernel/src/arch/$(arch)/%.asm, $(OUT)/arch/$(arch)/%.o, $(libkernel_asm_src))
 libkernel_rust_src := $(shell find $(BUILD_ROOT)/kernel/src/ -type f -name '*.rs')
 libkernel_ldscript := $(BUILD_ROOT)/kernel/src/arch/$(arch)/linker.ld
+
+# user/
+userland_test := $(BUILD_ROOT)/build/userland_test-$(target)
+initramfs_files += $(userland_test)
+userland_test_src := $(BUILD_ROOT)/user/test/test.asm
+userland_test_obj := $(OUT)/user/test/test.o
+userland_all := $(userland_test)

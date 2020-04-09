@@ -138,11 +138,16 @@ $(initramfs): $(mkinitramfs) $(initramfs_files)
 	@echo [build] initramfs
 	@cp -r $(initramfs_base) build/
 	@cp $(kernel_symbols) build/fs/kernel.sym
+	@cp $(userland_test) build/fs/userland_test
 	$(quiet)$(mkinitramfs) build/fs $@
 
 $(mkinitramfs): $(mkinitramfs_src)
 	@echo [build] mkinitramfs
 	$(quiet)RUST_TARGET_PATH="$(targets)" RUSTFLAGS="$(rustc_flags)" CARGO_TARGET_DIR="build" cargo build -p initramfs
+
+$(userland_test): $(userland_test_src)
+	@echo [submake] userland_test
+	$(quiet)$(MAKE) -C user/ $(userland_test)
 
 tools: $(gdb)
 	@echo [build] tools
