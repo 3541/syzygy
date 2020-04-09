@@ -10,5 +10,5 @@ $(userland_test): $(userland_test_obj)
 
 $(OUT)/user/test/%.o: $(BUILD_ROOT)/user/test/%.asm
 	@echo [build] $(notdir $@)
-	@echo mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(quiet)nasm $(nasm_flags) $< -o $@

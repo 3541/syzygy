@@ -1,4 +1,11 @@
-# This is for submake files.
+# Common definitions
+
+ifdef verbose
+	quiet ?=
+else
+	quiet ?= @
+endif
+
 BUILD_ROOT ?= $(CURDIR)/..
 OUT ?= $(BUILD_ROOT)/build
 TARGETS ?= $(BUILD_ROOT)/targets
@@ -15,7 +22,7 @@ nasm_flags ?=
 ld_flags ?=
 qemu_flags ?=
 xargo_flags ?=
-rustc_flags ?=
+rustc_flags ?= -Zsymbol-mangling-version=v0 -Cforce-frame-pointers=yes
 
 ifeq ($(arch), x86_64)
 	arch_common := x86_common
@@ -24,6 +31,13 @@ else ifeq ($(arch), i686)
 	arch_common := x86_common
 	ld_flags += -melf_i386
 	nasm_flags += -felf
+endif
+
+ifeq ($(build_type), release)
+	xargo_flags += --release
+	debug = false
+else
+	nasm_flags += -wno-number-overflow
 endif
 
 include $(BUILD_ROOT)/make/targets.mk

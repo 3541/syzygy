@@ -1,15 +1,6 @@
-ifdef verbose
-	quiet ?=
-else
-	quiet ?= @
-endif
-
 BUILD_ROOT := $(CURDIR)
 
-arch ?= x86_64
-target ?= $(arch)-elf
-debug ?=
-build_type ?= debug
+include ./make/common.mk
 
 qemu := qemu-system-$(arch)
 qemu_memory ?= 4G
@@ -22,31 +13,11 @@ else
 	$(error Cannot find grub-mkrescue)
 endif
 
-arch_common := $(arch)
-nasm_flags ?=
-ld_flags ?=
-qemu_flags ?=
-xargo_flags ?=
-rustc_flags ?=
 
-rustc_flags += -Zsymbol-mangling-version=v0 -Cforce-frame-pointers=yes
-
-ifeq ($(arch), x86_64)
-	arch_common := x86_common
-	nasm_flags += -felf64
-else ifeq ($(arch), i686)
-	arch_common := x86_common
-	ld_flags += -melf_i386
-	nasm_flags += -felf
+ifeq ($(arch), i686)
 	qemu := qemu-system-i386
 endif
 
-ifeq ($(build_type), release)
-	xargo_flags += --release
-	debug = false
-else
-	nasm_flags += -wno-number-overflow
-endif
 
 
 ifeq ($(debug), true)
@@ -54,9 +25,6 @@ ifeq ($(debug), true)
 endif
 
 gdb := tools/bin/gdb
-
-
-include $(BUILD_ROOT)/make/targets.mk
 
 # Sources
 grub_cfg := kernel/src/arch/$(arch_common)/grub.cfg
