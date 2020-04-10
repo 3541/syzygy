@@ -1,4 +1,5 @@
         global _start
         section .text
 _start:
-        mov rax, 2323
+        ud2
+        jmp _start

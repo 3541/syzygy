@@ -7,6 +7,7 @@
 #![feature(alloc_error_handler)]
 #![feature(ptr_internals)]
 #![feature(maybe_uninit_extra)]
+#![feature(naked_functions)]
 
 mod arch;
 mod constants;
@@ -234,7 +235,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     debug!("INITIALIZED kernel symbols");
 
-    panic!("test backtrace");
-
+    info!("Entering halt loop");
     arch::halt_loop()
 }

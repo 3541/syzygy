@@ -77,9 +77,9 @@ enable_paging:
 	or eax, 1 << 5
 	mov cr4, eax
 
-	; Enable long mode
 	mov ecx, 0xC0000080
 	rdmsr
+	; Enable long mode
 	or eax, 1 << 8
 	wrmsr
 
@@ -116,29 +116,43 @@ init64:
 	invlpg [0]
 
 	mov rax, 0x2F4B2F4F2F342F36
-    mov rcx, 0xFFFFC000000B8000
-    mov qword [rcx], rax
+        mov rcx, 0xFFFFC000000B8000
+        mov qword [rcx], rax
 
 	jmp start64
 
 start64:
-    ; Enable NX
-    mov rcx, 0xC0000080
-    rdmsr
-    or rax, 1 << 11
-    wrmsr
+        mov rcx, 0xC0000080
+        rdmsr
+        ;; Enable NX
+        or rax, 1 << 11
+        ;; Enable syscall/sysret
+        or rax, 1    
+        wrmsr
 
-    ; Enable WP
-    mov rax, cr0
-    or rax, 1 << 16
-    mov cr0, rax
+        mov rcx, 0xC0000081
+        rdmsr
+        ;; This insanity is because sysret always sets the CS selector to
+        ;; STAR.SYSRET_CS + 16 and SS to + 8.
+        or rax, gdt64.data << 48
+        ;; Set RPL to 3
+        or rax, 3 << 48
+        ;; For syscall
+        or rax, gdt64.code << 32
+        wrmsr
+        
 
-    ; pass stack_bottom
-    mov rsi, stack_bottom
+        ;; Enable WP
+        mov rax, cr0
+        or rax, 1 << 16
+        mov cr0, rax
+
+        ;; pass stack_bottom
+        mov rsi, stack_bottom
 
 
-    ; make rbp null so that there is an endpoint for stack walking
-    mov rbp, 0
+        ;; make rbp null so that there is an endpoint for stack walking
+        mov rbp, 0
 
 	extern kmain
 	call kmain
@@ -164,11 +178,12 @@ gdt64:
 .data: equ $ - gdt64
         ;; writable
 	dq (1 << 41) | (1 << 44) | (1 << 47)
+.userdata:
+        dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
 .usercode:
         ;;                         user        mode
         dq (1 << 43) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47) | (1 << 53)
-.userdata:
-        dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
+
 .end:
 .pointer:
 	dw gdt64.end - gdt64 -1

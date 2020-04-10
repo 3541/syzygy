@@ -87,7 +87,7 @@ test: $(rust_src)
 	$(quiet)rm -r $(temp)
 
 $(iso): $(kernel) $(grub_cfg) $(initramfs)
-	@echo [build] $(iso)
+	@echo [build] $(notdir $@)
 	@mkdir -p build/isofiles/boot/grub
 	$(quiet)cp $(kernel) build/isofiles/boot/kernel.bin
 	$(quiet)cp $(grub_cfg) build/isofiles/boot/grub
