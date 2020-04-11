@@ -51,7 +51,7 @@ clean:
 	$(quiet)$(MAKE) -C kernel/ clean
 
 run: $(iso)
-	@echo [run] $(iso)
+	@echo [run] $(notdir $(iso))
 	$(quiet)$(qemu) -cdrom $(iso) -s -serial mon:stdio -m $(qemu_memory) -device isa-debug-exit,iobase=0xF4,iosize=0x04 $(qemu_flags)
 
 test: temp := $(shell mktemp -d)
