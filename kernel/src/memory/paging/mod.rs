@@ -172,5 +172,5 @@ pub fn remap_kernel(
         address: (KERNEL_BASE + *old.address()).into(),
     };
     top.unmap(guard);
-    trace!("Guard page at {}", KERNEL_BASE + *old.address());
+    debug!("Guard page at {}", KERNEL_BASE + *old.address());
 }

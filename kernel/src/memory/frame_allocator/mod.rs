@@ -1,6 +1,8 @@
 mod bitmap_frame_allocator;
 //mod watermark_frame_allocator;
 
+use alloc::vec::Vec;
+
 use logc::trace;
 use multiboot2::MemoryAreaIter;
 use spin::{Mutex, MutexGuard};

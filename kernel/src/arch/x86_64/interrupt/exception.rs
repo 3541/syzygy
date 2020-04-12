@@ -64,6 +64,7 @@ mod error_code {
 generic_handler_halt!(divide_by_zero);
 generic_handler_halt!(double_fault);
 generic_handler_halt!(invalid_opcode);
+errc_handler_halt!(general_protection_fault);
 
 generic_handler_ret!(breakpoint);
 

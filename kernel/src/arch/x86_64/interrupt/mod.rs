@@ -32,6 +32,7 @@ pub enum InterruptIndex {
     Breakpoint = 3,
     InvalidOpcode = 6,
     DoubleFault = 8,
+    GeneralProtectionFault = 13,
     PageFault = 14,
     Timer = PIC1_OFFSET,
     Keyboard,
@@ -61,6 +62,10 @@ lazy_static! {
         idt.set_handler(InterruptIndex::Breakpoint, exception::breakpoint);
         idt.set_handler(InterruptIndex::InvalidOpcode, exception::invalid_opcode);
         idt.set_handler(InterruptIndex::DoubleFault, exception::double_fault);
+        idt.set_handler_errc(
+            InterruptIndex::GeneralProtectionFault,
+            exception::general_protection_fault,
+        );
         idt.set_handler_errc(InterruptIndex::PageFault, exception::page_fault);
 
         idt.set_handler(InterruptIndex::Timer, timer);
@@ -82,15 +87,25 @@ static DISABLE_COUNT: AtomicUsize = AtomicUsize::new(1);
 #[inline]
 pub fn enable() {
     if DISABLE_COUNT.fetch_sub(1, Ordering::SeqCst) == 1 {
-        unsafe { asm!("sti" :::: "volatile") }
+        enable_always()
     }
 }
 
 #[inline]
 pub fn disable() {
     if DISABLE_COUNT.fetch_add(1, Ordering::SeqCst) == 0 {
-        unsafe { asm!("cli" :::: "volatile") }
+        disable_always()
     }
+}
+
+#[inline(always)]
+pub fn enable_always() {
+    unsafe { asm!("sti" :::: "volatile") }
+}
+
+#[inline(always)]
+pub fn disable_always() {
+    unsafe { asm!("cli" :::: "volatile") }
 }
 
 pub fn init() {

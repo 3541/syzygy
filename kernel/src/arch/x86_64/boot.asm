@@ -122,23 +122,24 @@ init64:
 	jmp start64
 
 start64:
-        mov rcx, 0xC0000080
+        ;; rdmsr/wrmsr act on ecx and edx:eax
+        mov ecx, 0xC0000080
         rdmsr
         ;; Enable NX
-        or rax, 1 << 11
+        or eax, 1 << 11
         ;; Enable syscall/sysret
-        or rax, 1    
+        or eax, 1    
         wrmsr
 
-        mov rcx, 0xC0000081
+        mov ecx, 0xC0000081
         rdmsr
         ;; This insanity is because sysret always sets the CS selector to
         ;; STAR.SYSRET_CS + 16 and SS to + 8.
-        or rax, gdt64.data << 48
+        or edx, gdt64.data << 16
         ;; Set RPL to 3
-        or rax, 3 << 48
+        or edx, 3 << 16
         ;; For syscall
-        or rax, gdt64.code << 32
+        or edx, gdt64.code
         wrmsr
         
 
@@ -178,9 +179,9 @@ gdt64:
 .data: equ $ - gdt64
         ;; writable
 	dq (1 << 41) | (1 << 44) | (1 << 47)
-.userdata:
+.userdata: equ $ - gdt64
         dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
-.usercode:
+.usercode: equ $ - gdt64
         ;;                         user        mode
         dq (1 << 43) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47) | (1 << 53)
 

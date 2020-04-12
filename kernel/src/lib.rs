@@ -22,7 +22,7 @@ mod vga_text;
 use core::slice;
 
 extern crate alloc;
-use logc::{debug, info};
+use logc::{debug, info, warn};
 
 use initramfs::Initramfs;
 
@@ -234,6 +234,15 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     });
 
     debug!("INITIALIZED kernel symbols");
+
+    /*    info!("SYSRET_CS: 0x{:x}", arch::register::star_read() >> 48);
+    let ip = VirtualAddress::new(userland_test as *const fn() -> () as usize);
+    let sp = VirtualAddress::new(arch::register::rsp_read() as usize);
+    info!(
+        "Going to try to call into ring 3 with ip {} and sp {}",
+        ip, sp
+    );
+    unsafe { arch::process::enter_ring3(ip, sp) };*/
 
     info!("Entering halt loop");
     arch::halt_loop()
