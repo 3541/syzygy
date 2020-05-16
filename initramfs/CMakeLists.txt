@@ -1,0 +1,14 @@
+include(ExternalProject)
+
+set(MKINITRAMFS "${CMAKE_BINARY_DIR}/initramfs/debug/mk")
+set(MKINITRAMFS "${MKINITRAMFS}" PARENT_SCOPE)
+
+ExternalProject_Add(
+  mkinitramfs
+  SOURCE_DIR "${CMAKE_SOURCE_DIR}/initramfs"
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ${CMAKE_COMMAND} -E env "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}" cargo build -p initramfs
+  BUILD_ALWAYS ON
+  INSTALL_COMMAND ""
+  USES_TERMINAL_BUILD ON
+)

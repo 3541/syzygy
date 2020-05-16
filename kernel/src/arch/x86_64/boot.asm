@@ -1,5 +1,3 @@
-%include "src/arch/x86_common/header.asm"
-
 %define KERNEL_BASE 0xFFFFC00000000000
 %define KERNEL_PML4_INDEX 384
 %define KERNEL_PDP_INDEX 0
@@ -30,6 +28,54 @@ _start:
 	mov es, ax
 
 	jmp gdt64.code:preinit64
+
+check_multiboot:
+	cmp eax, 0x36D76289
+	jne .no
+	ret
+.no:
+	mov al, '0'
+	jmp err
+
+check_cpuid:
+	pushfd
+	pushfd
+
+	xor dword [esp], 1 << 21
+	popfd
+
+	pushfd
+	pop eax
+
+	mov dword ecx, [esp]
+
+	popfd
+
+	cmp eax, ecx
+	je .no
+	ret
+.no:
+	mov al, '1'
+	jmp err
+
+check_pae:
+	mov eax, 1
+	cpuid
+
+	test edx, 1 << 6
+	jz .no
+	ret
+.no:
+	mov al, '2'
+	jmp err
+
+err:
+	mov dword [0xb8000], 0x4F524F45
+	mov dword [0xb8004], 0x4F3A4F52
+	mov dword [0xb8008], 0x4F204F20
+	mov byte [0xb800a], al
+	hlt
+
 
 check_long_mode:
 
@@ -89,8 +135,6 @@ enable_paging:
 	mov cr0, eax
 
 	ret
-
-%include "src/arch/x86_common/util.asm"
 
 bits 64
 preinit64:
@@ -191,3 +235,8 @@ gdt64:
 .pointer_low:
 	dw gdt64.end - gdt64 -1
 	dq gdt64 - KERNEL_BASE
+section .bss
+align 0x1000
+stack_bottom:
+	resb 16384
+stack_top:
