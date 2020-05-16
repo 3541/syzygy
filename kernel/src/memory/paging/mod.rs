@@ -71,15 +71,15 @@ impl Page {
 
     #[inline]
     unsafe fn flush(&self) {
-        asm!("invlpg ($0)" :: "r"(*self.address()) : "memory");
+        llvm_asm!("invlpg ($0)" :: "r"(*self.address()) : "memory");
     }
 }
 
 fn flush_tlb() {
     unsafe {
         let mut cr3: usize;
-        asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile");
-        asm!("mov %rax, %cr3" :: "{rax}"(cr3) :: "volatile");
+        llvm_asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile");
+        llvm_asm!("mov %rax, %cr3" :: "{rax}"(cr3) :: "volatile");
     }
 }
 

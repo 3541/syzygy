@@ -100,12 +100,12 @@ pub fn disable() {
 
 #[inline(always)]
 pub fn enable_always() {
-    unsafe { asm!("sti" :::: "volatile") }
+    unsafe { llvm_asm!("sti" :::: "volatile") }
 }
 
 #[inline(always)]
 pub fn disable_always() {
-    unsafe { asm!("cli" :::: "volatile") }
+    unsafe { llvm_asm!("cli" :::: "volatile") }
 }
 
 pub fn init() {

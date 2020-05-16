@@ -1,7 +1,7 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(test, allow(dead_code))]
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![feature(const_fn)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]

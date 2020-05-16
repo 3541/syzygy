@@ -6,7 +6,7 @@ pub unsafe fn enter_ring3(instruction_pointer: VirtualAddress, stack_pointer: Vi
     interrupt::disable_always();
     // TODO: Set up kernel and user gs for switching
     // TODO: Once we can actually do IPL interrupts, this should be 0x202
-    asm!("mov r11, 0x2 
+    llvm_asm!("mov r11, 0x2 
           sysretq"
          ::
          "{rcx}"(instruction_pointer)

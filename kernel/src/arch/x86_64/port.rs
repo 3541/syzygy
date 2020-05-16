@@ -35,13 +35,13 @@ impl PortAccess for u8 {
     #[inline]
     unsafe fn port_read(address: u16) -> u8 {
         let ret: u8;
-        asm!("inb %dx, %al" : "={al}"(ret) : "{dx}"(address) :: "volatile");
+        llvm_asm!("inb %dx, %al" : "={al}"(ret) : "{dx}"(address) :: "volatile");
         ret
     }
 
     #[inline]
     unsafe fn port_write(address: u16, value: u8) {
-        asm!("outb %al, %dx" :: "{dx}"(address), "{al}"(value) :: "volatile");
+        llvm_asm!("outb %al, %dx" :: "{dx}"(address), "{al}"(value) :: "volatile");
     }
 }
 
@@ -49,13 +49,13 @@ impl PortAccess for u16 {
     #[inline]
     unsafe fn port_read(address: u16) -> u16 {
         let ret: u16;
-        asm!("inw %dx, %ax" : "={ax}"(ret) : "{dx}"(address) :: "volatile");
+        llvm_asm!("inw %dx, %ax" : "={ax}"(ret) : "{dx}"(address) :: "volatile");
         ret
     }
 
     #[inline]
     unsafe fn port_write(address: u16, value: u16) {
-        asm!("outw %ax, %dx" :: "{dx}"(address), "{ax}"(value) :: "volatile");
+        llvm_asm!("outw %ax, %dx" :: "{dx}"(address), "{ax}"(value) :: "volatile");
     }
 }
 
@@ -63,12 +63,12 @@ impl PortAccess for u32 {
     #[inline]
     unsafe fn port_read(address: u16) -> u32 {
         let ret: u32;
-        asm!("inl %dx, %eax" : "={eax}"(ret) : "{dx}"(address) :: "volatile");
+        llvm_asm!("inl %dx, %eax" : "={eax}"(ret) : "{dx}"(address) :: "volatile");
         ret
     }
 
     #[inline]
     unsafe fn port_write(address: u16, value: u32) {
-        asm!("outl %eax, %dx" :: "{dx}"(address), "{eax}"(value) :: "volatile");
+        llvm_asm!("outl %eax, %dx" :: "{dx}"(address), "{eax}"(value) :: "volatile");
     }
 }

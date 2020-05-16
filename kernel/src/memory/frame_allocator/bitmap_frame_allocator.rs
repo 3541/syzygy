@@ -125,7 +125,7 @@ impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator> {
         fn first_unset_bit(field: usize) -> usize {
             let ret: usize;
             unsafe {
-                asm!("tzcnt $1, $0" : "=r"(ret) : "r"(!field));
+                llvm_asm!("tzcnt $1, $0" : "=r"(ret) : "r"(!field));
             }
             ret
         }

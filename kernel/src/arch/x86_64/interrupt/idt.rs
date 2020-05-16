@@ -30,7 +30,7 @@ impl IDT {
         };
 
         unsafe {
-            asm!("lidt ($0)" :: "r"(&p) : "memory");
+            llvm_asm!("lidt ($0)" :: "r"(&p) : "memory");
         }
     }
 }
@@ -38,7 +38,7 @@ impl IDT {
 fn current_cs() -> u16 {
     let mut ret: u16;
     unsafe {
-        asm!("mov %cs, $0" : "=r"(ret));
+        llvm_asm!("mov %cs, $0" : "=r"(ret));
     }
     ret
 }

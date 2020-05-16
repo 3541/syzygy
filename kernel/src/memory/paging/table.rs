@@ -67,7 +67,7 @@ impl ActiveTopLevelTable {
         then: impl FnOnce(&mut Mapper),
     ) {
         let prev_pml4_address: usize;
-        unsafe { asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
+        unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
         let prev_pml4_address = PhysicalAddress::new(prev_pml4_address);
 
         temp.page.frame = Frame(prev_pml4_address);
@@ -94,12 +94,12 @@ impl ActiveTopLevelTable {
 
     pub fn switch(&mut self, new: InactiveTopLevelTable) -> InactiveTopLevelTable {
         let mut cr3: usize;
-        unsafe { asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
+        unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
         let old = InactiveTopLevelTable(Frame(PhysicalAddress::new(cr3)));
         trace!("Read {} from cr3", old.frame().address());
 
         trace!("Writing 0x{:x} to cr3", *new.frame().address());
-        unsafe { asm!("mov %rax, %cr3" :: "{rax}"(*new.frame().address()) :: "volatile") };
+        unsafe { llvm_asm!("mov %rax, %cr3" :: "{rax}"(*new.frame().address()) :: "volatile") };
 
         old
     }

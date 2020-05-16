@@ -23,7 +23,7 @@ pub fn io_wait() {
 
 #[inline]
 pub fn halt() {
-    unsafe { asm!("hlt" :::: "volatile") }
+    unsafe { llvm_asm!("hlt" :::: "volatile") }
 }
 
 pub fn halt_loop() -> ! {

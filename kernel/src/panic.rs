@@ -20,7 +20,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
     let rbp: *const StackFrame;
     unsafe {
-        asm!("movq %rbp, %rax" : "=r"(rbp));
+        llvm_asm!("movq %rbp, %rax" : "=r"(rbp));
         print_backtrace(&*rbp);
     }
 

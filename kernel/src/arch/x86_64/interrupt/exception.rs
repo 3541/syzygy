@@ -70,7 +70,7 @@ generic_handler_ret!(breakpoint);
 
 pub extern "x86-interrupt" fn page_fault(stack: &mut InterruptStackFrame, err: usize) {
     let mut cr2: usize;
-    unsafe { asm!("mov %cr2, $0" : "=r"(cr2)) };
+    unsafe { llvm_asm!("mov %cr2, $0" : "=r"(cr2)) };
     crate::println!(
         "EXCEPTION: page_fault accessing 0x{:x}\n\
          {:?}\n\

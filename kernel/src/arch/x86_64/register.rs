@@ -1,6 +1,6 @@
 pub fn rsp_read() -> u64 {
     let ret;
-    unsafe { asm!("mov $0, rsp" : "=r"(ret) ::: "intel") };
+    unsafe { llvm_asm!("mov $0, rsp" : "=r"(ret) ::: "intel") };
     ret
 }
 
@@ -8,7 +8,7 @@ pub fn msr_read(addr: u32) -> u64 {
     let ret_low: u32;
     let ret_high: u32;
     unsafe {
-        asm!("rdmsr"
+        llvm_asm!("rdmsr"
              :
              "={edx}"(ret_high)
              "={eax}"(ret_low)
