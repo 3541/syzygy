@@ -89,6 +89,7 @@ add_custom_command(
 
 add_custom_target(
   copy_initramfs_files
+  COMMAND ${CMAKE_COMMAND} -E make_directory "${ISO_FILES}/boot"
   DEPENDS "${INITRAMFS_FILES}/kernel.sym"
 )
 
