@@ -7,12 +7,10 @@ mod alloc;
 pub mod frame_allocator;
 mod heap;
 pub mod paging;
-pub mod region;
 //mod watermark_frame_allocator;
 
 pub use frame_allocator::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
 pub use heap::init_heap;
-pub use region::MemoryRegion;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 const FRAME_SIZE: usize = 4096;
