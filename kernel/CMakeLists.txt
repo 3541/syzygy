@@ -21,13 +21,9 @@ ExternalProject_Add(
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ${CMAKE_COMMAND} -E env "RUST_TARGET_PATH=${CMAKE_SOURCE_DIR}/targets" "RUSTFLAGS=${RUSTC_FLAGS}" "CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR}" xargo build --target "${TARGET}-elf" "${XARGO_FLAGS}" -p syzygy
   BUILD_ALWAYS ON
+  BUILD_BYPRODUCTS "${KERNEL_RS_LIB}"
   INSTALL_COMMAND ""
   USES_TERMINAL_BUILD ON
-)
-
-add_custom_command(
-  OUTPUT "${KERNEL_RS_LIB}"
-  DEPENDS kernel_rs
 )
 
 add_executable(kernel ${KERNEL_ASM_SOURCES})
