@@ -22,7 +22,7 @@ mod vga_text;
 use core::slice;
 
 extern crate alloc;
-use logc::{debug, info, warn};
+use logc::{debug, info};
 
 use initramfs::Initramfs;
 

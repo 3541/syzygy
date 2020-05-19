@@ -1,5 +1,3 @@
-use alloc::string::{String, ToString};
-
 use logc::error;
 use rustc_demangle::demangle;
 

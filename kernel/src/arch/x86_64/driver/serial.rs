@@ -140,7 +140,7 @@ impl SerialPort {
         unsafe { self.data.write(byte) }
     }
 
-    pub fn recv_byte(&mut self) -> Option<u8> {
+    /*    pub fn recv_byte(&mut self) -> Option<u8> {
         if self
             .line_status()
             .contains(LineStatusRegisterFlags::DATA_READY)
@@ -149,7 +149,7 @@ impl SerialPort {
         } else {
             None
         }
-    }
+    }*/
 }
 
 impl fmt::Write for SerialPort {

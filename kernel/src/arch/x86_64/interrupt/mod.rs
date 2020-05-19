@@ -3,7 +3,6 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use lazy_static::lazy_static;
 
 use crate::memory::VirtualAddress;
-use crate::print;
 
 mod exception;
 mod idt;

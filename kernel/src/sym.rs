@@ -35,38 +35,6 @@ impl<'a> Symbols<'a> {
     }
 
     fn init(&mut self, sym_data: &'a [u8]) {
-        let mut count = 0;
-        /*self.0 = str::from_utf8(sym_data)
-            .expect("Kernel symbols contained invalid UTF-8")
-            .lines()
-            .map(|l| {
-                let mut s = l.split(' ');
-
-                let addr_string = s.next().unwrap();
-                //                debug!("trying to parse {}", addr_string);
-
-                let addr = VirtualAddress::new(
-                    usize::from_str_radix(addr_string, 16)
-                        .expect("Unable to parse address as number"),
-                );
-
-                if *addr == 0xffffffffffffffff {
-                    logc::error!("it happened here");
-                }
-
-                count += 1;
-                if count == 329 || count == 330 {
-                    logc::warn!("asfasdf");
-                }
-
-                s.next().unwrap();
-
-                let sym = s.next().unwrap();
-
-                (addr, sym)
-            })
-        .collect();*/
-
         self.0 = Vec::with_capacity(2500);
         for line in unsafe { str::from_utf8_unchecked(sym_data) }.lines() {
             let mut fields = line.split(' ');
@@ -83,16 +51,12 @@ impl<'a> Symbols<'a> {
 
             self.0.push((addr, sym));
             if self.0[self.0.len() - 1] != (addr, sym) {
-                let (f_addr, f_sym) = self.0[self.0.len() - 1];
                 error!(
                     "Symbol just pushed is not as it should be. At {}",
                     self.0.len() - 1
                 );
             }
         }
-
-        /*        logc::debug!("329: {:?}", self.0[329]);
-        logc::debug!("330: {:?}", self.0[330]);*/
     }
 
     #[allow(dead_code)]
