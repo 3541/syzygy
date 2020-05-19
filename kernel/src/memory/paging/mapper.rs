@@ -34,7 +34,7 @@ impl Mapper {
         assert!(address.is_aligned(super::FRAME_SIZE));
 
         trace!("Attempting to map {} -> {}", address, frame);
-        let ret = Page { frame, address };
+        let ret = Page(address);
 
         //        let level = ret.size().level_index();
         /*        let mut bottom = top.next_table_or_create(ret.pml4_index());
@@ -58,7 +58,7 @@ impl Mapper {
             frame,
             address
         );
-        table[index].set(ret.frame.address(), flags | EntryFlags::PRESENT);
+        table[index].set(frame.address(), flags | EntryFlags::PRESENT);
 
         if flags.contains(EntryFlags::WRITABLE) {
             let new_mem = unsafe { &mut *(*ret.address() as *mut u8) };
@@ -98,18 +98,13 @@ impl Mapper {
         }
 
         table[page.pt_index()].set_unused();
-        FRAME_ALLOCATOR.lock().free(page.frame);
         unsafe { page.flush() };
     }
 
-    pub fn translate_page(&self, addr: VirtualAddress) -> Option<Page> {
+    pub fn virtual_address_to_frame(&self, addr: VirtualAddress) -> Option<Frame> {
         #[cfg(target_arch = "x86_64")]
-        fn resolve_page(tl: &Mapper, addr: VirtualAddress) -> Option<Page> {
-            let tmp = Page {
-                // Garbage
-                frame: Frame(PhysicalAddress::new(0)),
-                address: addr,
-            };
+        fn resolve_page(tl: &Mapper, addr: VirtualAddress) -> Option<Frame> {
+            let tmp = Page(addr);
             let pdp = if let Some(t) = tl.get().next_table(tmp.pml4_index()) {
                 t
             } else {
@@ -123,10 +118,7 @@ impl Mapper {
                 } else {
                     return None;
                 };
-                return Some(Page {
-                    frame: Frame(address),
-                    address: addr,
-                });
+                return Some(Frame(address));
             }
 
             let pd = pd.unwrap();
@@ -137,10 +129,7 @@ impl Mapper {
                 } else {
                     return None;
                 };
-                return Some(Page {
-                    frame: Frame(address),
-                    address: addr,
-                });
+                return Some(Frame(address));
             }
 
             let address = if let Some(a) = pt.unwrap()[tmp.pt_index()].address() {
@@ -148,10 +137,7 @@ impl Mapper {
             } else {
                 return None;
             };
-            Some(Page {
-                frame: Frame(address),
-                address: addr,
-            })
+            Some(Frame(address))
         }
 
         #[cfg(target_arch = "x86")]
@@ -194,7 +180,7 @@ impl Mapper {
     }
 
     pub fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        self.translate_page(addr)
-            .and_then(|page| Some(page.frame.address() + (*addr & super::PAGE_ADDR_OFFSET_MASK)))
+        self.virtual_address_to_frame(addr)
+            .and_then(|frame| Some(frame.address() + (*addr & super::PAGE_ADDR_OFFSET_MASK)))
     }
 }

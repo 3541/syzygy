@@ -34,10 +34,7 @@ const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
 const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Page {
-    frame: Frame,
-    address: VirtualAddress,
-}
+pub struct Page(VirtualAddress);
 
 impl Page {
     #[cfg(target_arch = "x86_64")]
@@ -62,11 +59,11 @@ impl Page {
         // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
         // sort of broken for larger pages, because the total offset is still the same
         // if we want some specific table. e.g., PML4 index is always at the same place.
-        (*self.address >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
+        (*self.0 >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
     }
 
     pub fn address(&self) -> VirtualAddress {
-        self.address
+        self.0
     }
 
     #[inline]
@@ -95,16 +92,13 @@ pub fn remap_kernel(
         .lock()
         .alloc()
         .expect("Need free frame to remap kernel.");
-    let temp = TempPage::new(Page {
-        address: VirtualAddress::new(0xe000e000),
-        frame,
-    });
+    let temp = TempPage::new(Page(VirtualAddress::new(0xe000e000)), frame);
     let mut new_table = InactiveTopLevelTable::new(top, temp);
 
-    let mut temp = TempPage::new(Page {
-        address: VirtualAddress::new(0xe000e000),
-        frame: FRAME_ALLOCATOR.lock().alloc().unwrap(),
-    });
+    let mut temp = TempPage::new(
+        Page(VirtualAddress::new(0xe000e000)),
+        FRAME_ALLOCATOR.lock().alloc().unwrap(),
+    );
 
     top.with(&mut new_table, &mut temp, |m| {
         debug!("Mapping kernel sections");
@@ -167,10 +161,8 @@ pub fn remap_kernel(
     let old = top.switch(new_table);
     debug!("Switched to new table.");
 
-    let guard = Page {
-        frame: old.frame(),
-        address: (KERNEL_BASE + *old.address()).into(),
-    };
+    FRAME_ALLOCATOR.lock().free(old.frame());
+    let guard = Page((KERNEL_BASE + *old.address()).into());
     top.unmap(guard);
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
 }

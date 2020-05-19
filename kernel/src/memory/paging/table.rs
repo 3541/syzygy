@@ -70,7 +70,7 @@ impl ActiveTopLevelTable {
         unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
         let prev_pml4_address = PhysicalAddress::new(prev_pml4_address);
 
-        temp.page.frame = Frame(prev_pml4_address);
+        temp.frame = Frame(prev_pml4_address);
         let prev_pml4 = temp.map_and_pun_frame(self);
 
         trace!("NEW TABLE IS AT 0x{:x?}", table.frame().address());
@@ -109,7 +109,7 @@ pub struct InactiveTopLevelTable(Frame);
 
 impl InactiveTopLevelTable {
     pub fn new(active: &mut ActiveTopLevelTable, mut temp: TempPage) -> InactiveTopLevelTable {
-        let frame = temp.page.frame.clone();
+        let frame = temp.frame.clone();
         let table = temp.map_and_pun_frame(active);
         table.zero();
         table[511].set(frame.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);

@@ -5,16 +5,19 @@ use crate::memory::Frame;
 
 pub struct TempPage {
     pub page: Page,
+    pub frame: Frame,
     //    allocator: TempAllocator,
 }
 
 impl TempPage {
     pub fn map(&mut self, active: &mut ActiveTopLevelTable) {
-        assert!(active.translate_page(self.page.address()).is_none());
-        active.map_to(self.page.address(), self.page.frame, EntryFlags::WRITABLE);
+        assert!(active
+            .virtual_address_to_frame(self.page.address())
+            .is_none());
+        active.map_to(self.page.address(), self.frame, EntryFlags::WRITABLE);
     }
 
-    pub fn unmap(mut self, active: &mut Mapper) {
+    pub fn unmap(self, active: &mut Mapper) {
         active.unmap(self.page);
     }
 
@@ -23,11 +26,8 @@ impl TempPage {
         unsafe { &mut *(*self.page.address() as *mut Table<PML4>) }
     }
 
-    pub fn new(page: Page) -> TempPage {
-        TempPage {
-            page,
-            //            allocator: TempAllocator::new(allocator),
-        }
+    pub fn new(page: Page, frame: Frame) -> TempPage {
+        TempPage { page, frame }
     }
 }
 
