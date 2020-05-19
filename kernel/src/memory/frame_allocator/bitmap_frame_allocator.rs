@@ -106,7 +106,7 @@ impl BitmapFrameAllocator {
         let field = self.field(address);
         let mask = Self::mask(address);
 
-        trace!("Setting {} used at {} with 0x{:x}", address, field, mask);
+        //        trace!("Setting {} used at {} with 0x{:x}", address, field, mask);
 
         if self.bitmap()[field] & mask != 0 {
             panic!("Tried to set an already used address {} as used.", address);
