@@ -1,4 +1,3 @@
-use core::convert::Into;
 use core::fmt;
 use core::marker::Sized;
 use core::ops::{Add, AddAssign, Deref, Sub};
@@ -81,12 +80,6 @@ impl PhysicalAddress {
 impl Address for PhysicalAddress {
     unsafe fn new_unchecked(addr: RawPhysicalAddress) -> Self {
         Self::new_const(addr)
-    }
-}
-
-impl Into<VirtualAddress> for PhysicalAddress {
-    fn into(self) -> VirtualAddress {
-        VirtualAddress::new(*self)
     }
 }
 
