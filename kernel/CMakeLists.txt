@@ -25,6 +25,10 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   USES_TERMINAL_BUILD ON
 )
+add_custom_command(
+  OUTPUT "${KERNEL_RS_LIB}"
+  DEPENDS kernel_rs
+)
 
 add_executable(kernel ${KERNEL_ASM_SOURCES})
 add_dependencies(kernel kernel_rs kernel_ld_script)

@@ -61,13 +61,8 @@ add_custom_target(
 add_custom_command(
   OUTPUT "${ISO}"
   COMMAND ${GRUB_MKRESCUE} -o "${ISO}" "${ISO_FILES}"
-  DEPENDS copy_iso_files
-  USES_TERMINAL
-)
-
-add_custom_target(
-  copy_iso_files
   DEPENDS "${ISO_FILES}/boot/kernel.bin" "${ISO_FILES}/boot/grub/grub.cfg" "${INITRAMFS}"
+  USES_TERMINAL
 )
 
 add_custom_command(
