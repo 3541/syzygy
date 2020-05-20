@@ -5,14 +5,6 @@ use crate::arch::io_wait;
 use crate::arch::port::Port;
 use crate::debug;
 
-const PIC1_COMMAND_ADDRESS: u16 = 0x20;
-const PIC1_DATA_ADDRESS: u16 = PIC1_COMMAND_ADDRESS + 1;
-pub const PIC1_OFFSET: u8 = 32;
-
-const PIC2_COMMAND_ADDRESS: u16 = 0xA0;
-const PIC2_DATA_ADDRESS: u16 = PIC2_COMMAND_ADDRESS + 1;
-pub const PIC2_OFFSET: u8 = PIC1_OFFSET + 8;
-
 #[repr(u8)]
 enum Command {
     Init = 0x11,
@@ -41,6 +33,14 @@ impl Pic {
 pub struct PicChain(Pic, Pic);
 
 impl PicChain {
+    const PIC1_COMMAND_ADDRESS: u16 = 0x20;
+    const PIC1_DATA_ADDRESS: u16 = Self::PIC1_COMMAND_ADDRESS + 1;
+    pub const PIC1_OFFSET: u8 = 32;
+
+    const PIC2_COMMAND_ADDRESS: u16 = 0xA0;
+    const PIC2_DATA_ADDRESS: u16 = Self::PIC2_COMMAND_ADDRESS + 1;
+    pub const PIC2_OFFSET: u8 = Self::PIC1_OFFSET + 8;
+
     pub unsafe fn init(&mut self) {
         let mask0 = self.0.data.read();
         let mask1 = self.1.data.read();
@@ -84,13 +84,13 @@ impl PicChain {
 
 pub static PICS: Mutex<PicChain> = Mutex::new(PicChain(
     Pic {
-        offset: PIC1_OFFSET,
-        command: Port::new(PIC1_COMMAND_ADDRESS),
-        data: Port::new(PIC1_DATA_ADDRESS),
+        offset: PicChain::PIC1_OFFSET,
+        command: Port::new(PicChain::PIC1_COMMAND_ADDRESS),
+        data: Port::new(PicChain::PIC1_DATA_ADDRESS),
     },
     Pic {
-        offset: PIC2_OFFSET,
-        command: Port::new(PIC2_COMMAND_ADDRESS),
-        data: Port::new(PIC2_DATA_ADDRESS),
+        offset: PicChain::PIC2_OFFSET,
+        command: Port::new(PicChain::PIC2_COMMAND_ADDRESS),
+        data: Port::new(PicChain::PIC2_DATA_ADDRESS),
     },
 ));

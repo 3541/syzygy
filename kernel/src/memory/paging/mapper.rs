@@ -31,7 +31,7 @@ impl Mapper {
     }
 
     pub fn map_to(&mut self, address: VirtualAddress, frame: Frame, flags: EntryFlags) -> Page {
-        assert!(address.is_aligned(super::FRAME_SIZE));
+        assert!(address.is_aligned(Frame::SIZE));
 
         trace!("Attempting to map {} -> {}", address, frame);
         let ret = Page(address);

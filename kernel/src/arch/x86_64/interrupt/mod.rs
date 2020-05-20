@@ -8,7 +8,7 @@ mod exception;
 mod idt;
 mod pic;
 
-use pic::{PIC1_OFFSET, PICS};
+use pic::{PicChain, PICS};
 
 type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 
@@ -33,7 +33,7 @@ pub enum InterruptIndex {
     DoubleFault = 8,
     GeneralProtectionFault = 13,
     PageFault = 14,
-    Timer = PIC1_OFFSET,
+    Timer = PicChain::PIC1_OFFSET,
     Keyboard,
 }
 

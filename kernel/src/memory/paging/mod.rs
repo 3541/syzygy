@@ -11,16 +11,10 @@ pub use table::{ActiveTopLevelTable, EntryFlags};
 
 use crate::constants::KERNEL_BASE;
 use crate::memory::{
-    Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_ALLOCATOR, FRAME_SIZE,
+    Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_ALLOCATOR,
 };
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
-
-#[cfg(target_arch = "x86")]
-const ENTRIES: usize = 1024;
-
-#[cfg(target_arch = "x86_64")]
-const ENTRIES: usize = 512;
 
 #[cfg(target_arch = "x86_64")]
 const PAGE_ADDR_INDEX_SHIFT: usize = 9;
@@ -37,6 +31,8 @@ const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
 pub struct Page(VirtualAddress);
 
 impl Page {
+    const SIZE: usize = Frame::SIZE;
+
     #[cfg(target_arch = "x86_64")]
     pub fn pml4_index(&self) -> usize {
         self.table_index(3)
@@ -109,7 +105,7 @@ pub fn remap_kernel(
                 continue;
             }
             assert!(
-                section.start_address() as usize % FRAME_SIZE == 0,
+                section.start_address() as usize % Frame::SIZE == 0,
                 "Kernel sections must be 4K aligned."
             );
 
@@ -125,7 +121,7 @@ pub fn remap_kernel(
             ));
             let to = Frame(PhysicalAddress::new(
                 (section.end_address() as usize - 1)
-                    - (section.end_address() as usize - 1) % FRAME_SIZE
+                    - (section.end_address() as usize - 1) % Frame::SIZE
                     - *KERNEL_BASE,
             ));
 

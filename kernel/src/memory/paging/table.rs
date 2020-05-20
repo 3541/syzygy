@@ -206,7 +206,7 @@ impl Entry {
 }
 
 pub struct Table<T: TableType> {
-    entries: [Entry; super::ENTRIES],
+    entries: [Entry; Table::<PML4>::ENTRIES],
     t: PhantomData<T>,
 }
 
@@ -217,6 +217,12 @@ impl<T: TableType> fmt::Debug for Table<T> {
 }
 
 impl<T: TableType> Table<T> {
+    #[cfg(target_arch = "x86")]
+    const ENTRIES: usize = 1024;
+
+    #[cfg(target_arch = "x86_64")]
+    const ENTRIES: usize = 512;
+
     pub fn zero(&mut self) {
         for e in self.entries.iter_mut() {
             e.set_unused()

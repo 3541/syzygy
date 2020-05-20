@@ -5,7 +5,7 @@ use multiboot2::MemoryAreaIter;
 use spin::MutexGuard;
 
 use super::FrameAllocator;
-use crate::memory::{Address, Frame, PhysicalAddress, FRAME_SIZE};
+use crate::memory::{Address, Frame, PhysicalAddress};
 
 pub struct BitmapFrameAllocator {
     bitmap: MaybeUninit<&'static mut [usize]>,
@@ -17,7 +17,7 @@ impl BitmapFrameAllocator {
     pub const unsafe fn empty() -> Self {
         Self {
             bitmap: MaybeUninit::uninit(),
-            base: PhysicalAddress::new_const(crate::memory::SIGN_EX_INVALID_BASE + 0x1000),
+            base: PhysicalAddress::new_const(PhysicalAddress::SIGN_EX_INVALID_BASE + 0x1000),
         }
     }
 
@@ -34,41 +34,41 @@ impl BitmapFrameAllocator {
     ) {
         let frame_in_reserved_area = |a: &PhysicalAddress| {
             (kernel_start <= *a && *a <= kernel_end)
-                || (kernel_start <= *a + FRAME_SIZE && *a + FRAME_SIZE <= kernel_end)
-                || (*a <= kernel_start && kernel_end <= *a + FRAME_SIZE)
+                || (kernel_start <= *a + Frame::SIZE && *a + Frame::SIZE <= kernel_end)
+                || (*a <= kernel_start && kernel_end <= *a + Frame::SIZE)
                 || (multiboot_info_start <= *a && *a <= multiboot_info_end)
-                || (multiboot_info_start <= *a + FRAME_SIZE
-                    && *a + FRAME_SIZE <= multiboot_info_end)
-                || (*a <= multiboot_info_start && multiboot_info_end <= *a + FRAME_SIZE)
+                || (multiboot_info_start <= *a + Frame::SIZE
+                    && *a + Frame::SIZE <= multiboot_info_end)
+                || (*a <= multiboot_info_start && multiboot_info_end <= *a + Frame::SIZE)
                 || (initramfs_start <= *a && *a <= initramfs_end)
-                || (initramfs_start <= *a + FRAME_SIZE && *a + FRAME_SIZE <= initramfs_end)
-                || (*a <= initramfs_start && initramfs_end <= *a + FRAME_SIZE)
+                || (initramfs_start <= *a + Frame::SIZE && *a + Frame::SIZE <= initramfs_end)
+                || (*a <= initramfs_start && initramfs_end <= *a + Frame::SIZE)
         };
         self.base = PhysicalAddress::new(
             areas
                 .clone()
-                .filter(|a| a.size() as usize >= FRAME_SIZE)
+                .filter(|a| a.size() as usize >= Frame::SIZE)
                 .min_by_key(|a| a.start_address())
                 .expect("No available areas to initialize")
                 .start_address() as usize,
         )
-        .next_aligned_addr(FRAME_SIZE);
+        .next_aligned_addr(Frame::SIZE);
         self.bitmap.write(bitmap);
 
         let mut last_area_end = PhysicalAddress::new(0);
 
-        for area in areas.filter(|a| a.size() as usize >= FRAME_SIZE) {
+        for area in areas.filter(|a| a.size() as usize >= Frame::SIZE) {
             let start_address =
-                PhysicalAddress::new(area.start_address() as usize).next_aligned_addr(FRAME_SIZE);
+                PhysicalAddress::new(area.start_address() as usize).next_aligned_addr(Frame::SIZE);
             let mut range_start = start_address;
             let end_address =
-                PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(FRAME_SIZE);
+                PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(Frame::SIZE);
             if last_area_end < start_address {
                 range_start = last_area_end;
             }
 
             for frame_start in (*range_start..=*end_address)
-                .step_by(FRAME_SIZE)
+                .step_by(Frame::SIZE)
                 .map(|a| PhysicalAddress::new(a))
                 .filter(|a| frame_in_reserved_area(a) || (range_start <= *a && *a < start_address))
             {
@@ -91,15 +91,17 @@ impl BitmapFrameAllocator {
     }
 
     fn field(&self, address: PhysicalAddress) -> usize {
-        (address - self.base) / FRAME_SIZE / core::mem::size_of::<usize>() / 8
+        (address - self.base) / Frame::SIZE / core::mem::size_of::<usize>() / 8
     }
 
     fn mask(address: PhysicalAddress) -> usize {
-        1 << (*address / FRAME_SIZE % (core::mem::size_of::<usize>() * 8))
+        1 << (*address / Frame::SIZE % (core::mem::size_of::<usize>() * 8))
     }
 
     fn address(&self, index: usize, bit_index: usize) -> PhysicalAddress {
-        self.base + index * 8 * core::mem::size_of::<usize>() * FRAME_SIZE + bit_index * FRAME_SIZE
+        self.base
+            + index * 8 * core::mem::size_of::<usize>() * Frame::SIZE
+            + bit_index * Frame::SIZE
     }
 
     unsafe fn set_used(&mut self, address: PhysicalAddress) {

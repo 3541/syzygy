@@ -9,7 +9,7 @@ use crate::constants::KERNEL_BASE;
 use crate::interrupt::without_interrupts;
 use crate::memory::PhysicalAddress;
 
-pub const VGA_BUFFER_ADDRESS: PhysicalAddress = unsafe { PhysicalAddress::new_const(0xB8000) };
+pub const VGA_BUFFER_ADDRESS: PhysicalAddress = Buffer::ADDRESS;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -72,11 +72,14 @@ struct VgaChar {
     color: ColorCode,
 }
 
-const BUFFER_HEIGHT: usize = 25;
-const BUFFER_WIDTH: usize = 80;
-
 struct Buffer {
-    characters: [[Volatile<VgaChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    characters: [[Volatile<VgaChar>; Buffer::WIDTH]; Buffer::HEIGHT],
+}
+
+impl Buffer {
+    const ADDRESS: PhysicalAddress = unsafe { PhysicalAddress::new_const(0xB8000) };
+    const HEIGHT: usize = 25;
+    const WIDTH: usize = 80;
 }
 
 lazy_static! {
@@ -86,7 +89,7 @@ lazy_static! {
         color: ColorCode::new(Color::Black, Color::White),
         #[cfg(feature = "integration-tests")]
         color: ColorCode::new(Color::Green, Color::Black),
-        buffer: unsafe { &mut *(*(VGA_BUFFER_ADDRESS + *KERNEL_BASE) as *mut Buffer) },
+        buffer: unsafe { &mut *(*(Buffer::ADDRESS + *KERNEL_BASE) as *mut Buffer) },
     });
 }
 
@@ -110,13 +113,13 @@ impl Writer {
     }
 
     fn new_line(&mut self) {
-        for row in 1..BUFFER_HEIGHT {
-            for column in 0..BUFFER_WIDTH {
+        for row in 1..Buffer::HEIGHT {
+            for column in 0..Buffer::WIDTH {
                 let character = self.buffer.characters[row][column].read();
                 self.buffer.characters[row - 1][column].write(character);
             }
         }
-        self.clear_row(BUFFER_HEIGHT - 1);
+        self.clear_row(Buffer::HEIGHT - 1);
         self.column = 0;
     }
 
@@ -126,13 +129,13 @@ impl Writer {
             color: self.color,
         };
 
-        for column in 0..BUFFER_WIDTH {
+        for column in 0..Buffer::WIDTH {
             self.buffer.characters[row][column].write(space);
         }
     }
 
     pub fn clear_screen(&mut self) {
-        for row in 0..BUFFER_HEIGHT {
+        for row in 0..Buffer::HEIGHT {
             self.clear_row(row)
         }
     }
@@ -141,13 +144,13 @@ impl Writer {
         match byte {
             b'\n' => self.new_line(),
             byte => {
-                if self.column >= BUFFER_WIDTH {
+                if self.column >= Buffer::WIDTH {
                     self.new_line();
                 }
 
                 let c = self.column;
                 let cl = self.color;
-                self.buffer.characters[BUFFER_HEIGHT - 1][c].write(VgaChar {
+                self.buffer.characters[Buffer::HEIGHT - 1][c].write(VgaChar {
                     character: byte,
                     color: cl,
                 });
@@ -219,7 +222,7 @@ mod test {
             for (j, c) in row.iter().enumerate() {
                 let c = c.read();
                 assert_eq!(c.color, writer.color);
-                if i == BUFFER_HEIGHT - 1 {
+                if i == Buffer::HEIGHT - 1 {
                     if j == 0 {
                         assert_eq!(c.character, b'S');
                     } else if j == 1 {

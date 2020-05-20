@@ -12,16 +12,13 @@ pub use frame_allocator::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR}
 pub use heap::init_heap;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
-const FRAME_SIZE: usize = 4096;
-const PAGE_SIZE: usize = FRAME_SIZE;
-
-pub const SIGN_EX_INVALID_BASE: usize = 0x0000_8000_0000_0000;
-pub const SIGN_EX_INVALID_TOP: usize = 0xFFFF_8000_0000_0000;
-
 pub type RawPhysicalAddress = usize;
 pub type RawVirtualAddress = usize;
 
 pub trait Address: Deref<Target = usize> + Sized + Eq {
+    const SIGN_EX_INVALID_BASE: usize = 0x0000_8000_0000_0000;
+    const SIGN_EX_INVALID_TOP: usize = 0xFFFF_8000_0000_0000;
+
     fn new(addr: usize) -> Self {
         let ret = unsafe { Self::new_unchecked(addr) };
         assert!(
@@ -60,7 +57,7 @@ pub trait Address: Deref<Target = usize> + Sized + Eq {
 
     #[inline]
     fn is_valid(&self) -> bool {
-        **self < SIGN_EX_INVALID_BASE || **self >= SIGN_EX_INVALID_TOP
+        **self < Self::SIGN_EX_INVALID_BASE || **self >= Self::SIGN_EX_INVALID_TOP
     }
 }
 
@@ -196,16 +193,18 @@ impl Add<VirtualAddress> for VirtualAddress {
 pub struct Frame(PhysicalAddress);
 
 impl Frame {
+    const SIZE: usize = 4096;
+
     pub fn address(&self) -> PhysicalAddress {
         self.0
     }
 
     pub fn end_address(&self) -> PhysicalAddress {
-        self.0 + FRAME_SIZE
+        self.0 + Self::SIZE
     }
 
     pub fn containing_address(address: PhysicalAddress) -> Frame {
-        Frame(address.prev_aligned_addr(FRAME_SIZE))
+        Frame(address.prev_aligned_addr(Self::SIZE))
     }
 
     fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
@@ -230,7 +229,7 @@ impl Iterator for FrameIterator {
     fn next(&mut self) -> Option<Frame> {
         if self.from.address() <= self.to.address() {
             let frame = self.from.clone();
-            self.from.0 += FRAME_SIZE;
+            self.from.0 += Frame::SIZE;
             Some(frame)
         } else {
             None

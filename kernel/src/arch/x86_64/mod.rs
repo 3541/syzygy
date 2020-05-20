@@ -1,5 +1,3 @@
-const WAIT_PORT: u16 = 0x80;
-
 pub mod driver;
 pub mod interrupt;
 pub mod port;
@@ -15,6 +13,8 @@ pub mod constants {
 pub use driver::serial;
 
 use port::Port;
+
+const WAIT_PORT: u16 = 0x80;
 
 #[inline]
 pub fn io_wait() {
