@@ -2,7 +2,7 @@ use core::ptr::Unique;
 
 use logc::trace;
 
-use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, TABLE_LEVELS};
+use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, PT, TABLE_LEVELS};
 use super::Page;
 use crate::constants::KERNEL_BASE;
 use crate::memory::{
@@ -30,27 +30,34 @@ impl Mapper {
         unsafe { self.0.as_mut() }
     }
 
+    fn get_bottom_table_or_create(&mut self, page: Page) -> &mut Table<PT> {
+        self.get_mut()
+            .next_table_or_create(page.pml4_index())
+            .next_table_or_create(page.pdp_index())
+            .next_table_or_create(page.pd_index())
+    }
+
+    fn get_bottom_table_mut(&mut self, page: Page) -> Option<&mut Table<PT>> {
+        self.get_mut()
+            .next_table_mut(page.pml4_index())
+            .and_then(|t| t.next_table_mut(page.pdp_index()))
+            .and_then(|t| t.next_table_mut(page.pd_index()))
+    }
+
+    fn get_bottom_table(&self, page: Page) -> Option<&Table<PT>> {
+        self.get()
+            .next_table(page.pml4_index())
+            .and_then(|t| t.next_table(page.pdp_index()))
+            .and_then(|t| t.next_table(page.pd_index()))
+    }
+
     pub fn map_to(&mut self, address: VirtualAddress, frame: Frame, flags: EntryFlags) -> Page {
         assert!(address.is_aligned(Frame::SIZE));
 
         trace!("Attempting to map {} -> {}", address, frame);
         let ret = Page(address);
 
-        //        let level = ret.size().level_index();
-        /*        let mut bottom = top.next_table_or_create(ret.pml4_index());
-
-            let indices = [ret.pdp_index(), ret.pd_index(), ret.pt_index()];
-
-            for i in 0..(TABLE_LEVELS - /* level - */ 1) {
-                assert!(!bottom[indices[i]].is_leaf());
-                bottom = unsafe { core::mem::transmute(bottom.next_table_or_create(indices[i])) };
-        }*/
-        let table = self
-            .get_mut()
-            .next_table_or_create(ret.pml4_index())
-            .next_table_or_create(ret.pdp_index())
-            .next_table_or_create(ret.pd_index());
-
+        let table = self.get_bottom_table_or_create(ret);
         let index = ret.pt_index();
         assert!(
             table[index].is_unused(),
@@ -79,8 +86,11 @@ impl Mapper {
         self.map_to(addr, frame, flags)
     }
 
-    // This is an evil function
-    pub fn map_kernel_space(&mut self, frame: Frame, flags: EntryFlags) -> Page {
+    // This is an evil function. It's not just unsafe, it's actively malicious.
+    // It should only /ever/ be used when first remapping the kernel. It will,
+    // thankfully, cause a panic in the case of an attempted double-mapping, but
+    // that is obviously not ideal.
+    pub unsafe fn map_kernel_space(&mut self, frame: Frame, flags: EntryFlags) -> Page {
         trace!("Going to map in kernel address space: {}", frame);
         self.map_to(
             VirtualAddress::new(*(frame.address() + *KERNEL_BASE)),
@@ -90,13 +100,9 @@ impl Mapper {
     }
 
     pub fn unmap(&mut self, page: Page) {
-        let mut table = self.get_mut().next_table_mut(page.pml4_index()).unwrap();
-        for i in (1..(TABLE_LEVELS/*- level*/)).rev() {
-            assert!(!table[page.table_index(i)].is_leaf());
-            table =
-                unsafe { core::mem::transmute(table.next_table_mut(page.table_index(i)).unwrap()) };
-        }
-
+        let mut table = self
+            .get_bottom_table_mut(page)
+            .expect("Tried to unmap a page for which there is no table.");
         table[page.pt_index()].set_unused();
         unsafe { page.flush() };
     }
@@ -105,75 +111,12 @@ impl Mapper {
         #[cfg(target_arch = "x86_64")]
         fn resolve_page(tl: &Mapper, addr: VirtualAddress) -> Option<Frame> {
             let tmp = Page(addr);
-            let pdp = if let Some(t) = tl.get().next_table(tmp.pml4_index()) {
-                t
-            } else {
-                return None;
-            };
-
-            let pd = pdp.next_table(tmp.pdp_index());
-            if pd.is_none() {
-                let address = if let Some(a) = pdp[tmp.pdp_index()].address() {
-                    a
-                } else {
-                    return None;
-                };
-                return Some(Frame(address));
-            }
-
-            let pd = pd.unwrap();
-            let pt = pd.next_table(tmp.pd_index());
-            if pt.is_none() {
-                let address = if let Some(a) = pd[tmp.pd_index()].address() {
-                    a
-                } else {
-                    return None;
-                };
-                return Some(Frame(address));
-            }
-
-            let address = if let Some(a) = pt.unwrap()[tmp.pt_index()].address() {
-                a
-            } else {
-                return None;
-            };
-            Some(Frame(address))
+            Some(Frame(tl.get_bottom_table(tmp)?[tmp.pt_index()].address()?))
         }
 
         #[cfg(target_arch = "x86")]
         fn resolve_page(tl: &ActiveTopLevelTable, addr: VirtualAddress) -> Page {
-            let tmp = Page {
-                // Garbage
-                frame: Frame {
-                    address: 0,
-                    size: super::FrameSize::Small,
-                },
-                address: addr,
-            };
-
-            let pd = unsafe { tl.get() };
-            let pt = pd.next_table(tmp.pd_index());
-            if pt.is_none() {
-                return Page {
-                    frame: Frame {
-                        address: pd[tmp.pd_index()]
-                            .address()
-                            .expect("Unexpected non-present PD entry."),
-                        size: PageSize::Large,
-                    },
-                    address: addr,
-                };
-            }
-
-            Page {
-                frame: Frame {
-                    address: pt.unwrap()[addr & PAGE_ADDR_INDEX_MASK]
-                        .address()
-                        .expect("Unexpected non-present PT entry."),
-                    size: PageSize::Small,
-                },
-                address: addr,
-            }
+            unimplemented!()
         }
 
         resolve_page(&self, addr)

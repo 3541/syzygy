@@ -77,7 +77,7 @@ fn flush_tlb() {
 }
 
 // make new PDP, PT tables, map to kernel
-pub fn remap_kernel(
+pub unsafe fn remap_kernel(
     top: &mut ActiveTopLevelTable,
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,

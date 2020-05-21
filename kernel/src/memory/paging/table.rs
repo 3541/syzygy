@@ -205,7 +205,7 @@ impl Entry {
     }
 }
 
-pub struct Table<T: TableType> {
+pub struct Table<T: TableType + ?Sized> {
     entries: [Entry; Table::<PML4>::ENTRIES],
     t: PhantomData<T>,
 }
