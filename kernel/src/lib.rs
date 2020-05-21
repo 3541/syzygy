@@ -180,6 +180,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     interrupt::init();
     info!("INITIALIZED interrupts");
 
+    unsafe { memory::init_allocator() };
+    info!("Initialized temporary kernel heap (1k)");
+
     unsafe {
         memory::FRAME_ALLOCATOR.init(
             kernel_start_addr_phys,

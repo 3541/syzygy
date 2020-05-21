@@ -8,6 +8,7 @@ mod heap;
 pub mod paging;
 //mod watermark_frame_allocator;
 
+pub use self::alloc::{add_heap, init_allocator};
 pub use frame_allocator::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
 pub use heap::init_heap;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;

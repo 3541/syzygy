@@ -20,4 +20,7 @@ pub fn init_heap(mapper: &mut Mapper) {
             EntryFlags::PRESENT | EntryFlags::WRITABLE,
         );
     }
+
+    // Notify the bump allocator that the real heap is now available.
+    unsafe { super::add_heap() };
 }

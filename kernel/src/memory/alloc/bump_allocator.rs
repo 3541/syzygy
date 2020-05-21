@@ -23,39 +23,33 @@ impl BumpAllocator {
             count: 0,
         }
     }
-}
 
-unsafe impl GlobalAlloc for SpinLocked<BumpAllocator> {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let mut this = self.lock();
+    pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
+        trace!("{:x?} allocating {:x?}", *self, layout);
 
-        trace!("{:x?} allocating {:x?}", *this, layout);
-
-        let ret = this.next.next_aligned_addr(layout.align());
+        let ret = self.next.next_aligned_addr(layout.align());
         let end = match ret.checked_add(layout.size()) {
             Some(end) => VirtualAddress::new(end),
             None => return ptr::null_mut(),
         };
 
-        if end > this.heap_end {
+        if end > self.heap_end {
             error!("Out of kernel heap!");
             ptr::null_mut()
         } else {
-            this.next = end;
-            this.count += 1;
+            self.next = end;
+            self.count += 1;
             trace!("Allocated {} to {} (0x{:x})", ret, end, end - ret);
             *ret as *mut u8
         }
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        let mut this = self.lock();
+    pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
+        trace!("{:x?} deallocating", *self);
 
-        trace!("{:x?} deallocating", *this);
-
-        this.count -= 1;
-        if this.count == 0 {
-            this.next = this.heap_base;
+        self.count -= 1;
+        if self.count == 0 {
+            self.next = self.heap_base;
         }
     }
 }
