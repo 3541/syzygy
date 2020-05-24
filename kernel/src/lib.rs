@@ -19,9 +19,11 @@ mod sync;
 mod tree;
 mod vga_text;
 
+extern crate alloc;
+
+use core::mem::transmute;
 use core::slice;
 
-extern crate alloc;
 use logc::{debug, info};
 
 use initramfs::Initramfs;
@@ -83,6 +85,7 @@ fn alloc_err(layout: alloc::alloc::Layout) -> ! {
 }
 
 #[cfg(not(feature = "integration-tests"))]
+#[allow(clippy::transmute_ptr_to_ptr)]
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     vga_text::WRITER.lock().clear_screen();
@@ -101,7 +104,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         .expect("Memory map tag is malformed/missing.");
     let initramfs_raw = multiboot_info
         .module_tags()
-        .nth(0)
+        .next()
         .expect("Missing initramfs");
     assert_eq!(initramfs_raw.name(), "initramfs");
     let initramfs_addr = PhysicalAddress::new(initramfs_raw.start_address() as usize);
@@ -214,13 +217,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED kernel heap.");
 
     let initramfs = unsafe {
-        Initramfs::new(
-            slice::from_raw_parts(
-                (*initramfs_addr + *KERNEL_BASE) as *const u8,
-                initramfs_end_addr - initramfs_addr,
-            )
-            .into(),
-        )
+        Initramfs::new(slice::from_raw_parts(
+            (*initramfs_addr + *KERNEL_BASE) as *const u8,
+            initramfs_end_addr - initramfs_addr,
+        ))
     };
     info!("LOADED initramfs");
 
@@ -230,8 +230,8 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     }
 
     SYMBOLS.init(unsafe {
-        core::mem::transmute::<&'_ [u8], &'static [u8]>(
-            initramfs
+        transmute::<&'_ [u8], &'static [u8]>(
+            &*initramfs
                 .0
                 .get("kernel.sym")
                 .expect("Failed to get kernel symbols"),

@@ -69,7 +69,7 @@ impl BitmapFrameAllocator {
 
             for frame_start in (*range_start..=*end_address)
                 .step_by(Frame::SIZE)
-                .map(|a| PhysicalAddress::new(a))
+                .map(PhysicalAddress::new)
                 .filter(|a| frame_in_reserved_area(a) || (range_start <= *a && *a < start_address))
             {
                 if self.field(frame_start) >= self.bitmap().len() {

@@ -4,7 +4,7 @@ extern crate alloc;
 
 use alloc::string::String;
 
-use core::mem::{size_of, transmute};
+use core::mem::size_of;
 use core::ops::Deref;
 
 use hashbrown::HashMap;
@@ -46,14 +46,17 @@ fn end_index(haystack: &[u8]) -> usize {
 pub struct Initramfs<'a>(pub HashMap<String, File<'a>>);
 
 impl Initramfs<'_> {
+    /// # Safety
+    /// Must be called with `data` a valid buffer created by `mk`.
+    #[allow(clippy::cast_ptr_alignment)]
     pub unsafe fn new(data: &'static [u8]) -> Self {
-        let header: &Header = transmute(data.as_ptr());
+        let header: &Header = &*(data.as_ptr() as *const _);
         let mut data = &data[size_of::<Header>()..];
 
         let mut files = HashMap::new();
 
         for _ in 0..header.file_count {
-            let file_header: &FileHeader = transmute(data.as_ptr());
+            let file_header: &FileHeader = &*(data.as_ptr() as *const _);
             data = &data[size_of::<FileHeader>()..];
 
             files.insert(

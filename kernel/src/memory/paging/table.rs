@@ -26,12 +26,6 @@ pub const ACTIVE_TOP_LEVEL_TABLE_ADDRESS: *mut Table<PML4> = ACTIVE_PML4_ADDRESS
 #[cfg(target_arch = "x86")]
 pub const ACTIVE_TOP_LEVEL_TABLE_ADDRESS: *mut Table<PD> = ACTIVE_PD_ADDRESS;
 
-#[cfg(target_arch = "x86_64")]
-pub const TABLE_LEVELS: usize = 3;
-
-#[cfg(target_arch = "x86")]
-pub const TABLE_LEVELS: usize = 2;
-
 //#[cfg(target_arch = "x86_64")]
 //pub const KERNEL_INDEX: usize = 511;
 
@@ -109,7 +103,7 @@ pub struct InactiveTopLevelTable(Frame);
 
 impl InactiveTopLevelTable {
     pub fn new(active: &mut ActiveTopLevelTable, mut temp: TempPage) -> InactiveTopLevelTable {
-        let frame = temp.frame.clone();
+        let frame = temp.frame;
         let table = temp.map_and_pun_frame(active);
         table.zero();
         table[511].set(frame.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);

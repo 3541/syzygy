@@ -68,10 +68,10 @@ struct Entry {
 #[cfg(target_arch = "x86_64")]
 impl Entry {
     fn new(selector: u16, handler: Handler) -> Self {
-        let p = handler as u64;
+        let p = handler as usize as u64;
         Entry {
             offset_low: p as u16,
-            selector: selector,
+            selector,
             ist_offset: 0,
             options: EntryOptions::new(true, GateType::Interrupt, 0),
             offset_mid: (p >> 16) as u16,

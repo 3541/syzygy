@@ -229,7 +229,7 @@ impl Iterator for FrameIterator {
 
     fn next(&mut self) -> Option<Frame> {
         if self.from.address() <= self.to.address() {
-            let frame = self.from.clone();
+            let frame = self.from;
             self.from.0 += Frame::SIZE;
             Some(frame)
         } else {

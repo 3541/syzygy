@@ -7,7 +7,7 @@ use crate::interrupt::without_interrupts;
 use crate::vga_text::{self, Color};
 use crate::{serial_print, serial_println};
 
-const LOG_MODULE_LEVELS: [(&'static str, LevelFilter); 1] =
+const LOG_MODULE_LEVELS: [(&str, LevelFilter); 1] =
     [("syzygy::memory::paging", LevelFilter::Debug)];
 
 struct Log {

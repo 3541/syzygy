@@ -2,7 +2,7 @@ use core::ptr::Unique;
 
 use logc::trace;
 
-use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, PT, TABLE_LEVELS};
+use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, PT};
 use super::Page;
 use crate::constants::KERNEL_BASE;
 use crate::memory::{
@@ -100,7 +100,7 @@ impl Mapper {
     }
 
     pub fn unmap(&mut self, page: Page) {
-        let mut table = self
+        let table = self
             .get_bottom_table_mut(page)
             .expect("Tried to unmap a page for which there is no table.");
         table[page.pt_index()].set_unused();
@@ -124,6 +124,6 @@ impl Mapper {
 
     pub fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
         self.virtual_address_to_frame(addr)
-            .and_then(|frame| Some(frame.address() + (*addr & super::PAGE_ADDR_OFFSET_MASK)))
+            .map(|frame| frame.address() + (*addr & super::PAGE_ADDR_OFFSET_MASK))
     }
 }

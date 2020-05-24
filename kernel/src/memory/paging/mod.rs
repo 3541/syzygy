@@ -55,7 +55,7 @@ impl Page {
         // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
         // sort of broken for larger pages, because the total offset is still the same
         // if we want some specific table. e.g., PML4 index is always at the same place.
-        (*self.0 >> PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n) & PAGE_ADDR_INDEX_MASK
+        (*self.0 >> (PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n)) & PAGE_ADDR_INDEX_MASK
     }
 
     pub fn address(&self) -> VirtualAddress {
@@ -158,7 +158,7 @@ pub unsafe fn remap_kernel(
     debug!("Switched to new table.");
 
     FRAME_ALLOCATOR.lock().free(old.frame());
-    let guard = Page((KERNEL_BASE + *old.address()).into());
+    let guard = Page(KERNEL_BASE + *old.address());
     top.unmap(guard);
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
 }

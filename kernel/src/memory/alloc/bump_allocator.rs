@@ -1,10 +1,9 @@
-use alloc::alloc::{GlobalAlloc, Layout};
+use alloc::alloc::Layout;
 use core::ptr;
 
 use logc::{error, trace};
 
 use crate::memory::{Address, VirtualAddress};
-use crate::sync::SpinLocked;
 
 #[derive(Debug)]
 pub struct BumpAllocator {
