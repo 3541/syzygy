@@ -6,6 +6,8 @@ mod alloc;
 pub mod frame_allocator;
 mod heap;
 pub mod paging;
+pub mod phys;
+mod region;
 //mod watermark_frame_allocator;
 
 pub use self::alloc::{add_heap, init_allocator};

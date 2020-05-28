@@ -26,6 +26,7 @@ kernel_src = files([
                     'src/driver/acpi/mod.rs',
                     'src/memory/mod.rs',
                     'src/memory/heap.rs',
+		    'src/memory/region.rs',
                     'src/memory/alloc/mod.rs',
                     'src/memory/alloc/bump_allocator.rs',
                     'src/memory/alloc/fake_allocator.rs',
