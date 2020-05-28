@@ -11,6 +11,7 @@
 
 mod arch;
 mod constants;
+mod driver;
 mod log;
 mod memory;
 mod panic;
@@ -28,9 +29,10 @@ use logc::{debug, info};
 
 use initramfs::Initramfs;
 
+use arch::interrupt;
 use arch::port::Port;
-use arch::{interrupt, serial};
 use constants::KERNEL_BASE;
+use driver::serial;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::{Address, PhysicalAddress, VirtualAddress};
 use sym::SYMBOLS;
@@ -179,6 +181,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         "Initramfs (PHYSICAL): {} - {}",
         initramfs_addr, initramfs_end_addr
     );
+
+    driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
+    info!("INITIALIZED ACPI");
 
     interrupt::init();
     info!("INITIALIZED interrupts");

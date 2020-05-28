@@ -10,7 +10,6 @@ SECTIONS {
     }
 
     . = KERNEL_BASE;
-    . += SIZEOF_HEADERS;
     . = ALIGN(4K);
 
     .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_BASE) {

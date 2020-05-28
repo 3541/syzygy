@@ -10,8 +10,6 @@ pub mod constants {
         unsafe { VirtualAddress::new_const(0xFFFFC00000000000) };
 }
 
-pub use driver::serial;
-
 use port::Port;
 
 const WAIT_PORT: u16 = 0x80;

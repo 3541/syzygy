@@ -23,6 +23,7 @@ kernel_src = files([
                     'src/arch/x86_64/interrupt/idt.rs',
                     'src/arch/x86_64/interrupt/pic.rs',
                     'src/driver/mod.rs',
+                    'src/driver/acpi/mod.rs',
                     'src/memory/mod.rs',
                     'src/memory/heap.rs',
                     'src/memory/alloc/mod.rs',
