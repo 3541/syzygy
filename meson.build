@@ -1,4 +1,4 @@
-project('syzygy', ['rust', 'c'])
+project('syzygy', ['rust', 'c'], version: '0.1.0')
 
 # Variable declarations
 rustc_flags = ['-Zsymbol-mangling-version=v0']

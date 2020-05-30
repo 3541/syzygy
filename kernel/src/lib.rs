@@ -96,7 +96,12 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     log::init();
     info!("INITIALIZED log.");
 
-    info!("This is {} v{}.", constants::NAME, constants::VERSION);
+    info!(
+        "This is {} v{}, running kernel v{}.",
+        constants::NAME,
+        constants::PROJECT_VERSION,
+        constants::VERSION
+    );
 
     let multiboot_info_addr_phys = PhysicalAddress::new(multiboot_info_addr);
     let multiboot_info_addr = KERNEL_BASE + multiboot_info_addr;

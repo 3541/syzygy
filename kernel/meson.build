@@ -79,6 +79,7 @@ kernel_lib = custom_target(
     env,
     'RUST_TARGET_PATH=' + meson.source_root() + '/targets',
     'RUSTFLAGS=' + rustc_flags_env,
+    'DIST_VERSION=' + meson.project_version(),
     cargo_wrapper,
     'xargo',
     '@OUTDIR@',
