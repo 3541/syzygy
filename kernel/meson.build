@@ -27,6 +27,7 @@ kernel_src = files([
                     'src/memory/mod.rs',
                     'src/memory/heap.rs',
 		    'src/memory/region.rs',
+                    'src/memory/size.rs',
                     'src/memory/alloc/mod.rs',
                     'src/memory/alloc/bump_allocator.rs',
                     'src/memory/alloc/fake_allocator.rs',

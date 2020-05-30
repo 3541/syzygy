@@ -4,6 +4,7 @@ mod bump_allocator;
 use alloc::alloc::{GlobalAlloc, Layout};
 
 use super::heap::{HEAP_BASE, HEAP_SIZE};
+use crate::memory::size::KB;
 use crate::memory::{Address, VirtualAddress};
 use crate::sync::SpinLocked;
 use bump_allocator::BumpAllocator;
@@ -12,7 +13,7 @@ use bump_allocator::BumpAllocator;
 //#[global_allocator]
 //static ALLOCATOR: FakeAllocator = FakeAllocator {};
 
-static mut INIT_HEAP: [u8; 1024] = [0; 1024];
+static mut INIT_HEAP: [u8; 200 * KB] = [0; 200 * KB];
 
 #[cfg(not(test))]
 #[global_allocator]

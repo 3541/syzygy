@@ -1,89 +1,46 @@
-use core::mem::MaybeUninit;
+use alloc::vec;
+use alloc::vec::Vec;
+use core::mem::size_of;
 
-use logc::{error, trace};
-use multiboot2::MemoryAreaIter;
-use spin::MutexGuard;
+use logc::trace;
+use multiboot2::MemoryArea;
 
 use super::FrameAllocator;
 use crate::memory::{Address, Frame, PhysicalAddress};
 
-pub struct BitmapFrameAllocator<'a> {
-    bitmap: MaybeUninit<&'a mut [usize]>,
+pub struct BitmapFrameAllocator {
+    bitmap: Vec<usize>,
     base: PhysicalAddress,
+    size: usize,
 }
 
-// EVERYTHING in here is only safe if called through GlobalFrameAllocator.lock
-impl<'a> BitmapFrameAllocator<'a> {
-    pub const unsafe fn empty() -> Self {
-        Self {
-            bitmap: MaybeUninit::uninit(),
-            base: PhysicalAddress::new_const(PhysicalAddress::SIGN_EX_INVALID_BASE + 0x1000),
-        }
-    }
+// EVERYTHING in here is only safe if called through PhysicalMemoryManager
+impl BitmapFrameAllocator {
+    pub unsafe fn new(
+        area: &MemoryArea,
+        used_predicate: impl Fn(&usize) -> bool,
+    ) -> BitmapFrameAllocator {
+        let bitmap = vec![0; area.size() as usize / Frame::SIZE / size_of::<usize>() / 8];
 
-    pub unsafe fn init(
-        &mut self,
-        kernel_start: PhysicalAddress,
-        kernel_end: PhysicalAddress,
-        multiboot_info_start: PhysicalAddress,
-        multiboot_info_end: PhysicalAddress,
-        initramfs_start: PhysicalAddress,
-        initramfs_end: PhysicalAddress,
-        areas: MemoryAreaIter,
-        bitmap: &'static mut [usize],
-    ) {
-        let frame_in_reserved_area = |a: &PhysicalAddress| {
-            (kernel_start <= *a && *a <= kernel_end)
-                || (kernel_start <= *a + Frame::SIZE && *a + Frame::SIZE <= kernel_end)
-                || (*a <= kernel_start && kernel_end <= *a + Frame::SIZE)
-                || (multiboot_info_start <= *a && *a <= multiboot_info_end)
-                || (multiboot_info_start <= *a + Frame::SIZE
-                    && *a + Frame::SIZE <= multiboot_info_end)
-                || (*a <= multiboot_info_start && multiboot_info_end <= *a + Frame::SIZE)
-                || (initramfs_start <= *a && *a <= initramfs_end)
-                || (initramfs_start <= *a + Frame::SIZE && *a + Frame::SIZE <= initramfs_end)
-                || (*a <= initramfs_start && initramfs_end <= *a + Frame::SIZE)
+        let mut ret = Self {
+            base: PhysicalAddress::new(area.start_address() as usize),
+            size: bitmap.len() * 8 * size_of::<usize>() * Frame::SIZE,
+            bitmap,
         };
-        self.base = PhysicalAddress::new(
-            areas
-                .clone()
-                .filter(|a| a.size() as usize >= Frame::SIZE)
-                .min_by_key(|a| a.start_address())
-                .expect("No available areas to initialize")
-                .start_address() as usize,
-        )
-        .next_aligned_addr(Frame::SIZE);
-        self.bitmap.write(bitmap);
 
-        let mut last_area_end = PhysicalAddress::new(0);
+        // This should probably just iterate over a list of used regions and set 8
+        // frames at a time...
+        (PhysicalAddress::new(area.start_address() as usize)
+            .next_aligned_addr(Frame::SIZE)
+            .raw()
+            ..=PhysicalAddress::new(area.end_address() as usize)
+                .prev_aligned_addr(Frame::SIZE)
+                .raw())
+            .step_by(Frame::SIZE)
+            .filter(used_predicate)
+            .for_each(|a| ret.set_used(unsafe { PhysicalAddress::new_unchecked(a) }));
 
-        for area in areas.filter(|a| a.size() as usize >= Frame::SIZE) {
-            let start_address =
-                PhysicalAddress::new(area.start_address() as usize).next_aligned_addr(Frame::SIZE);
-            let mut range_start = start_address;
-            let end_address =
-                PhysicalAddress::new(area.end_address() as usize).prev_aligned_addr(Frame::SIZE);
-            if last_area_end < start_address {
-                range_start = last_area_end;
-            }
-
-            for frame_start in (*range_start..=*end_address)
-                .step_by(Frame::SIZE)
-                .map(PhysicalAddress::new)
-                .filter(|a| frame_in_reserved_area(a) || (range_start <= *a && *a < start_address))
-            {
-                if self.field(frame_start) >= self.bitmap().len() {
-                    error!("Index too large at frame {}", frame_start);
-                }
-                self.set_used(frame_start);
-            }
-
-            last_area_end = end_address;
-        }
-    }
-
-    unsafe fn bitmap(&mut self) -> &mut [usize] {
-        *(self.bitmap.as_mut_ptr())
+        ret
     }
 
     pub fn is_uninitialized(&self) -> bool {
@@ -110,19 +67,17 @@ impl<'a> BitmapFrameAllocator<'a> {
 
         //        trace!("Setting {} used at {} with 0x{:x}", address, field, mask);
 
-        if self.bitmap()[field] & mask != 0 {
+        if self.bitmap[field] & mask != 0 {
             panic!("Tried to set an already used address {} as used.", address);
         }
 
-        self.bitmap()[field] |= mask;
+        self.bitmap[field] |= mask;
 
-        assert!(self.bitmap()[field] & mask != 0, "Failed to set.");
+        assert!(self.bitmap[field] & mask != 0, "Failed to set.");
     }
 }
 
-// The trait is implemented on MutexGuard<BitmapFrameAllocator> to ensure that a
-// valid lock is held, and therefore that it has been initialized.
-impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator<'_>> {
+impl FrameAllocator for BitmapFrameAllocator {
     fn alloc(&mut self) -> Option<Frame> {
         fn first_unset_bit(field: usize) -> usize {
             let ret: usize;
@@ -134,7 +89,7 @@ impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator<'_>> {
 
         trace!("Allocating...");
 
-        for (i, field) in unsafe { self.bitmap() }.iter_mut().enumerate() {
+        for (i, field) in self.bitmap.iter_mut().enumerate() {
             let bit = if *field == 0 {
                 trace!("Empty field.");
                 0
@@ -160,11 +115,15 @@ impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator<'_>> {
         trace!("Freeing {:x?} with {} 0x{:x}", frame, field, mask);
 
         unsafe {
-            if self.bitmap()[field] & mask == 0 {
+            if self.bitmap[field] & mask == 0 {
                 panic!("DOUBLE FREE");
             }
 
-            self.bitmap()[field] ^= mask;
+            self.bitmap[field] ^= mask;
         }
+    }
+
+    fn has(&self, frame: Frame) -> bool {
+        self.base <= frame.address() && self.base + self.size > frame.address() + Frame::SIZE
     }
 }

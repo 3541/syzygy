@@ -91,12 +91,12 @@ fn alloc_err(layout: alloc::alloc::Layout) -> ! {
 #[no_mangle]
 pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     vga_text::WRITER.lock().clear_screen();
-    println!("ENTERED kmain");
+    println!("ENTERED kmain.");
 
     log::init();
-    info!("INITIALIZED log");
+    info!("INITIALIZED log.");
 
-    info!("This is {} v{}", constants::NAME, constants::VERSION);
+    info!("This is {} v{}.", constants::NAME, constants::VERSION);
 
     let multiboot_info_addr_phys = PhysicalAddress::new(multiboot_info_addr);
     let multiboot_info_addr = KERNEL_BASE + multiboot_info_addr;
@@ -112,9 +112,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     let initramfs_addr = PhysicalAddress::new(initramfs_raw.start_address() as usize);
     let initramfs_end_addr = PhysicalAddress::new(initramfs_raw.end_address() as usize);
 
-    info!("INITIALIZED memory map");
+    info!("INITIALIZED memory map.");
 
-    debug!("Memory areas (PHYSICAL)");
+    debug!("Memory areas (PHYSICAL):");
 
     for a in mmap.memory_areas() {
         debug!(
@@ -183,13 +183,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     );
 
     driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
-    info!("INITIALIZED ACPI");
+    info!("INITIALIZED ACPI.");
 
     interrupt::init();
-    info!("INITIALIZED interrupts");
+    info!("INITIALIZED interrupts.");
 
     unsafe { memory::init_allocator() };
-    info!("Initialized temporary kernel heap (1k)");
+    info!("INITIALIZED temporary kernel heap.");
 
     unsafe {
         memory::FRAME_ALLOCATOR.init(
@@ -202,10 +202,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
             mmap.memory_areas(),
         )
     };
-    info!("INITIALIZED frame allocator");
+    info!("INITIALIZED frame allocator.");
 
     let mut table = unsafe { ActiveTopLevelTable::new() };
-    info!("INITIALIZED PML4");
+    info!("INITIALIZED PML4.");
 
     unsafe {
         memory::paging::remap_kernel(
@@ -216,10 +216,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
             initramfs_end_addr,
         )
     };
-    info!("REMAPPED the kernel address space");
+    info!("REMAPPED the kernel address space.");
 
     memory::init_heap(&mut table);
-    info!("INITIALIZED kernel heap.");
+    info!("INITIALIZED real kernel heap.");
 
     let initramfs = unsafe {
         Initramfs::new(slice::from_raw_parts(
@@ -227,7 +227,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
             initramfs_end_addr - initramfs_addr,
         ))
     };
-    info!("LOADED initramfs");
+    info!("LOADED initramfs.");
 
     debug!("Initramfs contains:");
     for (k, _) in &initramfs.0 {
@@ -243,7 +243,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         )
     });
 
-    debug!("INITIALIZED kernel symbols");
+    debug!("INITIALIZED kernel symbols.");
 
     /*    info!("SYSRET_CS: 0x{:x}", arch::register::star_read() >> 48);
     let ip = VirtualAddress::new(userland_test as *const fn() -> () as usize);
@@ -254,6 +254,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     );
     unsafe { arch::process::enter_ring3(ip, sp) };*/
 
-    info!("Entering halt loop");
+    info!("ENTERING halt loop.");
     arch::halt_loop()
 }

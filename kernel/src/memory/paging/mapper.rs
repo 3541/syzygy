@@ -82,7 +82,7 @@ impl Mapper {
     }
 
     pub fn map(&mut self, addr: VirtualAddress, flags: EntryFlags) -> Page {
-        let frame = FRAME_ALLOCATOR.lock().alloc().expect("Out of frames");
+        let frame = FRAME_ALLOCATOR.alloc().expect("Out of frames");
         self.map_to(addr, frame, flags)
     }
 

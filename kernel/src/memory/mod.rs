@@ -3,6 +3,7 @@ mod heap;
 pub mod paging;
 pub mod phys;
 mod region;
+pub mod size;
 //mod watermark_frame_allocator;
 
 use core::fmt;
@@ -11,7 +12,7 @@ use core::ops::{Add, AddAssign, Deref, Sub};
 
 pub use self::alloc::{add_heap, init_allocator};
 pub use heap::init_heap;
-pub use phys::alloc::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
+pub use phys::alloc::{FrameAllocator, PhysicalMemoryManager, FRAME_ALLOCATOR};
 pub use phys::Frame;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 

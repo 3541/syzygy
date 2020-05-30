@@ -2,10 +2,11 @@ use logc::trace;
 
 use super::paging::mapper::Mapper;
 use super::paging::table::EntryFlags;
+use super::size::MB;
 use super::{Address, Frame, VirtualAddress};
 
 pub const HEAP_BASE: VirtualAddress = unsafe { VirtualAddress::new_const(0x0000_4EA6_0000_0000) };
-pub const HEAP_SIZE: usize = 128 * 1024; // 128 KiB
+pub const HEAP_SIZE: usize = 4 * MB;
 
 pub fn init_heap(mapper: &mut Mapper) {
     trace!(

@@ -259,10 +259,7 @@ impl<T: TableType + NestedTableType> Table<T> {
                         index,
                         (self as *mut _) as usize
                     );
-                    let f = FRAME_ALLOCATOR
-                        .lock()
-                        .alloc()
-                        .expect("No frames available?");
+                    let f = FRAME_ALLOCATOR.alloc().expect("No frames available?");
                     trace!("Got frame");
                     self.entries[index]
                         .set(f.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);

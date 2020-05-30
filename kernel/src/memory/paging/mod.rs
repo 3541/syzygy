@@ -85,7 +85,6 @@ pub unsafe fn remap_kernel(
     initramfs_end: PhysicalAddress,
 ) {
     let frame = FRAME_ALLOCATOR
-        .lock()
         .alloc()
         .expect("Need free frame to remap kernel.");
     let temp = TempPage::new(Page(VirtualAddress::new(0xe000e000)), frame);
@@ -93,7 +92,7 @@ pub unsafe fn remap_kernel(
 
     let mut temp = TempPage::new(
         Page(VirtualAddress::new(0xe000e000)),
-        FRAME_ALLOCATOR.lock().alloc().unwrap(),
+        FRAME_ALLOCATOR.alloc().unwrap(),
     );
 
     top.with(&mut new_table, &mut temp, |m| {
@@ -157,7 +156,7 @@ pub unsafe fn remap_kernel(
     let old = top.switch(new_table);
     debug!("Switched to new table.");
 
-    FRAME_ALLOCATOR.lock().free(old.frame());
+    //    FRAME_ALLOCATOR.free(old.frame());
     let guard = Page(KERNEL_BASE + *old.address());
     top.unmap(guard);
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
