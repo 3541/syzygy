@@ -1,18 +1,18 @@
-use core::fmt;
-use core::marker::Sized;
-use core::ops::{Add, AddAssign, Deref, Sub};
-
 mod alloc;
-pub mod frame_allocator;
 mod heap;
 pub mod paging;
 pub mod phys;
 mod region;
 //mod watermark_frame_allocator;
 
+use core::fmt;
+use core::marker::Sized;
+use core::ops::{Add, AddAssign, Deref, Sub};
+
 pub use self::alloc::{add_heap, init_allocator};
-pub use frame_allocator::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
 pub use heap::init_heap;
+pub use phys::alloc::{FrameAllocator, GlobalFrameAllocator, FRAME_ALLOCATOR};
+pub use phys::Frame;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 
 pub type RawPhysicalAddress = usize;
@@ -189,53 +189,5 @@ impl Add<VirtualAddress> for VirtualAddress {
 
     fn add(self, rhs: VirtualAddress) -> Self {
         self + *rhs
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
-pub struct Frame(PhysicalAddress);
-
-impl Frame {
-    const SIZE: usize = 4096;
-
-    pub fn address(&self) -> PhysicalAddress {
-        self.0
-    }
-
-    pub fn end_address(&self) -> PhysicalAddress {
-        self.0 + Self::SIZE
-    }
-
-    pub fn containing_address(address: PhysicalAddress) -> Frame {
-        Frame(address.prev_aligned_addr(Self::SIZE))
-    }
-
-    fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
-        FrameIterator { from, to }
-    }
-}
-
-impl fmt::Display for Frame {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Frame({})", self.0)
-    }
-}
-
-struct FrameIterator {
-    from: Frame,
-    to: Frame,
-}
-
-impl Iterator for FrameIterator {
-    type Item = Frame;
-
-    fn next(&mut self) -> Option<Frame> {
-        if self.from.address() <= self.to.address() {
-            let frame = self.from;
-            self.from.0 += Frame::SIZE;
-            Some(frame)
-        } else {
-            None
-        }
     }
 }

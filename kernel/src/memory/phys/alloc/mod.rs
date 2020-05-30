@@ -20,9 +20,9 @@ pub trait FrameAllocator {
     fn free(&mut self, frame: Frame);
 }
 
-pub struct GlobalFrameAllocator(Mutex<BitmapFrameAllocator>);
+pub struct GlobalFrameAllocator<'a>(Mutex<BitmapFrameAllocator<'a>>);
 
-impl GlobalFrameAllocator {
+impl<'a> GlobalFrameAllocator<'a> {
     pub const unsafe fn new() -> Self {
         Self(Mutex::new(BitmapFrameAllocator::empty()))
     }
@@ -49,7 +49,7 @@ impl GlobalFrameAllocator {
         );
     }
 
-    pub fn lock(&self) -> MutexGuard<BitmapFrameAllocator> {
+    pub fn lock(&self) -> MutexGuard<BitmapFrameAllocator<'a>> {
         trace!("Trying to get FRAME_ALLOCATOR lock");
         let ret = self.0.lock();
         if ret.is_uninitialized() {

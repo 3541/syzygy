@@ -7,13 +7,13 @@ use spin::MutexGuard;
 use super::FrameAllocator;
 use crate::memory::{Address, Frame, PhysicalAddress};
 
-pub struct BitmapFrameAllocator {
-    bitmap: MaybeUninit<&'static mut [usize]>,
+pub struct BitmapFrameAllocator<'a> {
+    bitmap: MaybeUninit<&'a mut [usize]>,
     base: PhysicalAddress,
 }
 
 // EVERYTHING in here is only safe if called through GlobalFrameAllocator.lock
-impl BitmapFrameAllocator {
+impl<'a> BitmapFrameAllocator<'a> {
     pub const unsafe fn empty() -> Self {
         Self {
             bitmap: MaybeUninit::uninit(),
@@ -122,7 +122,7 @@ impl BitmapFrameAllocator {
 
 // The trait is implemented on MutexGuard<BitmapFrameAllocator> to ensure that a
 // valid lock is held, and therefore that it has been initialized.
-impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator> {
+impl FrameAllocator for MutexGuard<'_, BitmapFrameAllocator<'_>> {
     fn alloc(&mut self) -> Option<Frame> {
         fn first_unset_bit(field: usize) -> usize {
             let ret: usize;
