@@ -1,5 +1,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
+use core::cmp::max;
 use core::mem::size_of;
 
 use logc::trace;
@@ -18,7 +19,8 @@ pub struct BitmapFrameAllocator {
 impl BitmapFrameAllocator {
     pub unsafe fn new(
         area: &MemoryArea,
-        used_predicate: impl Fn(&usize) -> bool,
+        //        used_predicate: impl Fn(&usize) -> bool,
+        used_ranges: &[(usize, usize)],
     ) -> BitmapFrameAllocator {
         let bitmap = vec![0; area.size() as usize / Frame::SIZE / size_of::<usize>() / 8];
 
@@ -28,17 +30,22 @@ impl BitmapFrameAllocator {
             bitmap,
         };
 
-        // This should probably just iterate over a list of used regions and set 8
-        // frames at a time...
-        (PhysicalAddress::new(area.start_address() as usize)
-            .next_aligned_addr(Frame::SIZE)
-            .raw()
-            ..=PhysicalAddress::new(area.end_address() as usize)
-                .prev_aligned_addr(Frame::SIZE)
-                .raw())
-            .step_by(Frame::SIZE)
-            .filter(used_predicate)
-            .for_each(|a| ret.set_used(unsafe { PhysicalAddress::new_unchecked(a) }));
+        for (start, end) in used_ranges {
+            if *start > *ret.base + ret.size || *end < *ret.base {
+                continue;
+            }
+
+            let first_field = ret.field(max(PhysicalAddress::new_unchecked(*start), ret.base));
+            let fields = (end - start) / Frame::SIZE / size_of::<usize>() / 8;
+            for i in first_field..(first_field + fields) {
+                ret.bitmap[i] = !0;
+            }
+
+            let unset_bits = (end - start) / Frame::SIZE % (size_of::<usize>() * 8);
+            for a in ((end - unset_bits * Frame::SIZE)..*end).step_by(Frame::SIZE) {
+                ret.set_used(PhysicalAddress::new_unchecked(a));
+            }
+        }
 
         ret
     }
@@ -93,7 +100,7 @@ impl FrameAllocator for BitmapFrameAllocator {
             let bit = if *field == 0 {
                 trace!("Empty field.");
                 0
-            } else if *field == core::usize::MAX {
+            } else if *field == !0 {
                 trace!("Full field");
                 continue;
             } else {

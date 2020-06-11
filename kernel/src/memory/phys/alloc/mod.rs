@@ -26,47 +26,6 @@ pub trait FrameAllocator {
     fn has(&self, frame: Frame) -> bool;
 }
 
-/*pub struct GlobalFrameAllocator<'a>(Mutex<BitmapFrameAllocator<'a>>);
-
-impl<'a> GlobalFrameAllocator<'a> {
-    pub const unsafe fn new() -> Self {
-        Self(Mutex::new(BitmapFrameAllocator::empty()))
-    }
-
-    pub unsafe fn init(
-        &self,
-        kernel_start: PhysicalAddress,
-        kernel_end: PhysicalAddress,
-        multiboot_info_start: PhysicalAddress,
-        multiboot_info_end: PhysicalAddress,
-        initramfs_start: PhysicalAddress,
-        initramfs_end: PhysicalAddress,
-        areas: MemoryAreaIter,
-    ) {
-        self.0.lock().init(
-            kernel_start,
-            kernel_end,
-            multiboot_info_start,
-            multiboot_info_end,
-            initramfs_start,
-            initramfs_end,
-            areas,
-            &mut BITMAP,
-        );
-    }
-
-    pub fn lock(&self) -> MutexGuard<BitmapFrameAllocator<'a>> {
-        trace!("Trying to get FRAME_ALLOCATOR lock");
-        let ret = self.0.lock();
-        if ret.is_uninitialized() {
-            panic!("Attempted to lock frame allocator before initializing");
-        }
-        trace!("Got FRAME_ALLOCATOR lock");
-        ret
-    }
-}
- */
-
 pub struct PhysicalMemoryManager {
     areas: Mutex<Vec<Box<dyn FrameAllocator + Send>>>,
 }
@@ -103,18 +62,14 @@ impl PhysicalMemoryManager {
 
         for area in areas {
             debug!("Creating BitmapFrameAllocator for area {:x?}", area);
-            bitmaps.push(Box::new(BitmapFrameAllocator::new(area, |a: &usize| {
-                (*kernel_start <= *a && *a <= *kernel_end)
-                    || (*kernel_start <= *a + Frame::SIZE && *kernel_end >= *a + Frame::SIZE)
-                    || (*a <= *kernel_start && *kernel_end <= *a + Frame::SIZE)
-                    || (*multiboot_info_start <= *a && *a <= *multiboot_info_end)
-                    || (*multiboot_info_start <= *a + Frame::SIZE
-                        && *multiboot_info_end >= *a + Frame::SIZE)
-                    || (*a <= *multiboot_info_start && *multiboot_info_end <= *a + Frame::SIZE)
-                    || (*initramfs_start <= *a && *a <= *initramfs_end)
-                    || (*initramfs_start <= *a + Frame::SIZE && *initramfs_end >= *a + Frame::SIZE)
-                    || (*a <= *initramfs_start && *initramfs_end <= *a + Frame::SIZE)
-            })));
+            bitmaps.push(Box::new(BitmapFrameAllocator::new(
+                area,
+                &[
+                    (*kernel_start, *kernel_end),
+                    (*multiboot_info_start, *multiboot_info_end),
+                    (*initramfs_start, *initramfs_end),
+                ],
+            )));
         }
     }
 
