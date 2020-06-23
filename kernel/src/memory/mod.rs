@@ -11,8 +11,8 @@ use core::marker::Sized;
 use core::ops::{Add, AddAssign, Deref, Sub};
 
 pub use heap::{init_allocator, init_heap};
-pub use phys::alloc::{FrameAllocator, PhysicalMemoryManager, FRAME_ALLOCATOR};
-pub use phys::{Frame, PhysicalMemory};
+pub use phys::alloc::{FrameAllocator, PhysicalMemoryManager};
+pub use phys::{Frame, PhysicalMemory, PHYSICAL_ALLOCATOR};
 pub use region::VirtualRegion;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 

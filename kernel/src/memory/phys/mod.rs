@@ -43,7 +43,7 @@ impl fmt::Display for Frame {
     }
 }
 
-pub struct FrameIterator {
+/*pub struct FrameIterator {
     from: Frame,
     to: Frame,
 }
@@ -60,12 +60,34 @@ impl Iterator for FrameIterator {
             None
         }
     }
+}*/
+
+pub enum PhysicalMemoryKind {
+    Allocated,
+    Region,
 }
 
-pub struct PhysicalMemory {}
+pub struct PhysicalMemory {
+    frames: Vec<Frame>,
+    kind: PhysicalMemoryKind,
+}
 
 impl PhysicalMemory {
-    pub fn coalesce(self, other: PhysicalMemory) -> PhysicalMemory {
-        todo!()
+    /*    pub fn coalesce(self, other: PhysicalMemory) -> PhysicalMemory {
+            todo!()
+    }*/
+    pub unsafe fn region(start: PhysicalAddress, end: PhysicalAddress) -> PhysicalMemory {
+        let frames = (*start..=*end.next_aligned(Frame::SIZE))
+            .step_by(Frame::SIZE)
+            .map(|a| Frame(PhysicalAddress::new_unchecked(a)))
+            .collect();
+        PhysicalMemory {
+            frames,
+            kind: PhysicalMemoryKind::Region,
+        }
+    }
+
+    pub fn into_frames(self) -> Vec<Frame> {
+        self.frames
     }
 }

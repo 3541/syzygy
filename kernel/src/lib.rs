@@ -10,6 +10,7 @@
 #![feature(naked_functions)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]
+#![feature(asm)]
 
 mod arch;
 mod constants;
@@ -199,7 +200,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED temporary kernel heap.");
 
     unsafe {
-        memory::FRAME_ALLOCATOR.init(
+        memory::PHYSICAL_ALLOCATOR.init(
             kernel_start_addr_phys,
             kernel_end_addr_phys,
             multiboot_info_addr_phys,

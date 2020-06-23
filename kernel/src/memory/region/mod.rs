@@ -1,13 +1,30 @@
-use super::phys::PhysicalMemory;
-use super::VirtualAddress;
+//pub mod alloc;
 
+use ::alloc::sync::Arc;
+
+use super::paging::mapper::Mapper;
+use super::paging::EntryFlags;
+use super::phys::{PhysicalMemory, PHYSICAL_ALLOCATOR};
+use super::{Address, VirtualAddress};
+
+//pub use self::alloc::VirtualRegionAllocator;
+
+#[derive(Clone)]
 pub struct VirtualRegion {
     start: VirtualAddress,
     size: usize,
-    backing: Option<PhysicalMemory>,
+    backing: Option<Arc<PhysicalMemory>>,
 }
 
 impl VirtualRegion {
+    pub fn null() -> Self {
+        VirtualRegion {
+            start: VirtualAddress::new(0),
+            size: 0,
+            backing: None,
+        }
+    }
+
     pub fn start(&self) -> VirtualAddress {
         self.start
     }
@@ -39,6 +56,26 @@ impl VirtualRegion {
         }
     }
 
+    pub const unsafe fn new(start: VirtualAddress, size: usize) -> Self {
+        VirtualRegion {
+            start,
+            size,
+            backing: None,
+        }
+    }
+
+    pub fn map(&mut self, mapper: &mut Mapper, flags: EntryFlags) {
+        assert!(self.backing.is_none());
+
+        let mem = PHYSICAL_ALLOCATOR
+            .alloc_memory(self.size)
+            .expect("Failed to allocate physical memory.");
+        self.backing = Some(Arc::new(mem));
+    }
+
+    /*
+
+
     pub fn coalesce(
         self,
         other: VirtualRegion,
@@ -56,5 +93,5 @@ impl VirtualRegion {
                 backing: None,
             })
         }
-    }
+    }*/
 }

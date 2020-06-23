@@ -34,7 +34,7 @@ impl BumpAllocator {
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         trace!("{:x?} allocating {:x?}", *self, layout);
 
-        let ret = self.next.next_aligned_addr(layout.align());
+        let ret = self.next.next_aligned(layout.align());
         let end = match ret.checked_add(layout.size()) {
             Some(end) => VirtualAddress::new(end),
             None => return ptr::null_mut(),

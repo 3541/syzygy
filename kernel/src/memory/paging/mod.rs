@@ -8,39 +8,13 @@ use core::mem::forget;
 use logc::{debug, trace};
 use multiboot2::ElfSectionIter;
 
-pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
+pub use table::{ActiveTopLevelTable, EntryFlags};
 
-use super::region::{VirtualRegion, VirtualRegionAllocator};
+use super::region::VirtualRegion;
 use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
 use crate::constants::KERNEL_BASE;
-use mapper::Mapper;
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
-
-pub struct Pager {
-    table: TopLevelTable,
-    allocator: VirtualRegionAllocator<{ Frame::SIZE }>,
-}
-
-impl Pager {
-    pub fn new(table: TopLevelTable, region: VirtualRegion) -> Self {
-        Pager {
-            table,
-            allocator: VirtualRegionAllocator::new(region),
-        }
-    }
-
-    pub fn allocator(&mut self) -> &mut VirtualRegionAllocator<{ Frame::SIZE }> {
-        &mut self.allocator
-    }
-
-    pub fn mapper(&mut self) -> &mut Mapper {
-        match &mut self.table {
-            TopLevelTable::Active(t) => &mut *t,
-            _ => panic!("Tried to get mapper on an inactive table, somehow."),
-        }
-    }
-}
 
 fn flush_tlb() {
     unsafe {

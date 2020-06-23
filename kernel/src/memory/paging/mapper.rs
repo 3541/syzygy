@@ -13,6 +13,48 @@ type TopLevelTableType = PML4;
 #[cfg(target_arch = "x86")]
 type TopLevelTableType = PD;
 
+#[must_use = "A flush is necessary."]
+pub struct MapperResult(VirtualAddress);
+
+impl MapperResult {
+    pub fn flush(self) {
+        unsafe { asm!("invlpg [{0}]", in(reg) *self.0) };
+    }
+}
+
+impl Drop for MapperResult {
+    fn drop(&mut self) {
+        panic!("Unflushed mapping.");
+    }
+}
+
+#[must_use = "A flush must be invoked with .flush()"]
+pub struct TLBFlush(bool);
+
+impl TLBFlush {
+    pub fn new() -> Self {
+        TLBFlush(false)
+    }
+
+    pub fn consume(&mut self, result: MapperResult) {
+        self.0 = true;
+        forget(result);
+    }
+
+    pub fn flush(self) {
+        unsafe {
+            asm!("mov rax, cr3");
+            asm!("move cr3, rax");
+        };
+    }
+}
+
+impl Drop for TLBFlush {
+    fn drop(&mut self) {
+        panic!("Unused flush.");
+    }
+}
+
 pub struct Mapper(Unique<Table<TopLevelTableType>>);
 
 impl Mapper {
@@ -49,7 +91,12 @@ impl Mapper {
             .and_then(|t| t.next_table(address.pd_index()))
     }
 
-    pub fn map_to(&mut self, address: VirtualAddress, frame: Frame, flags: EntryFlags) -> Page {
+    pub fn map_to(
+        &mut self,
+        address: VirtualAddress,
+        frame: &Frame,
+        flags: EntryFlags,
+    ) -> MapperResult {
         assert!(address.is_aligned(Frame::SIZE));
 
         trace!("Attempting to map {} -> {}", address, frame);
