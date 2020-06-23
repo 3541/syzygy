@@ -3,44 +3,13 @@
 cpu = host_machine.cpu_family()
 rustc_flags += '-Cforce-frame-pointers=yes'
 
-kernel_src = files([
-                    'src/lib.rs',
-                    'src/constants.rs',
-                    'src/log.rs',
-                    'src/panic.rs',
-                    'src/sym.rs',
-                    'src/sync.rs',
-                    'src/vga_text.rs',
-                    'src/arch/mod.rs',
-                    'src/arch/x86_64/mod.rs',
-                    'src/arch/x86_64/port.rs',
-                    'src/arch/x86_64/process.rs',
-                    'src/arch/x86_64/register.rs',
-                    'src/arch/x86_64/driver/mod.rs',
-                    'src/arch/x86_64/driver/serial.rs',
-                    'src/arch/x86_64/interrupt/mod.rs',
-                    'src/arch/x86_64/interrupt/exception.rs',
-                    'src/arch/x86_64/interrupt/idt.rs',
-                    'src/arch/x86_64/interrupt/pic.rs',
-                    'src/driver/mod.rs',
-                    'src/driver/acpi/mod.rs',
-                    'src/memory/mod.rs',
-                    'src/memory/heap.rs',
-		    'src/memory/region.rs',
-                    'src/memory/size.rs',
-                    'src/memory/alloc/mod.rs',
-                    'src/memory/alloc/bump_allocator.rs',
-                    'src/memory/alloc/fake_allocator.rs',
-                    'src/memory/phys/mod.rs',
-                    'src/memory/phys/alloc/mod.rs',
-                    'src/memory/phys/alloc/bitmap_frame_allocator.rs',
-                    'src/memory/phys/alloc/watermark_frame_allocator.rs',
-                    'src/memory/paging/mod.rs',
-                    'src/memory/paging/mapper.rs',
-                    'src/memory/paging/table.rs',
-                    'src/memory/paging/temp_page.rs',
-                    'src/tree/mod.rs'
-                  ])
+kernel_src = run_command('find',
+                         [
+                          meson.source_root() + '/kernel/src',
+                          '-name',
+                          '*.rs'
+                         ],
+                        check: true).stdout().strip().split('\n')
 kernel_asm_src = files([
                         'src/arch/' + cpu + '/boot.asm',
                         'src/arch/' + cpu + '/multiboot_header.asm'
