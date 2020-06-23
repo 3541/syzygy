@@ -1,4 +1,4 @@
-//pub mod alloc;
+pub mod alloc;
 
 use ::alloc::sync::Arc;
 
@@ -7,7 +7,7 @@ use super::paging::EntryFlags;
 use super::phys::{PhysicalMemory, PHYSICAL_ALLOCATOR};
 use super::{Address, VirtualAddress};
 
-//pub use self::alloc::VirtualRegionAllocator;
+pub use self::alloc::VirtualRegionAllocator;
 
 #[derive(Clone)]
 pub struct VirtualRegion {

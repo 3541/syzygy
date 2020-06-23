@@ -8,8 +8,9 @@ use logc::trace;
 use super::paging::mapper::Mapper;
 use super::paging::table::EntryFlags;
 use super::size::{KB, MB};
-use super::{Address, Frame, VirtualAddress};
+use super::{Address, Frame, VirtualAddress, VirtualRegion};
 use crate::sync::SpinLocked;
+use crate::task;
 use bump_allocator::BumpAllocator;
 //use fake_allocator::FakeAllocator;
 
@@ -25,8 +26,6 @@ static ALLOCATOR: SpinLocked<GlobalAllocator> =
 
 struct GlobalAllocator {
     heap: Option<BumpAllocator>,
-    heap_base: VirtualAddress,
-    heap_size: usize,
     init_heap: Option<BumpAllocator>,
 }
 
@@ -34,8 +33,6 @@ impl GlobalAllocator {
     pub const unsafe fn new(heap_base: VirtualAddress, heap_size: usize) -> Self {
         Self {
             heap: None,
-            heap_base,
-            heap_size,
             init_heap: None,
         }
     }
@@ -47,8 +44,8 @@ impl GlobalAllocator {
         ));
     }
 
-    pub unsafe fn add_heap(&mut self) {
-        self.heap = Some(BumpAllocator::new(self.heap_base, self.heap_size))
+    pub unsafe fn add_heap(&mut self, region: VirtualRegion) {
+        self.heap = Some(BumpAllocator::new(region.start(), region.size()))
     }
 }
 
@@ -76,20 +73,24 @@ pub unsafe fn init_allocator() {
     ALLOCATOR.lock().init();
 }
 
-pub fn init_heap(mapper: &mut Mapper) {
+pub fn init_heap() {
     trace!(
         "Mapping heap from {} to {} (0x{:x})",
         HEAP_BASE,
         HEAP_BASE + HEAP_SIZE,
         HEAP_SIZE
     );
-    for address in (*HEAP_BASE..(*HEAP_BASE + HEAP_SIZE)).step_by(Frame::SIZE) {
-        mapper.map(
-            VirtualAddress::new(address),
-            EntryFlags::PRESENT | EntryFlags::WRITABLE,
-        );
-    }
+    let task_list = task::task_list();
+    let task = task_list.current();
+
+    let mut pager = task.pager();
+    let mut heap = pager
+        .allocator()
+        .alloc(HEAP_SIZE)
+        .expect("Unable to allocate memory for the main heap.");
+
+    heap.map(pager.mapper(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
     // Notify the bump allocator that the real heap is now available.
-    unsafe { ALLOCATOR.lock().add_heap() };
+    unsafe { ALLOCATOR.lock().add_heap(heap) };
 }

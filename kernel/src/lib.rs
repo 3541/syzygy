@@ -8,9 +8,11 @@
 #![feature(ptr_internals)]
 #![feature(maybe_uninit_extra)]
 #![feature(naked_functions)]
+#![feature(asm)]
+#![feature(const_generics)]
+//#![feature(thread_local)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]
-#![feature(asm)]
 
 mod arch;
 mod constants;
@@ -20,6 +22,7 @@ mod memory;
 mod panic;
 mod sym;
 mod sync;
+mod task;
 mod tree;
 mod vga_text;
 
@@ -37,7 +40,7 @@ use arch::port::Port;
 use constants::KERNEL_BASE;
 use driver::serial;
 use memory::paging::table::ActiveTopLevelTable;
-use memory::{Address, PhysicalAddress, VirtualAddress};
+use memory::{Address, PhysicalAddress, VirtualAddress, VirtualRegion};
 use sym::SYMBOLS;
 
 #[cfg(feature = "integration-tests")]
@@ -226,7 +229,14 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     };
     info!("REMAPPED the kernel address space.");
 
-    memory::init_heap(&mut table);
+    let region_base =
+        VirtualAddress::new(multiboot_info.end_address()).next_aligned(memory::Frame::SIZE);
+    task::init(table, unsafe {
+        VirtualRegion::new(region_base, 0xFFFFFFFF_FFFFFFFF - *region_base)
+    });
+    info!("CREATED task 0");
+
+    memory::init_heap();
     info!("INITIALIZED real kernel heap.");
 
     let initramfs = unsafe {

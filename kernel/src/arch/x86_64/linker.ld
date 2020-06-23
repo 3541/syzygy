@@ -4,12 +4,15 @@ KERNEL_BASE = 0xFFFFC00000000000;
 
 SECTIONS {
     . = 1M;
+    . += SIZEOF_HEADERS;
 
     .inittext : {
         *(.inittext)
     }
 
     . = KERNEL_BASE;
+    . += 1M;
+    . += SIZEOF(.inittext);
     . = ALIGN(4K);
 
     .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_BASE) {

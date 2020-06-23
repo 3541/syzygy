@@ -113,6 +113,11 @@ impl InactiveTopLevelTable {
     }
 }
 
+pub enum TopLevelTable {
+    Active(ActiveTopLevelTable),
+    Inactive(InactiveTopLevelTable),
+}
+
 bitflags! {
     pub struct EntryFlags: usize {
         const PRESENT = 1;
