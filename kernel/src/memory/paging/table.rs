@@ -1,5 +1,6 @@
 use core::fmt;
 use core::marker::PhantomData;
+use core::mem::forget;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 
 use bitflags::bitflags;
@@ -9,8 +10,7 @@ use multiboot2::{ElfSection, ElfSectionFlags};
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
 use crate::memory::{
-    Address, Frame, FrameAllocator, PhysicalAddress, RawVirtualAddress, VirtualAddress,
-    FRAME_ALLOCATOR,
+    Address, Frame, PhysicalAddress, RawVirtualAddress, VirtualAddress, PHYSICAL_ALLOCATOR,
 };
 
 // NOTE: Magic virtual addresses
@@ -54,25 +54,17 @@ impl ActiveTopLevelTable {
         ActiveTopLevelTable(Mapper::new())
     }
 
-    pub fn with(
-        &mut self,
-        table: &mut InactiveTopLevelTable,
-        temp: &mut TempPage,
-        then: impl FnOnce(&mut Mapper),
-    ) {
+    pub fn with(&mut self, table: &mut InactiveTopLevelTable, then: impl FnOnce(&mut Mapper)) {
         let prev_pml4_address: usize;
         unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
         let prev_pml4_address = PhysicalAddress::new(prev_pml4_address);
 
-        temp.frame = Frame(prev_pml4_address);
+        let mut temp = TempPage::new(Frame(prev_pml4_address));
         let prev_pml4 = temp.map_and_pun_frame(self);
 
-        trace!("NEW TABLE IS AT 0x{:x?}", table.frame().address());
+        trace!("NEW TABLE IS AT 0x{:x?}", table.address());
 
-        self.get_mut()[511].set(
-            table.frame().address(),
-            EntryFlags::PRESENT | EntryFlags::WRITABLE,
-        );
+        self.get_mut()[511].set(table.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
         super::flush_tlb();
 
@@ -83,17 +75,19 @@ impl ActiveTopLevelTable {
             EntryFlags::PRESENT | EntryFlags::WRITABLE,
         );
 
-        super::flush_tlb()
+        super::flush_tlb();
+        forget(temp.0);
     }
 
     pub fn switch(&mut self, new: InactiveTopLevelTable) -> InactiveTopLevelTable {
         let mut cr3: usize;
         unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(cr3) ::: "volatile") };
         let old = InactiveTopLevelTable(Frame(PhysicalAddress::new(cr3)));
-        trace!("Read {} from cr3", old.frame().address());
+        trace!("Read {} from cr3", old.address());
 
-        trace!("Writing 0x{:x} to cr3", *new.frame().address());
-        unsafe { llvm_asm!("mov %rax, %cr3" :: "{rax}"(*new.frame().address()) :: "volatile") };
+        trace!("Writing 0x{:x} to cr3", *new.address());
+        unsafe { llvm_asm!("mov %rax, %cr3" :: "{rax}"(*new.address()) :: "volatile") };
+        forget(new.0);
 
         old
     }
@@ -103,15 +97,14 @@ pub struct InactiveTopLevelTable(Frame);
 
 impl InactiveTopLevelTable {
     pub fn new(active: &mut ActiveTopLevelTable, mut temp: TempPage) -> InactiveTopLevelTable {
-        let frame = temp.frame;
+        let phys = temp.physical_address();
         let table = temp.map_and_pun_frame(active);
         table.zero();
-        table[511].set(frame.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
-        temp.unmap(active);
-        InactiveTopLevelTable(frame)
+        table[511].set(phys, EntryFlags::PRESENT | EntryFlags::WRITABLE);
+        InactiveTopLevelTable(temp.unmap(active))
     }
 
-    pub fn frame(&self) -> Frame {
+    pub fn into_frame(self) -> Frame {
         self.0
     }
 
@@ -180,7 +173,7 @@ impl Entry {
 
     pub fn set(&mut self, address: PhysicalAddress, flags: EntryFlags) {
         trace!("ENTERED set");
-        trace!("Address: {:x?}, Entry: {:x?}", address, self);
+        trace!("Address: {}, Entry: {:x?}", address, self);
         assert_eq!(*address & !Self::ADDRESS_MASK, 0);
         self.0 = *address | flags.bits();
         trace!("Self is now {:x?}", self);
@@ -259,10 +252,14 @@ impl<T: TableType + NestedTableType> Table<T> {
                         index,
                         (self as *mut _) as usize
                     );
-                    let f = FRAME_ALLOCATOR.alloc().expect("No frames available?");
+                    let f = PHYSICAL_ALLOCATOR
+                        .alloc_frame()
+                        .expect("No frames available?");
                     trace!("Got frame");
                     self.entries[index]
                         .set(f.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+                    // FIXME: Deal with Table ownership intelligently
+                    forget(f);
                     let t = self.next_table_mut(index).unwrap();
                     t.zero();
                     t

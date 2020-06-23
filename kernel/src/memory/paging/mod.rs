@@ -58,18 +58,13 @@ pub unsafe fn remap_kernel(
     initramfs_start: PhysicalAddress,
     initramfs_end: PhysicalAddress,
 ) {
-    let frame = FRAME_ALLOCATOR
-        .alloc()
+    let frame = PHYSICAL_ALLOCATOR
+        .alloc_frame()
         .expect("Need free frame to remap kernel.");
-    let temp = TempPage::new(Page(VirtualAddress::new(0xe000e000)), frame);
+    let temp = TempPage::new(frame);
     let mut new_table = InactiveTopLevelTable::new(top, temp);
 
-    let mut temp = TempPage::new(
-        Page(VirtualAddress::new(0xe000e000)),
-        FRAME_ALLOCATOR.alloc().unwrap(),
-    );
-
-    top.with(&mut new_table, &mut temp, |m| {
+    top.with(&mut new_table, |m| {
         debug!("Mapping kernel sections");
         for section in elf_sections {
             if !section.is_allocated()
@@ -89,40 +84,41 @@ pub unsafe fn remap_kernel(
                 section.size()
             );
 
-            let from = Frame(PhysicalAddress::new(
-                (section.start_address() as usize) - *KERNEL_BASE,
-            ));
-            let to = Frame(PhysicalAddress::new(
+            let from = PhysicalAddress::new((section.start_address() as usize) - *KERNEL_BASE);
+            let to = PhysicalAddress::new(
                 (section.end_address() as usize - 1)
                     - (section.end_address() as usize - 1) % Frame::SIZE
                     - *KERNEL_BASE,
-            ));
+            );
 
             let flags = EntryFlags::from_elf(&section);
 
-            for frame in Frame::range_inclusive(from, to) {
-                m.map_kernel_space(frame, flags);
+            for frame in PhysicalMemory::region(from, to).into_frames() {
+                m.map_kernel_space(&frame, flags);
+                forget(frame);
             }
         }
 
         debug!("Mapping VGA buffer");
-        m.map_kernel_space(
-            Frame(crate::vga_text::VGA_BUFFER_ADDRESS),
-            EntryFlags::WRITABLE,
-        );
+        let vga_buffer = Frame(crate::vga_text::VGA_BUFFER_ADDRESS);
+        m.map_kernel_space(&vga_buffer, EntryFlags::WRITABLE);
+        forget(vga_buffer);
 
         debug!("Mapping Multiboot info structure and initramfs");
-        let from = Frame::containing_address(min(
+        let from = min(
             PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE),
             initramfs_start,
-        ));
-        let to = Frame::containing_address(max(
+        )
+        .previous_aligned(Frame::SIZE);
+        let to = max(
             PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE - 1),
             initramfs_end,
-        ));
+        )
+        .next_aligned(Frame::SIZE);
 
-        for frame in Frame::range_inclusive(from, to) {
-            m.map_kernel_space(frame, EntryFlags::PRESENT);
+        for frame in PhysicalMemory::region(from, to).into_frames() {
+            m.map_kernel_space(&frame, EntryFlags::PRESENT);
+            forget(frame);
         }
     });
 
@@ -130,8 +126,10 @@ pub unsafe fn remap_kernel(
     let old = top.switch(new_table);
     debug!("Switched to new table.");
 
-    //    FRAME_ALLOCATOR.free(old.frame());
-    let guard = Page(KERNEL_BASE + *old.address());
+    //    PHYSICAL_ALLOCATOR.free(old.frame());
+    let guard = KERNEL_BASE + *old.address();
     top.unmap(guard);
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
+
+    forget(old.into_frame());
 }

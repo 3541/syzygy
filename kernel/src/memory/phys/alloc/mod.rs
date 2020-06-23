@@ -2,28 +2,24 @@ mod bitmap_frame_allocator;
 //mod watermark_frame_allocator;
 
 use alloc::boxed::Box;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use logc::debug;
 use multiboot2::{MemoryAreaIter, MemoryAreaType};
-use spin::{Mutex, MutexGuard};
+use spin::Mutex;
 
-use super::Frame;
-use crate::memory::size::KB;
+use super::{Frame, PhysicalMemory, PhysicalMemoryKind};
 use crate::memory::PhysicalAddress;
 use bitmap_frame_allocator::BitmapFrameAllocator;
 
-// NOTE: temporary static allocation size
-const INITIAL_BITMAP_SIZE: usize = 32768;
-
-pub static FRAME_ALLOCATOR: PhysicalMemoryManager = unsafe { PhysicalMemoryManager::new() };
-pub static mut BITMAP: [usize; INITIAL_BITMAP_SIZE] = [0; INITIAL_BITMAP_SIZE];
+pub static PHYSICAL_ALLOCATOR: PhysicalMemoryManager = unsafe { PhysicalMemoryManager::new() };
 
 pub trait FrameAllocator {
     fn alloc(&mut self) -> Option<Frame>;
+    fn alloc_exact(&mut self, addr: PhysicalAddress) -> Option<Frame>;
     fn free(&mut self, frame: Frame);
-    fn has(&self, frame: Frame) -> bool;
+    fn has_address(&self, address: PhysicalAddress) -> bool;
+    fn has(&self, frame: &Frame) -> bool;
 }
 
 pub struct PhysicalMemoryManager {
@@ -73,7 +69,7 @@ impl PhysicalMemoryManager {
         }
     }
 
-    pub fn alloc(&self) -> Option<Frame> {
+    pub fn alloc_frame(&self) -> Option<Frame> {
         let mut areas = self.areas.lock();
         for area in &mut *areas {
             if let s @ Some(_) = area.alloc() {
@@ -83,15 +79,41 @@ impl PhysicalMemoryManager {
         None
     }
 
+    pub fn alloc_memory(&self, size: usize) -> Option<PhysicalMemory> {
+        let n = (size + Frame::SIZE - 1) / Frame::SIZE;
+        // NOTE: This should result in the immediate freeing of successfully-allocated frames if there are
+        // any failures.
+        Some(PhysicalMemory {
+            frames: (0..n)
+                .map(|_| self.alloc_frame())
+                .collect::<Option<Vec<Frame>>>()?,
+            kind: PhysicalMemoryKind::Allocated,
+        })
+    }
+
+    pub fn alloc_memory_exact_contiguous(
+        &self,
+        address: PhysicalAddress,
+        size: usize,
+    ) -> Option<PhysicalMemory> {
+        todo!()
+    }
+
     pub fn free(&self, frame: Frame) {
         let mut areas = self.areas.lock();
         for area in &mut *areas {
-            if area.has(frame) {
+            if area.has(&frame) {
                 area.free(frame);
                 return;
             }
         }
 
         panic!("Tried to free an un-allocated frame.");
+    }
+
+    pub fn free_memory(&self, memory: PhysicalMemory) {
+        for frame in memory.into_frames() {
+            self.free(frame)
+        }
     }
 }

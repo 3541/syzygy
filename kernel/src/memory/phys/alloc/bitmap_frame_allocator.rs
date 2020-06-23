@@ -17,11 +17,7 @@ pub struct BitmapFrameAllocator {
 
 // EVERYTHING in here is only safe if called through PhysicalMemoryManager
 impl BitmapFrameAllocator {
-    pub unsafe fn new(
-        area: &MemoryArea,
-        //        used_predicate: impl Fn(&usize) -> bool,
-        used_ranges: &[(usize, usize)],
-    ) -> BitmapFrameAllocator {
+    pub unsafe fn new(area: &MemoryArea, used_ranges: &[(usize, usize)]) -> BitmapFrameAllocator {
         let bitmap = vec![0; area.size() as usize / Frame::SIZE / size_of::<usize>() / 8];
 
         let mut ret = Self {
@@ -82,6 +78,10 @@ impl BitmapFrameAllocator {
 
         assert!(self.bitmap[field] & mask != 0, "Failed to set.");
     }
+
+    fn is_used(&self, address: PhysicalAddress) -> bool {
+        self.bitmap[self.field(address)] & Self::mask(address) != 0
+    }
 }
 
 impl FrameAllocator for BitmapFrameAllocator {
@@ -115,6 +115,15 @@ impl FrameAllocator for BitmapFrameAllocator {
         None
     }
 
+    fn alloc_exact(&mut self, address: PhysicalAddress) -> Option<Frame> {
+        if self.is_used(address) {
+            None
+        } else {
+            unsafe { self.set_used(address) };
+            Some(Frame(address))
+        }
+    }
+
     fn free(&mut self, frame: Frame) {
         let field = self.field(frame.address());
         let mask = BitmapFrameAllocator::mask(frame.address());
@@ -130,7 +139,11 @@ impl FrameAllocator for BitmapFrameAllocator {
         }
     }
 
-    fn has(&self, frame: Frame) -> bool {
-        self.base <= frame.address() && self.base + self.size > frame.address() + Frame::SIZE
+    fn has_address(&self, address: PhysicalAddress) -> bool {
+        self.base <= address && self.base + self.size > address + Frame::SIZE
+    }
+
+    fn has(&self, frame: &Frame) -> bool {
+        self.has_address(frame.address())
     }
 }

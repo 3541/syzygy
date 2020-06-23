@@ -1,10 +1,14 @@
 pub mod alloc;
 
+use ::alloc::vec::Vec;
 use core::fmt;
+use core::ops::Drop;
 
 use crate::memory::{Address, PhysicalAddress};
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
+pub use self::alloc::PHYSICAL_ALLOCATOR;
+
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct Frame(pub PhysicalAddress);
 
 impl Frame {
@@ -19,11 +23,17 @@ impl Frame {
     }
 
     pub fn containing_address(address: PhysicalAddress) -> Frame {
-        Frame(address.prev_aligned_addr(Self::SIZE))
+        Frame(address.previous_aligned(Self::SIZE))
     }
 
-    pub fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
+    /*    pub fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
         FrameIterator { from, to }
+    }*/
+}
+
+impl Drop for Frame {
+    fn drop(&mut self) {
+        todo!()
     }
 }
 
