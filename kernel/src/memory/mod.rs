@@ -6,6 +6,7 @@ pub mod size;
 //mod watermark_frame_allocator;
 
 use core::fmt;
+use core::iter::Step;
 use core::marker::Sized;
 use core::ops::{Add, AddAssign, Deref, Sub};
 
@@ -189,5 +190,19 @@ impl Add<VirtualAddress> for VirtualAddress {
 
     fn add(self, rhs: VirtualAddress) -> Self {
         self + *rhs
+    }
+}
+
+unsafe impl Step for VirtualAddress {
+    fn steps_between(start: &VirtualAddress, end: &VirtualAddress) -> Option<usize> {
+        end.checked_sub(**start)
+    }
+
+    fn forward_checked(start: VirtualAddress, count: usize) -> Option<VirtualAddress> {
+        Some(VirtualAddress::new(start.checked_add(count)?))
+    }
+
+    fn backward_checked(start: VirtualAddress, count: usize) -> Option<VirtualAddress> {
+        Some(VirtualAddress::new(start.checked_sub(count)?))
     }
 }

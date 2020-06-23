@@ -8,6 +8,8 @@
 #![feature(ptr_internals)]
 #![feature(maybe_uninit_extra)]
 #![feature(naked_functions)]
+#![feature(step_trait)]
+#![feature(step_trait_ext)]
 
 mod arch;
 mod constants;
