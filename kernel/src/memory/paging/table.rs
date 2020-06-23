@@ -229,7 +229,7 @@ impl<T: TableType + NestedTableType> Table<T> {
         let flags = self[index].flags();
         if flags.contains(EntryFlags::PRESENT) && !flags.contains(EntryFlags::LARGE) {
             Some(VirtualAddress::new(
-                ((self as *const _ as RawVirtualAddress) << super::PAGE_ADDR_INDEX_SHIFT)
+                ((self as *const _ as RawVirtualAddress) << VirtualAddress::PAGE_ADDR_INDEX_SHIFT)
                     | (index << 12),
             ))
         } else {

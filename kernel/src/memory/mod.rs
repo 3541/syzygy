@@ -45,13 +45,13 @@ pub trait Address: Deref<Target = usize> + Sized + Eq {
     }
 
     #[inline]
-    fn prev_aligned_addr(&self, align: usize) -> Self {
+    fn previous_aligned(&self, align: usize) -> Self {
         Self::new(**self & !(align - 1))
     }
 
     #[inline]
-    fn next_aligned_addr(&self, align: usize) -> Self {
-        Self::new(**self + align - 1).prev_aligned_addr(align)
+    fn next_aligned(&self, align: usize) -> Self {
+        Self::new(**self + align - 1).previous_aligned(align)
     }
 
     #[inline]
@@ -136,12 +136,46 @@ impl Sub<PhysicalAddress> for PhysicalAddress {
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct VirtualAddress(RawVirtualAddress);
 impl VirtualAddress {
+    pub const PAGE_ADDR_INDEX_SHIFT: usize = 9;
+    const PAGE_ADDR_INDEX_MASK: usize = (1 << Self::PAGE_ADDR_INDEX_SHIFT) - 1;
+    const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
+    const PAGE_ADDR_OFFSET_MASK: usize = (1 << Self::PAGE_ADDR_OFFSET_SHIFT) - 1;
+
     pub const unsafe fn new_const(addr: RawVirtualAddress) -> Self {
         Self(addr)
     }
 
     pub const fn raw(&self) -> RawVirtualAddress {
         self.0
+    }
+
+    pub const fn pml4_index(&self) -> usize {
+        self.table_index(3)
+    }
+
+    pub const fn pdp_index(&self) -> usize {
+        self.table_index(2)
+    }
+
+    pub const fn pd_index(&self) -> usize {
+        self.table_index(1)
+    }
+
+    pub const fn pt_index(&self) -> usize {
+        self.table_index(0)
+    }
+
+    // NOTE: 0-indexed (PT is 0, PML4 is 3)
+    const fn table_index(&self, n: usize) -> usize {
+        // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
+        // sort of broken for larger pages, because the total offset is still the same
+        // if we want some specific table. e.g., PML4 index is always at the same place.
+        (self.raw() >> (Self::PAGE_ADDR_OFFSET_SHIFT + Self::PAGE_ADDR_INDEX_SHIFT * n))
+            & Self::PAGE_ADDR_INDEX_MASK
+    }
+
+    pub const fn offset_into_frame(&self) -> usize {
+        self.raw() & Self::PAGE_ADDR_OFFSET_MASK
     }
 }
 

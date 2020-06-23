@@ -3,68 +3,42 @@ pub mod table;
 mod temp_page;
 
 use core::cmp::{max, min};
+use core::mem::forget;
 
 use logc::{debug, trace};
 use multiboot2::ElfSectionIter;
 
-pub use table::{ActiveTopLevelTable, EntryFlags};
+pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
 
+use super::region::{VirtualRegion, VirtualRegionAllocator};
+use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
 use crate::constants::KERNEL_BASE;
-use crate::memory::{
-    Address, Frame, FrameAllocator, PhysicalAddress, VirtualAddress, FRAME_ALLOCATOR,
-};
+use mapper::Mapper;
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
 
-#[cfg(target_arch = "x86_64")]
-const PAGE_ADDR_INDEX_SHIFT: usize = 9;
+pub struct Pager {
+    table: TopLevelTable,
+    allocator: VirtualRegionAllocator<{ Frame::SIZE }>,
+}
 
-#[cfg(target_arch = "x86")]
-const PAGE_ADDR_INDEX_SHIFT: usize = 10;
-
-const PAGE_ADDR_INDEX_MASK: usize = (1 << PAGE_ADDR_INDEX_SHIFT) - 1;
-
-const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
-const PAGE_ADDR_OFFSET_MASK: usize = (1 << PAGE_ADDR_OFFSET_SHIFT) - 1;
-
-#[derive(Debug, Clone, Copy)]
-pub struct Page(VirtualAddress);
-
-impl Page {
-    const SIZE: usize = Frame::SIZE;
-
-    #[cfg(target_arch = "x86_64")]
-    pub fn pml4_index(&self) -> usize {
-        self.table_index(3)
+impl Pager {
+    pub fn new(table: TopLevelTable, region: VirtualRegion) -> Self {
+        Pager {
+            table,
+            allocator: VirtualRegionAllocator::new(region),
+        }
     }
 
-    pub fn pdp_index(&self) -> usize {
-        self.table_index(2)
+    pub fn allocator(&mut self) -> &mut VirtualRegionAllocator<{ Frame::SIZE }> {
+        &mut self.allocator
     }
 
-    pub fn pd_index(&self) -> usize {
-        self.table_index(1)
-    }
-
-    pub fn pt_index(&self) -> usize {
-        self.table_index(0)
-    }
-
-    // NOTE: 0-indexed (PT is 0, PML4 is 3)
-    fn table_index(&self, n: usize) -> usize {
-        // NOTE: it should be okay to use OFFSET_SHIFT like this, even though it's
-        // sort of broken for larger pages, because the total offset is still the same
-        // if we want some specific table. e.g., PML4 index is always at the same place.
-        (*self.0 >> (PAGE_ADDR_OFFSET_SHIFT + PAGE_ADDR_INDEX_SHIFT * n)) & PAGE_ADDR_INDEX_MASK
-    }
-
-    pub fn address(&self) -> VirtualAddress {
-        self.0
-    }
-
-    #[inline]
-    unsafe fn flush(&self) {
-        llvm_asm!("invlpg ($0)" :: "r"(*self.address()) : "memory");
+    pub fn mapper(&mut self) -> &mut Mapper {
+        match &mut self.table {
+            TopLevelTable::Active(t) => &mut *t,
+            _ => panic!("Tried to get mapper on an inactive table, somehow."),
+        }
     }
 }
 
