@@ -23,6 +23,14 @@ impl BumpAllocator {
         }
     }
 
+    pub fn base(&self) -> VirtualAddress {
+        self.heap_base
+    }
+
+    pub fn end(&self) -> VirtualAddress {
+        self.heap_end
+    }
+
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
         trace!("{:x?} allocating {:x?}", *self, layout);
 

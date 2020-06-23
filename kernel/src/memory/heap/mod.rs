@@ -3,22 +3,23 @@ mod bump_allocator;
 
 use alloc::alloc::{GlobalAlloc, Layout};
 
-use super::heap::{HEAP_BASE, HEAP_SIZE};
-use crate::memory::size::KB;
-use crate::memory::{Address, VirtualAddress};
+use logc::trace;
+
+use super::paging::mapper::Mapper;
+use super::paging::table::EntryFlags;
+use super::size::{KB, MB};
+use super::{Address, Frame, VirtualAddress};
 use crate::sync::SpinLocked;
 use bump_allocator::BumpAllocator;
 //use fake_allocator::FakeAllocator;
 
-//#[global_allocator]
-//static ALLOCATOR: FakeAllocator = FakeAllocator {};
+pub const HEAP_BASE: VirtualAddress = unsafe { VirtualAddress::new_const(0x0000_4EA6_0000_0000) };
+pub const HEAP_SIZE: usize = 4 * MB;
 
 static mut INIT_HEAP: [u8; 200 * KB] = [0; 200 * KB];
 
 #[cfg(not(test))]
 #[global_allocator]
-/*static ALLOCATOR: SpinLocked<BumpAllocator> =
-unsafe { SpinLocked::new(BumpAllocator::new(HEAP_BASE, HEAP_SIZE)) };*/
 static ALLOCATOR: SpinLocked<GlobalAllocator> =
     unsafe { SpinLocked::new(GlobalAllocator::new(HEAP_BASE, HEAP_SIZE)) };
 
@@ -63,9 +64,10 @@ unsafe impl GlobalAlloc for SpinLocked<GlobalAllocator> {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         let mut this = self.lock();
+        let heap = this.heap.as_mut().unwrap();
 
-        if *this.heap_base <= (ptr as usize) && (ptr as usize) < *this.heap_base + this.heap_size {
-            this.heap.as_mut().unwrap().dealloc(ptr, layout);
+        if *heap.base() <= (ptr as usize) && (ptr as usize) < *heap.end() {
+            heap.dealloc(ptr, layout);
         }
     }
 }
@@ -74,6 +76,20 @@ pub unsafe fn init_allocator() {
     ALLOCATOR.lock().init();
 }
 
-pub unsafe fn add_heap() {
-    ALLOCATOR.lock().add_heap();
+pub fn init_heap(mapper: &mut Mapper) {
+    trace!(
+        "Mapping heap from {} to {} (0x{:x})",
+        HEAP_BASE,
+        HEAP_BASE + HEAP_SIZE,
+        HEAP_SIZE
+    );
+    for address in (*HEAP_BASE..(*HEAP_BASE + HEAP_SIZE)).step_by(Frame::SIZE) {
+        mapper.map(
+            VirtualAddress::new(address),
+            EntryFlags::PRESENT | EntryFlags::WRITABLE,
+        );
+    }
+
+    // Notify the bump allocator that the real heap is now available.
+    unsafe { ALLOCATOR.lock().add_heap() };
 }

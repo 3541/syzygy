@@ -1,13 +1,21 @@
 use super::phys::PhysicalMemory;
 use super::VirtualAddress;
 
-struct VirtualRegion {
+pub struct VirtualRegion {
     start: VirtualAddress,
     size: usize,
     backing: Option<PhysicalMemory>,
 }
 
 impl VirtualRegion {
+    pub fn start(&self) -> VirtualAddress {
+        self.start
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
     pub fn end(&self) -> VirtualAddress {
         self.start + self.size
     }
