@@ -123,12 +123,22 @@ impl Add<PhysicalAddress> for PhysicalAddress {
     }
 }
 
+impl Sub<usize> for PhysicalAddress {
+    type Output = PhysicalAddress;
+
+    fn sub(self, rhs: usize) -> Self {
+        PhysicalAddress::new(
+            self.checked_sub(rhs)
+                .expect("Physical address subtraction underflowed"),
+        )
+    }
+}
+
 impl Sub<PhysicalAddress> for PhysicalAddress {
     type Output = usize;
 
     fn sub(self, rhs: PhysicalAddress) -> usize {
-        self.checked_sub(*rhs)
-            .expect("Physical address subtraction underflowed")
+        *(self - *rhs)
     }
 }
 
