@@ -7,8 +7,8 @@ use crate::sym::SYMBOLS;
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
 pub struct StackFrame {
-    rbp: *const StackFrame,
-    rip: *const u64,
+    pub rbp: *const StackFrame,
+    pub rip: *const u64,
 }
 
 #[panic_handler]

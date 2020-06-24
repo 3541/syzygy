@@ -1,11 +1,20 @@
 use logc::error;
 
 use super::InterruptStackFrame;
+use crate::panic::StackFrame;
+
+unsafe fn print_backtrace(stack: &InterruptStackFrame) {
+    crate::panic::print_backtrace(&StackFrame {
+        rbp: *stack.stack_pointer as *const _,
+        rip: *stack.instruction_pointer as *const _,
+    })
+}
 
 macro_rules! generic_handler_ret {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame) {
             error!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
+            unsafe { print_backtrace(stack) };
         }
     };
 }
@@ -14,6 +23,7 @@ macro_rules! generic_handler_halt {
     ( $n:ident ) => {
         pub extern "x86-interrupt" fn $n(stack: &mut InterruptStackFrame) {
             error!("EXCEPTION: {} - \n {:#x?}", stringify!($n), stack);
+            unsafe { print_backtrace(stack) };
             loop {}
         }
     };
@@ -29,6 +39,7 @@ macro_rules! errc_handler_ret {
                 err,
                 stack
             );
+            unsafe { print_backtrace(stack) };
         }
     };
 }
@@ -43,6 +54,7 @@ macro_rules! errc_handler_halt {
                 err,
                 stack
             );
+            unsafe { print_backtrace(stack) };
             loop {}
         }
     };
@@ -79,5 +91,7 @@ pub extern "x86-interrupt" fn page_fault(stack: &mut InterruptStackFrame, err: u
         error_code::PageFault::from_bits(err).unwrap(),
         stack
     );
+
+    unsafe { print_backtrace(stack) };
     loop {}
 }
