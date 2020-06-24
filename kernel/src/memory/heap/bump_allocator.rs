@@ -3,32 +3,30 @@ use core::ptr;
 
 use logc::{error, trace};
 
-use crate::memory::{Address, VirtualAddress};
+use crate::memory::{Address, VirtualAddress, VirtualRegion};
 
 #[derive(Debug)]
 pub struct BumpAllocator {
-    heap_base: VirtualAddress,
-    heap_end: VirtualAddress,
+    backing: VirtualRegion,
     next: VirtualAddress,
     count: usize,
 }
 
 impl BumpAllocator {
-    pub const unsafe fn new(heap_base: VirtualAddress, heap_size: usize) -> Self {
+    pub const unsafe fn new(backing: VirtualRegion) -> Self {
         Self {
-            heap_base,
-            heap_end: VirtualAddress::new_const(heap_base.raw() + heap_size),
-            next: heap_base,
+            next: backing.start(),
+            backing,
             count: 0,
         }
     }
 
     pub fn base(&self) -> VirtualAddress {
-        self.heap_base
+        self.backing.start()
     }
 
     pub fn end(&self) -> VirtualAddress {
-        self.heap_end
+        self.backing.end()
     }
 
     pub unsafe fn alloc(&mut self, layout: Layout) -> *mut u8 {
@@ -40,7 +38,7 @@ impl BumpAllocator {
             None => return ptr::null_mut(),
         };
 
-        if end > self.heap_end {
+        if end > self.end() {
             error!("Out of kernel heap!");
             ptr::null_mut()
         } else {
@@ -56,7 +54,7 @@ impl BumpAllocator {
 
         self.count -= 1;
         if self.count == 0 {
-            self.next = self.heap_base;
+            self.next = self.base();
         }
     }
 }
