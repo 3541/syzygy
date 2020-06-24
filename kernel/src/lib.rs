@@ -28,6 +28,7 @@ mod vga_text;
 
 extern crate alloc;
 
+use core::cmp::max;
 use core::mem::transmute;
 use core::slice;
 
@@ -40,7 +41,8 @@ use arch::port::Port;
 use constants::KERNEL_BASE;
 use driver::serial;
 use memory::paging::table::ActiveTopLevelTable;
-use memory::{Address, PhysicalAddress, VirtualAddress, VirtualRegion};
+use memory::paging::EntryFlags;
+use memory::{Address, PhysicalAddress, PhysicalMemory, VirtualAddress, VirtualRegion};
 use sym::SYMBOLS;
 
 #[cfg(feature = "integration-tests")]
@@ -229,10 +231,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     };
     info!("REMAPPED the kernel address space.");
 
-    let region_base =
-        VirtualAddress::new(multiboot_info.end_address()).next_aligned(memory::Frame::SIZE);
+    let region_base = VirtualAddress::new(max(multiboot_info.end_address(), *kernel_end_addr))
+        .next_aligned(memory::Frame::SIZE);
     task::init(table, unsafe {
-        VirtualRegion::new(region_base, 0xFFFFFFFF_FFFFFFFF - *region_base)
+        VirtualRegion::new(
+            region_base,
+            VirtualAddress::new(0xFFFFFFFF_FFFFFFFF).previous_aligned(8),
+        )
     });
     info!("CREATED task 0");
 
@@ -240,10 +245,15 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED real kernel heap.");
 
     let initramfs = unsafe {
-        Initramfs::new(slice::from_raw_parts(
-            (*initramfs_addr + *KERNEL_BASE) as *const u8,
+        let initramfs_memory = PhysicalMemory::region(initramfs_addr, initramfs_end_addr)
+            .map_for_kernel(EntryFlags::PRESENT)
+            .expect("Failed to map initramfs");
+        let i = Initramfs::new(slice::from_raw_parts(
+            *initramfs_memory.start() as *const u8,
             initramfs_end_addr - initramfs_addr,
-        ))
+        ));
+        core::mem::forget(initramfs_memory);
+        i
     };
     info!("LOADED initramfs.");
 

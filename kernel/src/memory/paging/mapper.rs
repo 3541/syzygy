@@ -42,23 +42,32 @@ impl TLBFlush {
         forget(result);
     }
 
+    pub fn consume_other(&mut self, other: TLBFlush) {
+        if other.0 {
+            self.0 = true;
+        }
+        forget(other);
+    }
+
     pub fn flush(self) {
         // Reloading CR3 flushes the TLB completely.
         if self.0 {
             unsafe {
                 asm!("mov rax, cr3");
-                asm!("move cr3, rax");
+                asm!("mov cr3, rax");
             };
         } else {
             warn!("Unnecessary TLBFlush -- never consumed a MapperResult.");
         }
+
+        forget(self);
     }
 }
 
 impl Drop for TLBFlush {
     fn drop(&mut self) {
         if self.0 {
-            panic!("Unused flush.");
+            panic!("Unused TLBFlush.");
         } else {
             warn!("Dropping unnecessary TLBFlush.");
         }

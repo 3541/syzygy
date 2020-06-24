@@ -66,7 +66,16 @@ pub unsafe fn remap_kernel(
     let mut tlb_flush = TLBFlush::new();
 
     top.with(&mut new_table, |m| {
-        debug!("Mapping kernel sections");
+        let mut closure_tlb_flush = TLBFlush::new();
+        let mut map_region_in_kernel =
+            |m: &mut Mapper, from: PhysicalAddress, to: PhysicalAddress, flags: EntryFlags| {
+                for frame in PhysicalMemory::region(from, to).into_frames() {
+                    closure_tlb_flush.consume(m.map_kernel_space(&frame, flags));
+                    forget(frame);
+                }
+            };
+
+        debug!("Mapping kernel sections.");
         for section in elf_sections {
             if !section.is_allocated()
                 || VirtualAddress::new(section.start_address() as usize) < KERNEL_BASE
@@ -79,7 +88,7 @@ pub unsafe fn remap_kernel(
             );
 
             trace!(
-                "Mapping section 0x{:x}-0x{:x} (0x{:x})",
+                "Mapping section 0x{:x}-0x{:x} (0x{:x}).",
                 section.start_address(),
                 section.end_address(),
                 section.size()
@@ -93,34 +102,28 @@ pub unsafe fn remap_kernel(
             );
 
             let flags = EntryFlags::from_elf(&section);
-
-            for frame in PhysicalMemory::region(from, to).into_frames() {
-                tlb_flush.consume(m.map_kernel_space(&frame, flags));
-                forget(frame);
-            }
+            map_region_in_kernel(m, from, to, flags);
         }
 
-        debug!("Mapping VGA buffer");
+        debug!("Mapping VGA buffer.");
         let vga_buffer = Frame(crate::vga_text::VGA_BUFFER_ADDRESS);
         tlb_flush.consume(m.map_kernel_space(&vga_buffer, EntryFlags::WRITABLE));
         forget(vga_buffer);
 
-        debug!("Mapping Multiboot info structure and initramfs");
-        let from = min(
-            PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE),
-            initramfs_start,
-        )
-        .previous_aligned(Frame::SIZE);
-        let to = max(
-            PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE - 1),
-            initramfs_end,
-        )
-        .next_aligned(Frame::SIZE);
+        debug!("Mapping Multiboot info structures.");
+        let from = PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE);
+        let to = PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE);
+        map_region_in_kernel(m, from, to, EntryFlags::PRESENT);
 
-        for frame in PhysicalMemory::region(from, to).into_frames() {
-            tlb_flush.consume(m.map_kernel_space(&frame, EntryFlags::PRESENT));
-            forget(frame);
-        }
+        /*        debug!("Mapping initramfs.");
+        map_region_in_kernel(
+            m,
+            initramfs_start.previous_aligned(Frame::SIZE),
+            (initramfs_end - 1).next_aligned(Frame::SIZE),
+            EntryFlags::PRESENT,
+        );*/
+
+        tlb_flush.consume_other(closure_tlb_flush);
     });
 
     debug!("Finished remapping.");
@@ -132,4 +135,6 @@ pub unsafe fn remap_kernel(
     tlb_flush.consume(top.unmap(guard));
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
     forget(old.into_frame());
+
+    tlb_flush.flush();
 }

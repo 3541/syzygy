@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use hashbrown::HashMap;
@@ -12,7 +13,7 @@ use crate::memory::VirtualRegion;
 pub struct TaskID(usize);
 
 //#[thread_local]
-static TASK_ID: AtomicUsize = AtomicUsize::new(1);
+static TASK_ID: AtomicUsize = AtomicUsize::new(0);
 static TASK_LIST: Once<RwLock<TaskList>> = Once::new();
 
 pub struct Task {
@@ -25,24 +26,33 @@ impl Task {
     }
 }
 
-pub struct TaskList(HashMap<TaskID, Task>);
+pub struct TaskList {
+    tasks: HashMap<TaskID, Arc<Task>>,
+    next_id: TaskID,
+}
 
 impl TaskList {
     fn new() -> Self {
-        TaskList(HashMap::new())
+        TaskList {
+            tasks: HashMap::new(),
+            next_id: TaskID(1),
+        }
     }
 
     fn init(&mut self, table: ActiveTopLevelTable, kernel_region: VirtualRegion) {
-        self.0.insert(
+        self.tasks.insert(
             TaskID(0),
-            Task {
+            Arc::new(Task {
                 pager: Mutex::new(Pager::new(TopLevelTable::Active(table), kernel_region)),
-            },
+            }),
         );
     }
 
-    pub fn current(&self) -> &Task {
-        &self.0.get(&current_id()).expect("Current task is missing.")
+    pub fn current(&self) -> &Arc<Task> {
+        &self
+            .tasks
+            .get(&current_id())
+            .expect("Current task is missing.")
     }
 }
 
@@ -56,6 +66,10 @@ pub fn task_list() -> RwLockReadGuard<'static, TaskList> {
 
 pub fn task_list_mut() -> RwLockWriteGuard<'static, TaskList> {
     TASK_LIST.call_once(|| RwLock::new(TaskList::new())).write()
+}
+
+pub fn current_task() -> Arc<Task> {
+    task_list().current().clone()
 }
 
 pub fn init(table: ActiveTopLevelTable, kernel_region: VirtualRegion) {

@@ -4,7 +4,9 @@ use ::alloc::vec::Vec;
 use core::fmt;
 use core::ops::Drop;
 
-use crate::memory::{Address, PhysicalAddress};
+use super::paging::EntryFlags;
+use super::{Address, PhysicalAddress, VirtualRegion};
+use crate::task::current_task;
 
 pub use self::alloc::PHYSICAL_ALLOCATOR;
 
@@ -43,30 +45,13 @@ impl fmt::Display for Frame {
     }
 }
 
-/*pub struct FrameIterator {
-    from: Frame,
-    to: Frame,
-}
-
-impl Iterator for FrameIterator {
-    type Item = Frame;
-
-    fn next(&mut self) -> Option<Frame> {
-        if self.from.address() <= self.to.address() {
-            let frame = self.from;
-            self.from.0 += Frame::SIZE;
-            Some(frame)
-        } else {
-            None
-        }
-    }
-}*/
-
+#[derive(Debug)]
 pub enum PhysicalMemoryKind {
     Allocated,
     Region,
 }
 
+#[derive(Debug)]
 pub struct PhysicalMemory {
     frames: Vec<Frame>,
     kind: PhysicalMemoryKind,
@@ -77,7 +62,7 @@ impl PhysicalMemory {
             todo!()
     }*/
     pub unsafe fn region(start: PhysicalAddress, end: PhysicalAddress) -> PhysicalMemory {
-        let frames = (*start..=*end.next_aligned(Frame::SIZE))
+        let frames = (*start.previous_aligned(Frame::SIZE)..=*end.previous_aligned(Frame::SIZE))
             .step_by(Frame::SIZE)
             .map(|a| Frame(PhysicalAddress::new_unchecked(a)))
             .collect();
@@ -87,7 +72,26 @@ impl PhysicalMemory {
         }
     }
 
+    pub fn size(&self) -> usize {
+        self.frames.len() * Frame::SIZE
+    }
+
+    pub fn frames(&self) -> &[Frame] {
+        &self.frames
+    }
+
     pub fn into_frames(self) -> Vec<Frame> {
         self.frames
+    }
+
+    pub fn map_for_kernel(self, flags: EntryFlags) -> Option<VirtualRegion> {
+        let task = current_task();
+        let mut pager = task.pager();
+        let allocator = pager.kernel_allocator();
+
+        let mut mapping = allocator.alloc(self.size())?;
+
+        mapping.map_to(pager.mapper(), self, flags);
+        Some(mapping)
     }
 }
