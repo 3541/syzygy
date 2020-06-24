@@ -1,6 +1,6 @@
 use core::mem::{size_of, transmute};
 
-use super::{Handler, HandlerErr, InterruptIndex};
+use super::{Handler, HandlerErr, InterruptVector};
 
 pub struct IDT([Entry; 40]);
 
@@ -9,18 +9,18 @@ impl IDT {
         IDT([Entry::missing(); 40])
     }
 
-    pub fn set_handler(&mut self, index: InterruptIndex, handler: Handler) -> &mut EntryOptions {
-        let index: u8 = index as u8;
-        self.0[index as usize] = Entry::new(current_cs(), handler);
-        &mut self.0[index as usize].options
+    pub fn set_handler(&mut self, vector: InterruptVector, handler: Handler) -> &mut EntryOptions {
+        let vector: u8 = vector as u8;
+        self.0[vector as usize] = Entry::new(current_cs(), handler);
+        &mut self.0[vector as usize].options
     }
 
     pub fn set_handler_errc(
         &mut self,
-        index: InterruptIndex,
+        vector: InterruptVector,
         handler: HandlerErr,
     ) -> &mut EntryOptions {
-        self.set_handler(index, unsafe { transmute(handler) })
+        self.set_handler(vector, unsafe { transmute(handler) })
     }
 
     pub fn load(&'static self) {

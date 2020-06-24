@@ -1,6 +1,6 @@
 use spin::Mutex;
 
-use super::InterruptIndex;
+use super::InterruptVector;
 use crate::arch::io_wait;
 use crate::arch::port::Port;
 use crate::debug;
@@ -19,12 +19,13 @@ struct Pic {
 }
 
 impl Pic {
+    #[inline]
     unsafe fn end_of_interrupt(&mut self) {
         self.command.write(Command::EndOfInterrupt as u8)
     }
 
     #[inline]
-    fn services_interrupt(&self, interrupt: InterruptIndex) -> bool {
+    fn services_interrupt(&self, interrupt: InterruptVector) -> bool {
         let interrupt = interrupt as u8;
         interrupt >= self.offset && interrupt < self.offset + 8
     }
@@ -71,7 +72,7 @@ impl PicChain {
         self.1.data.write(mask1);
     }
 
-    pub unsafe fn end_of_interrupt(&mut self, interrupt: InterruptIndex) {
+    pub unsafe fn end_of_interrupt(&mut self, interrupt: InterruptVector) {
         if self.1.services_interrupt(interrupt) {
             self.1.end_of_interrupt();
         }

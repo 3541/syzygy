@@ -26,7 +26,7 @@ macro_rules! pic_handler {
 
 #[derive(Debug, Copy, Clone)]
 #[repr(u8)]
-pub enum InterruptIndex {
+pub enum InterruptVector {
     DivideByZero = 0,
     Breakpoint = 3,
     InvalidOpcode = 6,
@@ -37,7 +37,7 @@ pub enum InterruptIndex {
     Keyboard,
 }
 
-impl Into<u8> for InterruptIndex {
+impl Into<u8> for InterruptVector {
     fn into(self) -> u8 {
         self as u8
     }
@@ -57,28 +57,28 @@ pub struct InterruptStackFrame {
 lazy_static! {
     static ref IDT: idt::IDT = {
         let mut idt = idt::IDT::new();
-        idt.set_handler(InterruptIndex::DivideByZero, exception::divide_by_zero);
-        idt.set_handler(InterruptIndex::Breakpoint, exception::breakpoint);
-        idt.set_handler(InterruptIndex::InvalidOpcode, exception::invalid_opcode);
-        idt.set_handler(InterruptIndex::DoubleFault, exception::double_fault);
+        idt.set_handler(InterruptVector::DivideByZero, exception::divide_by_zero);
+        idt.set_handler(InterruptVector::Breakpoint, exception::breakpoint);
+        idt.set_handler(InterruptVector::InvalidOpcode, exception::invalid_opcode);
+        idt.set_handler(InterruptVector::DoubleFault, exception::double_fault);
         idt.set_handler_errc(
-            InterruptIndex::GeneralProtectionFault,
+            InterruptVector::GeneralProtectionFault,
             exception::general_protection_fault,
         );
-        idt.set_handler_errc(InterruptIndex::PageFault, exception::page_fault);
+        idt.set_handler_errc(InterruptVector::PageFault, exception::page_fault);
 
-        idt.set_handler(InterruptIndex::Timer, timer);
-        idt.set_handler(InterruptIndex::Keyboard, keyboard);
+        idt.set_handler(InterruptVector::Timer, timer);
+        idt.set_handler(InterruptVector::Keyboard, keyboard);
 
         idt
     };
 }
 
-pic_handler!(InterruptIndex::Timer => fn timer(_stack) {
+pic_handler!(InterruptVector::Timer => fn timer(_stack) {
 //    print!(".")
 });
 
-pic_handler!(InterruptIndex::Keyboard => fn keyboard(_stack) {
+pic_handler!(InterruptVector::Keyboard => fn keyboard(_stack) {
 });
 
 static DISABLE_COUNT: AtomicUsize = AtomicUsize::new(1);
