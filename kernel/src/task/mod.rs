@@ -6,7 +6,6 @@ use spin::{Mutex, MutexGuard, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::memory::paging::table::{ActiveTopLevelTable, TopLevelTable};
 use crate::memory::paging::Pager;
-use crate::memory::region::VirtualRegionAllocator;
 use crate::memory::VirtualRegion;
 
 #[derive(Eq, Hash, PartialEq, Debug, Copy, Clone)]
@@ -33,11 +32,11 @@ impl TaskList {
         TaskList(HashMap::new())
     }
 
-    fn init(&mut self, table: ActiveTopLevelTable, region: VirtualRegion) {
+    fn init(&mut self, table: ActiveTopLevelTable, kernel_region: VirtualRegion) {
         self.0.insert(
             TaskID(0),
             Task {
-                pager: Mutex::new(Pager::new(TopLevelTable::Active(table), region)),
+                pager: Mutex::new(Pager::new(TopLevelTable::Active(table), kernel_region)),
             },
         );
     }
@@ -59,6 +58,6 @@ pub fn task_list_mut() -> RwLockWriteGuard<'static, TaskList> {
     TASK_LIST.call_once(|| RwLock::new(TaskList::new())).write()
 }
 
-pub fn init(table: ActiveTopLevelTable, region: VirtualRegion) {
-    task_list_mut().init(table, region);
+pub fn init(table: ActiveTopLevelTable, kernel_region: VirtualRegion) {
+    task_list_mut().init(table, kernel_region);
 }

@@ -1,7 +1,7 @@
 use core::mem::forget;
 use core::ptr::Unique;
 
-use logc::trace;
+use logc::{trace, warn};
 
 use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, PT};
 use crate::constants::KERNEL_BASE;
@@ -19,6 +19,7 @@ pub struct MapperResult(VirtualAddress);
 impl MapperResult {
     pub fn flush(self) {
         unsafe { asm!("invlpg [{0}]", in(reg) *self.0) };
+        forget(self);
     }
 }
 
@@ -42,16 +43,25 @@ impl TLBFlush {
     }
 
     pub fn flush(self) {
-        unsafe {
-            asm!("mov rax, cr3");
-            asm!("move cr3, rax");
-        };
+        // Reloading CR3 flushes the TLB completely.
+        if self.0 {
+            unsafe {
+                asm!("mov rax, cr3");
+                asm!("move cr3, rax");
+            };
+        } else {
+            warn!("Unnecessary TLBFlush -- never consumed a MapperResult.");
+        }
     }
 }
 
 impl Drop for TLBFlush {
     fn drop(&mut self) {
-        panic!("Unused flush.");
+        if self.0 {
+            panic!("Unused flush.");
+        } else {
+            warn!("Dropping unnecessary TLBFlush.");
+        }
     }
 }
 

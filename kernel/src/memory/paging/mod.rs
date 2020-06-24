@@ -13,25 +13,25 @@ pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
 use super::region::{VirtualRegion, VirtualRegionAllocator};
 use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
 use crate::constants::KERNEL_BASE;
-use mapper::Mapper;
+use mapper::{Mapper, TLBFlush};
 use table::InactiveTopLevelTable;
 use temp_page::TempPage;
 
 pub struct Pager {
     table: TopLevelTable,
-    allocator: VirtualRegionAllocator<{ Frame::SIZE }>,
+    kernel_allocator: VirtualRegionAllocator<{ Frame::SIZE }>,
 }
 
 impl Pager {
     pub fn new(table: TopLevelTable, region: VirtualRegion) -> Self {
         Pager {
             table,
-            allocator: VirtualRegionAllocator::new(region),
+            kernel_allocator: VirtualRegionAllocator::new(region),
         }
     }
 
-    pub fn allocator(&mut self) -> &mut VirtualRegionAllocator<{ Frame::SIZE }> {
-        &mut self.allocator
+    pub fn kernel_allocator(&mut self) -> &mut VirtualRegionAllocator<{ Frame::SIZE }> {
+        &mut self.kernel_allocator
     }
 
     pub fn mapper(&mut self) -> &mut Mapper {
@@ -63,6 +63,7 @@ pub unsafe fn remap_kernel(
         .expect("Need free frame to remap kernel.");
     let temp = TempPage::new(frame);
     let mut new_table = InactiveTopLevelTable::new(top, temp);
+    let mut tlb_flush = TLBFlush::new();
 
     top.with(&mut new_table, |m| {
         debug!("Mapping kernel sections");
@@ -94,14 +95,14 @@ pub unsafe fn remap_kernel(
             let flags = EntryFlags::from_elf(&section);
 
             for frame in PhysicalMemory::region(from, to).into_frames() {
-                m.map_kernel_space(&frame, flags);
+                tlb_flush.consume(m.map_kernel_space(&frame, flags));
                 forget(frame);
             }
         }
 
         debug!("Mapping VGA buffer");
         let vga_buffer = Frame(crate::vga_text::VGA_BUFFER_ADDRESS);
-        m.map_kernel_space(&vga_buffer, EntryFlags::WRITABLE);
+        tlb_flush.consume(m.map_kernel_space(&vga_buffer, EntryFlags::WRITABLE));
         forget(vga_buffer);
 
         debug!("Mapping Multiboot info structure and initramfs");
@@ -117,7 +118,7 @@ pub unsafe fn remap_kernel(
         .next_aligned(Frame::SIZE);
 
         for frame in PhysicalMemory::region(from, to).into_frames() {
-            m.map_kernel_space(&frame, EntryFlags::PRESENT);
+            tlb_flush.consume(m.map_kernel_space(&frame, EntryFlags::PRESENT));
             forget(frame);
         }
     });
@@ -128,8 +129,7 @@ pub unsafe fn remap_kernel(
 
     //    PHYSICAL_ALLOCATOR.free(old.frame());
     let guard = KERNEL_BASE + *old.address();
-    top.unmap(guard);
+    tlb_flush.consume(top.unmap(guard));
     debug!("Guard page at {}", KERNEL_BASE + *old.address());
-
     forget(old.into_frame());
 }
