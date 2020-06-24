@@ -56,10 +56,10 @@ impl VirtualRegion {
         }
     }
 
-    pub const unsafe fn new(start: VirtualAddress, end: VirtualAddress) -> Self {
+    pub const unsafe fn new(start: VirtualAddress, size: usize) -> Self {
         VirtualRegion {
             start,
-            size: end.raw() - start.raw(),
+            size,
             backing: None,
         }
     }

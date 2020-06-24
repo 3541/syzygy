@@ -236,7 +236,8 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     task::init(table, unsafe {
         VirtualRegion::new(
             region_base,
-            VirtualAddress::new(0xFFFFFFFF_FFFFFFFF).previous_aligned(8),
+            VirtualAddress::new(0xFFFFFFFF_FFFFFFFF - 1).previous_aligned(memory::Frame::SIZE)
+                - region_base,
         )
     });
     info!("CREATED task 0");
@@ -245,9 +246,10 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED real kernel heap.");
 
     let initramfs = unsafe {
-        let initramfs_memory = PhysicalMemory::region(initramfs_addr, initramfs_end_addr)
-            .map_for_kernel(EntryFlags::PRESENT)
-            .expect("Failed to map initramfs");
+        let initramfs_memory =
+            PhysicalMemory::region(initramfs_addr, initramfs_end_addr - initramfs_addr)
+                .map_for_kernel(EntryFlags::PRESENT)
+                .expect("Failed to map initramfs");
         let i = Initramfs::new(slice::from_raw_parts(
             *initramfs_memory.start() as *const u8,
             initramfs_end_addr - initramfs_addr,

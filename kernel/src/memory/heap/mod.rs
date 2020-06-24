@@ -37,7 +37,7 @@ impl GlobalAllocator {
     pub unsafe fn init(&mut self) {
         self.init_heap = Some(BumpAllocator::new(VirtualRegion::new(
             VirtualAddress::new(INIT_HEAP.as_ptr() as usize),
-            VirtualAddress::new(INIT_HEAP.as_ptr() as usize + INIT_HEAP.len()),
+            INIT_HEAP.len(),
         )));
     }
 

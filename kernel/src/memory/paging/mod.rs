@@ -68,8 +68,8 @@ pub unsafe fn remap_kernel(
     top.with(&mut new_table, |m| {
         let mut closure_tlb_flush = TLBFlush::new();
         let mut map_region_in_kernel =
-            |m: &mut Mapper, from: PhysicalAddress, to: PhysicalAddress, flags: EntryFlags| {
-                for frame in PhysicalMemory::region(from, to).into_frames() {
+            |m: &mut Mapper, address: PhysicalAddress, size: usize, flags: EntryFlags| {
+                for frame in PhysicalMemory::region(address, size).into_frames() {
                     closure_tlb_flush.consume(m.map_kernel_space(&frame, flags));
                     forget(frame);
                 }
@@ -94,15 +94,12 @@ pub unsafe fn remap_kernel(
                 section.size()
             );
 
-            let from = PhysicalAddress::new((section.start_address() as usize) - *KERNEL_BASE);
-            let to = PhysicalAddress::new(
-                (section.end_address() as usize - 1)
-                    - (section.end_address() as usize - 1) % Frame::SIZE
-                    - *KERNEL_BASE,
+            map_region_in_kernel(
+                m,
+                PhysicalAddress::new((section.start_address() as usize) - *KERNEL_BASE),
+                (section.end_address() - section.start_address()) as usize,
+                EntryFlags::from_elf(&section),
             );
-
-            let flags = EntryFlags::from_elf(&section);
-            map_region_in_kernel(m, from, to, flags);
         }
 
         debug!("Mapping VGA buffer.");
@@ -111,17 +108,12 @@ pub unsafe fn remap_kernel(
         forget(vga_buffer);
 
         debug!("Mapping Multiboot info structures.");
-        let from = PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE);
-        let to = PhysicalAddress::new(multiboot_info.end_address() - *KERNEL_BASE);
-        map_region_in_kernel(m, from, to, EntryFlags::PRESENT);
-
-        /*        debug!("Mapping initramfs.");
         map_region_in_kernel(
             m,
-            initramfs_start.previous_aligned(Frame::SIZE),
-            (initramfs_end - 1).next_aligned(Frame::SIZE),
+            PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE),
+            (multiboot_info.end_address() - multiboot_info.start_address()) as usize,
             EntryFlags::PRESENT,
-        );*/
+        );
 
         tlb_flush.consume_other(closure_tlb_flush);
     });

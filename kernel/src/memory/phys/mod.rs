@@ -58,11 +58,9 @@ pub struct PhysicalMemory {
 }
 
 impl PhysicalMemory {
-    /*    pub fn coalesce(self, other: PhysicalMemory) -> PhysicalMemory {
-            todo!()
-    }*/
-    pub unsafe fn region(start: PhysicalAddress, end: PhysicalAddress) -> PhysicalMemory {
-        let frames = (*start.previous_aligned(Frame::SIZE)..=*end.previous_aligned(Frame::SIZE))
+    pub unsafe fn region(start: PhysicalAddress, size: usize) -> PhysicalMemory {
+        let frames = (*start.previous_aligned(Frame::SIZE)
+            ..=*(start + size - 1).previous_aligned(Frame::SIZE))
             .step_by(Frame::SIZE)
             .map(|a| Frame(PhysicalAddress::new_unchecked(a)))
             .collect();
