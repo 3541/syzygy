@@ -3,26 +3,23 @@ mod bump_allocator;
 
 use alloc::alloc::{GlobalAlloc, Layout};
 
-use logc::trace;
+use logc::debug;
 
-use super::paging::mapper::Mapper;
 use super::paging::table::EntryFlags;
 use super::size::{KB, MB};
-use super::{Address, Frame, VirtualAddress, VirtualRegion};
+use super::{Address, VirtualAddress, VirtualRegion};
 use crate::sync::SpinLocked;
 use crate::task;
 use bump_allocator::BumpAllocator;
 //use fake_allocator::FakeAllocator;
 
-pub const HEAP_BASE: VirtualAddress = unsafe { VirtualAddress::new_const(0x0000_4EA6_0000_0000) };
 pub const HEAP_SIZE: usize = 4 * MB;
 
 static mut INIT_HEAP: [u8; 200 * KB] = [0; 200 * KB];
 
 #[cfg(not(test))]
 #[global_allocator]
-static ALLOCATOR: SpinLocked<GlobalAllocator> =
-    unsafe { SpinLocked::new(GlobalAllocator::new(HEAP_BASE, HEAP_SIZE)) };
+static ALLOCATOR: SpinLocked<GlobalAllocator> = unsafe { SpinLocked::new(GlobalAllocator::new()) };
 
 struct GlobalAllocator {
     heap: Option<BumpAllocator>,
@@ -30,7 +27,7 @@ struct GlobalAllocator {
 }
 
 impl GlobalAllocator {
-    pub const unsafe fn new(heap_base: VirtualAddress, heap_size: usize) -> Self {
+    pub const unsafe fn new() -> Self {
         Self {
             heap: None,
             init_heap: None,
@@ -61,35 +58,43 @@ unsafe impl GlobalAlloc for SpinLocked<GlobalAllocator> {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         let mut this = self.lock();
-        let heap = this.heap.as_mut().unwrap();
 
-        if *heap.base() <= (ptr as usize) && (ptr as usize) < *heap.end() {
-            heap.dealloc(ptr, layout);
+        if let Some(h) = this.heap.as_mut() {
+            if *h.base() <= (ptr as usize) && (ptr as usize) < *h.end() {
+                h.dealloc(ptr, layout);
+            } else {
+                this.init_heap.as_mut().unwrap().dealloc(ptr, layout);
+            }
+        } else {
+            this.init_heap.as_mut().unwrap().dealloc(ptr, layout);
         }
     }
 }
 
+#[cfg(not(test))]
 pub unsafe fn init_allocator() {
     ALLOCATOR.lock().init();
 }
 
+#[cfg(not(test))]
 pub fn init_heap() {
-    trace!(
-        "Mapping heap from {} to {} (0x{:x})",
-        HEAP_BASE,
-        HEAP_BASE + HEAP_SIZE,
-        HEAP_SIZE
-    );
     let task_list = task::task_list();
     let task = task_list.current();
 
     let mut pager = task.pager();
     let mut heap = pager
-        .allocator()
+        .kernel_allocator()
         .alloc(HEAP_SIZE)
         .expect("Unable to allocate memory for the main heap.");
 
     heap.map(pager.mapper(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+
+    debug!(
+        "Mapped heap at {} - {} (0x{:x})",
+        heap.start(),
+        heap.end(),
+        heap.size()
+    );
 
     // Notify the bump allocator that the real heap is now available.
     unsafe { ALLOCATOR.lock().add_heap(heap) };
