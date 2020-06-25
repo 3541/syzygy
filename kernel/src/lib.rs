@@ -233,13 +233,13 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     let region_base = VirtualAddress::new(max(multiboot_info.end_address(), *kernel_end_addr))
         .next_aligned(memory::Frame::SIZE);
-    task::init(table, unsafe {
+    let region = unsafe {
         VirtualRegion::new(
             region_base,
-            VirtualAddress::new(0xFFFFFFFF_FFFFFFFF - 1).previous_aligned(memory::Frame::SIZE)
-                - region_base,
+            memory::paging::table::RECURSIVE_MAPPING_BASE - region_base,
         )
-    });
+    };
+    task::init(table, region);
     info!("CREATED task 0");
 
     memory::init_heap();
@@ -273,7 +273,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         )
     });
 
-    debug!("INITIALIZED kernel symbols.");
+    info!("INITIALIZED kernel symbols.");
 
     /*    info!("SYSRET_CS: 0x{:x}", arch::register::star_read() >> 48);
     let ip = VirtualAddress::new(userland_test as *const fn() -> () as usize);

@@ -17,6 +17,9 @@ use crate::memory::{
 #[cfg(target_arch = "x86_64")]
 pub const ACTIVE_PML4_ADDRESS: *mut Table<PML4> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
 
+pub const RECURSIVE_MAPPING_BASE: VirtualAddress =
+    unsafe { VirtualAddress::new_const(0xFFFF_FF80_0000_0000) };
+
 #[cfg(target_arch = "x86")]
 pub const ACTIVE_PD_ADDRESS: *mut Table<PD> = 0xFFFF_F000 as *mut _;
 
