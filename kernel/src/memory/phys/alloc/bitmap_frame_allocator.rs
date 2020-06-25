@@ -1,6 +1,5 @@
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cmp::max;
 use core::mem::size_of;
 
 use logc::trace;
@@ -31,14 +30,8 @@ impl BitmapFrameAllocator {
                 continue;
             }
 
-            let first_field = ret.field(max(PhysicalAddress::new_unchecked(*start), ret.base));
-            let fields = (end - start) / Frame::SIZE / size_of::<usize>() / 8;
-            for i in first_field..(first_field + fields) {
-                ret.bitmap[i] = !0;
-            }
-
-            let unset_bits = (end - start) / Frame::SIZE % (size_of::<usize>() * 8);
-            for a in ((end - unset_bits * Frame::SIZE)..*end).step_by(Frame::SIZE) {
+            // TODO: optimize this by setting full fields where appropriate
+            for a in (*start..*end).step_by(Frame::SIZE) {
                 ret.set_used(PhysicalAddress::new_unchecked(a));
             }
         }
