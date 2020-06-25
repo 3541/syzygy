@@ -5,11 +5,15 @@ use rgb::RGB8;
 use spin::Mutex;
 use volatile::Volatile;
 
+use crate::arch::port::Port;
 use crate::constants::KERNEL_BASE;
 use crate::interrupt::without_interrupts;
 use crate::memory::PhysicalAddress;
 
 pub const VGA_BUFFER_ADDRESS: PhysicalAddress = Buffer::ADDRESS;
+const VGA_INPUT_STATUS: u16 = 0x3DA;
+const VGA_ADDRESS_DATA: u16 = 0x3C0;
+const VGA_ADDRESS_DATA_READ: u16 = 0x3C1;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -83,14 +87,31 @@ impl Buffer {
 }
 
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
-        column: 0,
-        #[cfg(not(feature = "integration-tests"))]
-        color: ColorCode::new(Color::Black, Color::White),
-        #[cfg(feature = "integration-tests")]
-        color: ColorCode::new(Color::Green, Color::Black),
-        buffer: unsafe { &mut *(*(Buffer::ADDRESS + *KERNEL_BASE) as *mut Buffer) },
-    });
+    pub static ref WRITER: Mutex<Writer> = {
+        // First disable blink.
+        unsafe {
+            // Go into index state
+            Port::<u8>::new(VGA_INPUT_STATUS).read();
+
+            let mut addr_data: Port<u8> = Port::new(VGA_ADDRESS_DATA);
+            // Select the attribute mode control register
+            addr_data.write(0x10 | (1 << 5));
+            // Read that register
+            let reg = Port::<u8>::new(VGA_ADDRESS_DATA_READ).read();
+
+            // Disable blink
+            addr_data.write(reg & !(1 << 3));
+        }
+
+        Mutex::new(Writer {
+            column: 0,
+            #[cfg(not(feature = "integration-tests"))]
+            color: ColorCode::new(Color::Black, Color::White),
+            #[cfg(feature = "integration-tests")]
+            color: ColorCode::new(Color::Green, Color::Black),
+            buffer: unsafe { &mut *(*(Buffer::ADDRESS + *KERNEL_BASE) as *mut Buffer) },
+        })
+    };
 }
 
 pub struct Writer {
