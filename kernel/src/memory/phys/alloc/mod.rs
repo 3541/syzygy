@@ -17,7 +17,7 @@ pub static PHYSICAL_ALLOCATOR: PhysicalMemoryManager = unsafe { PhysicalMemoryMa
 pub trait FrameAllocator {
     fn alloc(&mut self) -> Option<Frame>;
     fn alloc_exact(&mut self, addr: PhysicalAddress) -> Option<Frame>;
-    fn free(&mut self, frame: Frame);
+    unsafe fn free(&mut self, frame: &mut Frame);
     fn has_address(&self, address: PhysicalAddress) -> bool;
     fn has(&self, frame: &Frame) -> bool;
 }
@@ -99,10 +99,26 @@ impl PhysicalMemoryManager {
         todo!()
     }
 
-    pub fn free(&self, frame: Frame) {
+    /*  pub fn free(&self, frame: Frame) {
+            let mut areas = self.areas.lock();
+            for area in &mut *areas {
+                if area.has(&frame) {
+                    area.free(frame);
+                    return;
+                }
+            }
+
+            panic!("Tried to free an un-allocated frame.");
+    }*/
+
+    /// # Safety
+    /// This should _only_ be called through Frame::drop, to ensure that
+    /// the value is consumed. The signature is &mut because Drop does not
+    /// take ownership.
+    pub unsafe fn free(&self, frame: &mut Frame) {
         let mut areas = self.areas.lock();
         for area in &mut *areas {
-            if area.has(&frame) {
+            if area.has(frame) {
                 area.free(frame);
                 return;
             }
@@ -111,9 +127,9 @@ impl PhysicalMemoryManager {
         panic!("Tried to free an un-allocated frame.");
     }
 
-    pub fn free_memory(&self, memory: PhysicalMemory) {
+    /*    pub fn free_memory(&self, memory: PhysicalMemory) {
         for frame in memory.into_frames() {
             self.free(frame)
         }
-    }
+    }*/
 }

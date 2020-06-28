@@ -117,7 +117,7 @@ impl FrameAllocator for BitmapFrameAllocator {
         }
     }
 
-    fn free(&mut self, frame: Frame) {
+    unsafe fn free(&mut self, frame: &mut Frame) {
         let field = self.field(frame.address());
         let mask = BitmapFrameAllocator::mask(frame.address());
 

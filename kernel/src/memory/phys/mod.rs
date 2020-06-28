@@ -20,13 +20,13 @@ impl Frame {
         self.0
     }
 
-    pub fn end_address(&self) -> PhysicalAddress {
+    /*    pub fn end_address(&self) -> PhysicalAddress {
         self.0 + Self::SIZE
-    }
+    }*/
 
-    pub fn containing_address(address: PhysicalAddress) -> Frame {
+    /*    pub fn containing_address(address: PhysicalAddress) -> Frame {
         Frame(address.previous_aligned(Self::SIZE))
-    }
+    }*/
 
     /*    pub fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
         FrameIterator { from, to }
@@ -35,7 +35,7 @@ impl Frame {
 
 impl Drop for Frame {
     fn drop(&mut self) {
-        todo!()
+        unsafe { PHYSICAL_ALLOCATOR.free(self) };
     }
 }
 
