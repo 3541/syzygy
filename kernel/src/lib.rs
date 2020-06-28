@@ -11,7 +11,7 @@
 #![feature(asm)]
 #![allow(incomplete_features)]
 #![feature(const_generics)]
-//#![feature(thread_local)]
+#![feature(thread_local)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]
 #![forbid(unused_must_use)]
@@ -147,7 +147,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     debug!("Kernel sections (FUCKED):");
     for s in elf_sections.sections() {
         debug!(
-            "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0x{:x} (ALLOCATED: {})",
+            "\t0x{:x} - 0x{:x} (0x{:x}) -- FLAGS: 0b{:b} (ALLOCATED: {})",
             s.start_address(),
             s.end_address(),
             s.size(),
@@ -199,6 +199,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
     info!("INITIALIZED ACPI.");
+
+    interrupt::init();
+    info!("INITIALIZED interrupts.");
 
     unsafe { memory::init_allocator() };
     info!("INITIALIZED temporary kernel heap.");
@@ -265,9 +268,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     });
 
     info!("INITIALIZED kernel symbols.");
-
-    interrupt::init();
-    info!("INITIALIZED interrupts.");
 
     /*    info!("SYSRET_CS: 0x{:x}", arch::register::star_read() >> 48);
     let ip = VirtualAddress::new(userland_test as *const fn() -> () as usize);
