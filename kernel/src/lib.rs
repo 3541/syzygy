@@ -198,9 +198,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
     info!("INITIALIZED ACPI.");
 
-    interrupt::init();
-    info!("INITIALIZED interrupts.");
-
     unsafe { memory::init_allocator() };
     info!("INITIALIZED temporary kernel heap.");
 
@@ -274,6 +271,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     });
 
     info!("INITIALIZED kernel symbols.");
+
+    interrupt::init();
+    info!("INITIALIZED interrupts.");
 
     /*    info!("SYSRET_CS: 0x{:x}", arch::register::star_read() >> 48);
     let ip = VirtualAddress::new(userland_test as *const fn() -> () as usize);

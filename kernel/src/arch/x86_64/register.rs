@@ -1,8 +1,14 @@
-pub fn rsp_read() -> u64 {
-    let ret;
-    unsafe { llvm_asm!("mov $0, rsp" : "=r"(ret) ::: "intel") };
-    ret
-}
+/*macro_rules! gpr_access {
+    ($name:ident, $t:ty, read) => {
+        pub mod read {
+            pub fn $name() -> $t {
+                let ret;
+                unsafe { llvm_asm!(concat!("mov $0, ", stringify!($name)) : "=r"(ret) ::: "intel") };
+                ret
+            }
+        }
+    }
+}*/
 
 pub fn msr_read(addr: u32) -> u64 {
     let ret_low: u32;

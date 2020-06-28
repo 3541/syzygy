@@ -10,7 +10,6 @@ macro_rules! irq_handler {
 }
 
 irq_handler!(InterruptVector::Timer => fn timer(_stack) {
-//    print!(".")
 });
 
 irq_handler!(InterruptVector::Keyboard => fn keyboard(_stack) {

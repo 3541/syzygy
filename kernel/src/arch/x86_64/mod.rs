@@ -1,3 +1,4 @@
+pub mod cpuid;
 pub mod driver;
 pub mod interrupt;
 pub mod port;

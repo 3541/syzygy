@@ -6,8 +6,10 @@ mod pic;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+use logc::info;
 use spin::{Mutex, MutexGuard, Once};
 
+use crate::arch::cpuid;
 use crate::memory::VirtualAddress;
 
 use apic::Apic;
@@ -110,11 +112,17 @@ fn idt() -> MutexGuard<'static, Idt> {
 }
 
 pub fn init() {
-    idt().load();
     let mut controller = INTERRUPT_CONTROLLER.lock();
+
+    if cpuid::has_apic() {
+        info!("CPU has an APIC.");
+    } else {
+        info!("CPU does not have an APIC.");
+    }
     let mut pic = PicChain::new();
     unsafe { pic.init() };
     *controller = Controller::Pic(pic);
+    idt().load();
     enable();
 }
 
