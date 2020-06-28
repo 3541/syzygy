@@ -30,6 +30,9 @@ pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
     error!("-----");
     while stack_frame.rbp as RawVirtualAddress != 0 {
         if let Some(s) = syms.find(VirtualAddress::new(stack_frame.rip as RawVirtualAddress)) {
+            if s == "stack_bottom" {
+                break;
+            }
             error!("{:#}", demangle(s));
         } else {
             error!("{:?} (No symbol found. Probably unloaded.)", stack_frame);
