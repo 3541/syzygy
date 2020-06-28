@@ -1,12 +1,31 @@
 use core::mem::{size_of, transmute};
 
-use super::{Handler, HandlerErr, InterruptVector};
+use super::{exception, irq, Handler, HandlerErr, InterruptVector};
 
-pub struct IDT([Entry; 40]);
+pub struct Idt([Entry; 40]);
 
-impl IDT {
-    pub fn new() -> Self {
-        IDT([Entry::missing(); 40])
+impl Idt {
+    pub fn empty() -> Idt {
+        Idt([Entry::missing(); 40])
+    }
+
+    pub fn new() -> Idt {
+        let mut ret = Idt::empty();
+
+        ret.set_handler(InterruptVector::DivideByZero, exception::divide_by_zero);
+        ret.set_handler(InterruptVector::Breakpoint, exception::breakpoint);
+        ret.set_handler(InterruptVector::InvalidOpcode, exception::invalid_opcode);
+        ret.set_handler(InterruptVector::DoubleFault, exception::double_fault);
+        ret.set_handler_errc(
+            InterruptVector::GeneralProtectionFault,
+            exception::general_protection_fault,
+        );
+        ret.set_handler_errc(InterruptVector::PageFault, exception::page_fault);
+
+        ret.set_handler(InterruptVector::Timer, irq::timer);
+        ret.set_handler(InterruptVector::Keyboard, irq::keyboard);
+
+        ret
     }
 
     pub fn set_handler(&mut self, vector: InterruptVector, handler: Handler) -> &mut EntryOptions {
@@ -23,7 +42,7 @@ impl IDT {
         self.set_handler(vector, unsafe { transmute(handler) })
     }
 
-    pub fn load(&'static self) {
+    pub fn load(&self) {
         let p = IDTPointer {
             limit: (size_of::<Self>() - 1) as u16,
             address: self as *const _ as u64,

@@ -1,27 +1,47 @@
+mod apic;
+mod exception;
+mod idt;
+mod irq;
+mod pic;
+
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use lazy_static::lazy_static;
+use spin::{Mutex, MutexGuard, Once};
 
 use crate::memory::VirtualAddress;
 
-mod exception;
-mod idt;
-mod pic;
-
-use pic::{PicChain, PICS};
+use apic::Apic;
+use idt::Idt;
+use pic::PicChain;
 
 type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 
 #[cfg(target_arch = "x86_64")]
 type HandlerErr = extern "x86-interrupt" fn(&mut InterruptStackFrame, usize);
 
-macro_rules! pic_handler {
-    ($type:path => fn $handler:ident($param:ident) $inner:block) => {
-        extern "x86-interrupt" fn $handler($param: &mut InterruptStackFrame) {
-            $inner;
-            unsafe { PICS.lock().end_of_interrupt($type) };
+pub static INTERRUPT_CONTROLLER: Mutex<Controller> = Mutex::new(Controller::Uninitialized);
+pub static IDT: Once<Mutex<Idt>> = Once::new();
+
+pub enum Controller {
+    Pic(PicChain),
+    Apic(Apic),
+    Uninitialized,
+}
+
+unsafe impl InterruptController for Controller {
+    fn end_of_interrupt(&mut self, interrupt: InterruptVector) {
+        match self {
+            Controller::Pic(chain) => chain.end_of_interrupt(interrupt),
+            Controller::Apic(apic) => apic.end_of_interrupt(interrupt),
+            Controller::Uninitialized => {
+                panic!("Tried to EOI an uninitialized InterruptController.")
+            }
         }
-    };
+    }
+
+    fn disable(&mut self) {
+        panic!("Tried to disable the generic interrupt controller.");
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -43,6 +63,11 @@ impl Into<u8> for InterruptVector {
     }
 }
 
+pub unsafe trait InterruptController {
+    fn end_of_interrupt(&mut self, interrupt: InterruptVector);
+    fn disable(&mut self);
+}
+
 #[cfg(target_arch = "x86_64")]
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -53,33 +78,6 @@ pub struct InterruptStackFrame {
     stack_pointer: VirtualAddress,
     stack_segment: u64,
 }
-
-lazy_static! {
-    static ref IDT: idt::IDT = {
-        let mut idt = idt::IDT::new();
-        idt.set_handler(InterruptVector::DivideByZero, exception::divide_by_zero);
-        idt.set_handler(InterruptVector::Breakpoint, exception::breakpoint);
-        idt.set_handler(InterruptVector::InvalidOpcode, exception::invalid_opcode);
-        idt.set_handler(InterruptVector::DoubleFault, exception::double_fault);
-        idt.set_handler_errc(
-            InterruptVector::GeneralProtectionFault,
-            exception::general_protection_fault,
-        );
-        idt.set_handler_errc(InterruptVector::PageFault, exception::page_fault);
-
-        idt.set_handler(InterruptVector::Timer, timer);
-        idt.set_handler(InterruptVector::Keyboard, keyboard);
-
-        idt
-    };
-}
-
-pic_handler!(InterruptVector::Timer => fn timer(_stack) {
-//    print!(".")
-});
-
-pic_handler!(InterruptVector::Keyboard => fn keyboard(_stack) {
-});
 
 static DISABLE_COUNT: AtomicUsize = AtomicUsize::new(1);
 
@@ -107,9 +105,16 @@ pub fn disable_always() {
     unsafe { llvm_asm!("cli" :::: "volatile") }
 }
 
+fn idt() -> MutexGuard<'static, Idt> {
+    IDT.call_once(|| Mutex::new(Idt::new())).lock()
+}
+
 pub fn init() {
-    IDT.load();
-    unsafe { PICS.lock().init() };
+    idt().load();
+    let mut controller = INTERRUPT_CONTROLLER.lock();
+    let mut pic = PicChain::new();
+    unsafe { pic.init() };
+    *controller = Controller::Pic(pic);
     enable();
 }
 

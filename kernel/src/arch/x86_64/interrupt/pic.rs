@@ -1,6 +1,6 @@
 use spin::Mutex;
 
-use super::InterruptVector;
+use super::{InterruptController, InterruptVector};
 use crate::arch::io_wait;
 use crate::arch::port::Port;
 use crate::debug;
@@ -20,8 +20,8 @@ struct Pic {
 
 impl Pic {
     #[inline]
-    unsafe fn end_of_interrupt(&mut self) {
-        self.command.write(Command::EndOfInterrupt as u8)
+    fn end_of_interrupt(&mut self) {
+        unsafe { self.command.write(Command::EndOfInterrupt as u8) }
     }
 
     #[inline]
@@ -42,6 +42,25 @@ impl PicChain {
     const PIC2_DATA_ADDRESS: u16 = Self::PIC2_COMMAND_ADDRESS + 1;
     pub const PIC2_OFFSET: u8 = Self::PIC1_OFFSET + 8;
 
+    pub fn new() -> PicChain {
+        PicChain(
+            Pic {
+                offset: PicChain::PIC1_OFFSET,
+                command: Port::new(PicChain::PIC1_COMMAND_ADDRESS),
+                data: Port::new(PicChain::PIC1_DATA_ADDRESS),
+            },
+            Pic {
+                offset: PicChain::PIC2_OFFSET,
+                command: Port::new(PicChain::PIC2_COMMAND_ADDRESS),
+                data: Port::new(PicChain::PIC2_DATA_ADDRESS),
+            },
+        )
+    }
+
+    /// # Safety
+    /// Caller must guarantee that:
+    /// * APIC is not being used.
+    /// * PIC is in a correct state to be initialized.
     pub unsafe fn init(&mut self) {
         let mask0 = self.0.data.read();
         let mask1 = self.1.data.read();
@@ -71,8 +90,10 @@ impl PicChain {
         self.0.data.write(mask0);
         self.1.data.write(mask1);
     }
+}
 
-    pub unsafe fn end_of_interrupt(&mut self, interrupt: InterruptVector) {
+unsafe impl InterruptController for PicChain {
+    fn end_of_interrupt(&mut self, interrupt: InterruptVector) {
         if self.1.services_interrupt(interrupt) {
             self.1.end_of_interrupt();
         }
@@ -81,17 +102,8 @@ impl PicChain {
             self.0.end_of_interrupt()
         }
     }
-}
 
-pub static PICS: Mutex<PicChain> = Mutex::new(PicChain(
-    Pic {
-        offset: PicChain::PIC1_OFFSET,
-        command: Port::new(PicChain::PIC1_COMMAND_ADDRESS),
-        data: Port::new(PicChain::PIC1_DATA_ADDRESS),
-    },
-    Pic {
-        offset: PicChain::PIC2_OFFSET,
-        command: Port::new(PicChain::PIC2_COMMAND_ADDRESS),
-        data: Port::new(PicChain::PIC2_DATA_ADDRESS),
-    },
-));
+    fn disable(&mut self) {
+        todo!()
+    }
+}
