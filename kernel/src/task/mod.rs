@@ -60,12 +60,16 @@ pub fn current_id() -> TaskID {
     TaskID(TASK_ID.load(Ordering::SeqCst))
 }
 
+fn create_task_list() -> RwLock<TaskList> {
+    RwLock::new(TaskList::new())
+}
+
 pub fn task_list() -> RwLockReadGuard<'static, TaskList> {
-    TASK_LIST.call_once(|| RwLock::new(TaskList::new())).read()
+    TASK_LIST.call_once(create_task_list).read()
 }
 
 pub fn task_list_mut() -> RwLockWriteGuard<'static, TaskList> {
-    TASK_LIST.call_once(|| RwLock::new(TaskList::new())).write()
+    TASK_LIST.call_once(create_task_list).write()
 }
 
 pub fn current_task() -> Arc<Task> {
