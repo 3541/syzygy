@@ -3,18 +3,12 @@ use multiboot2::{RsdpV1Tag, RsdpV2Tag};
 
 use crate::memory::{Address, PhysicalAddress};
 
-pub struct ACPI {}
-
-pub static ACPI_TABLES: ACPI = ACPI {};
-
 pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
-    if let Some(rsdp_v2) = rsdp_v2 {
+    if let Some(_rsdp_v2) = rsdp_v2 {
         debug!("Got RSDPv2");
         warn!("This is currently not handled.");
     } else if let Some(rsdp_v1) = rsdp_v1 {
         debug!("Got RSDPv1");
-
-        let mut sum = 0;
 
         let signature = rsdp_v1.signature().unwrap();
         let oem_id = rsdp_v1.oem_id().unwrap();

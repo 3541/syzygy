@@ -4,7 +4,7 @@ macro_rules! irq_handler {
     ($type:path => fn $handler:ident($param:ident) $inner:block) => {
         pub extern "x86-interrupt" fn $handler($param: &mut InterruptStackFrame) {
             $inner;
-            unsafe { INTERRUPT_CONTROLLER.lock().end_of_interrupt($type) };
+            INTERRUPT_CONTROLLER.lock().end_of_interrupt($type);
         }
     };
 }

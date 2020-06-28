@@ -5,7 +5,7 @@ use logc::{trace, warn};
 
 use super::table::{EntryFlags, Table, ACTIVE_TOP_LEVEL_TABLE_ADDRESS, PML4, PT};
 use crate::constants::KERNEL_BASE;
-use crate::memory::{Address, Frame, PhysicalAddress, VirtualAddress, PHYSICAL_ALLOCATOR};
+use crate::memory::{Address, Frame, VirtualAddress};
 
 #[cfg(target_arch = "x86_64")]
 type TopLevelTableType = PML4;
@@ -144,10 +144,10 @@ impl Mapper {
         MapperResult(address)
     }
 
-    pub fn map(&mut self, address: VirtualAddress, flags: EntryFlags) -> (MapperResult, Frame) {
+    /*  pub fn map(&mut self, address: VirtualAddress, flags: EntryFlags) -> (MapperResult, Frame) {
         let frame = PHYSICAL_ALLOCATOR.alloc_frame().expect("Out of frames");
         (self.map_to(address, &frame, flags), frame)
-    }
+    }*/
 
     // This is an evil function. It's not just unsafe, it's actively malicious.
     // It should only /ever/ be used when first remapping the kernel. It will,
@@ -167,7 +167,7 @@ impl Mapper {
         MapperResult(address)
     }
 
-    pub fn virtual_address_to_frame(&self, addr: VirtualAddress) -> Option<Frame> {
+    pub fn virtual_address_to_frame(&self, address: VirtualAddress) -> Option<Frame> {
         #[cfg(target_arch = "x86_64")]
         fn resolve_page(tl: &Mapper, address: VirtualAddress) -> Option<Frame> {
             Some(Frame(
@@ -176,15 +176,16 @@ impl Mapper {
         }
 
         #[cfg(target_arch = "x86")]
-        fn resolve_page(tl: &ActiveTopLevelTable, addr: VirtualAddress) -> Page {
+        fn resolve_page(tl: &ActiveTopLevelTable, address: VirtualAddress) -> Page {
             unimplemented!()
         }
 
-        resolve_page(&self, addr)
+        resolve_page(&self, address)
     }
 
-    pub fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        self.virtual_address_to_frame(addr)
-            .map(|frame| frame.address() + addr.offset_into_frame())
-    }
+    /*
+    pub fn translate(&self, address: VirtualAddress) -> Option<PhysicalAddress> {
+        self.virtual_address_to_frame(address)
+            .map(|frame| frame.address() + address.offset_into_frame())
+    }*/
 }

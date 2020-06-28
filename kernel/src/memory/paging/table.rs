@@ -195,9 +195,9 @@ impl Entry {
         !self.flags().contains(EntryFlags::PRESENT)
     }
 
-    pub fn is_leaf(&self) -> bool {
+    /*    pub fn is_leaf(&self) -> bool {
         self.flags().contains(EntryFlags::LARGE)
-    }
+    }*/
 }
 
 pub struct Table<T: TableType + ?Sized> {

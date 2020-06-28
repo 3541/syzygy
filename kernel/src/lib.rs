@@ -9,10 +9,12 @@
 #![feature(maybe_uninit_extra)]
 #![feature(naked_functions)]
 #![feature(asm)]
+#![allow(incomplete_features)]
 #![feature(const_generics)]
 //#![feature(thread_local)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]
+#![forbid(unused_must_use)]
 
 mod arch;
 mod constants;
@@ -217,15 +219,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     let mut table = unsafe { ActiveTopLevelTable::new() };
     info!("INITIALIZED PML4.");
 
-    unsafe {
-        memory::paging::remap_kernel(
-            &mut table,
-            elf_sections.sections(),
-            &multiboot_info,
-            initramfs_addr,
-            initramfs_end_addr,
-        )
-    };
+    unsafe { memory::paging::remap_kernel(&mut table, elf_sections.sections(), &multiboot_info) };
     info!("REMAPPED the kernel address space.");
 
     let region_base = VirtualAddress::new(max(multiboot_info.end_address(), *kernel_end_addr))

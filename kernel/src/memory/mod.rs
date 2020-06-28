@@ -73,9 +73,9 @@ impl PhysicalAddress {
         Self(addr)
     }
 
-    pub const fn raw(&self) -> RawPhysicalAddress {
+    /*    pub const fn raw(&self) -> RawPhysicalAddress {
         self.0
-    }
+    }*/
 }
 
 impl Address for PhysicalAddress {
@@ -149,7 +149,7 @@ impl VirtualAddress {
     pub const PAGE_ADDR_INDEX_SHIFT: usize = 9;
     const PAGE_ADDR_INDEX_MASK: usize = (1 << Self::PAGE_ADDR_INDEX_SHIFT) - 1;
     const PAGE_ADDR_OFFSET_SHIFT: usize = 12;
-    const PAGE_ADDR_OFFSET_MASK: usize = (1 << Self::PAGE_ADDR_OFFSET_SHIFT) - 1;
+    //    const PAGE_ADDR_OFFSET_MASK: usize = (1 << Self::PAGE_ADDR_OFFSET_SHIFT) - 1;
 
     pub const unsafe fn new_const(addr: RawVirtualAddress) -> Self {
         Self(addr)
@@ -184,9 +184,9 @@ impl VirtualAddress {
             & Self::PAGE_ADDR_INDEX_MASK
     }
 
-    pub const fn offset_into_frame(&self) -> usize {
+    /*    pub fn offset_into_frame(&self) -> usize {
         self.raw() & Self::PAGE_ADDR_OFFSET_MASK
-    }
+    }*/
 }
 
 impl Address for VirtualAddress {

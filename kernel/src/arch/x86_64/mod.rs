@@ -4,12 +4,15 @@ pub mod interrupt;
 pub mod port;
 pub mod process;
 pub mod register;
+pub mod ring;
 pub mod constants {
     use crate::memory::VirtualAddress;
 
     pub const KERNEL_BASE: VirtualAddress =
         unsafe { VirtualAddress::new_const(0xFFFFC00000000000) };
 }
+
+pub use ring::PrivilegeLevel;
 
 use port::Port;
 

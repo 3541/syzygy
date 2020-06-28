@@ -2,7 +2,6 @@ pub mod mapper;
 pub mod table;
 mod temp_page;
 
-use core::cmp::{max, min};
 use core::mem::forget;
 
 use logc::{debug, trace};
@@ -55,8 +54,6 @@ pub unsafe fn remap_kernel(
     top: &mut ActiveTopLevelTable,
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,
-    initramfs_start: PhysicalAddress,
-    initramfs_end: PhysicalAddress,
 ) {
     let frame = PHYSICAL_ALLOCATOR
         .alloc_frame()

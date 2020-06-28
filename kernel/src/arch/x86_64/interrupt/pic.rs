@@ -1,5 +1,3 @@
-use spin::Mutex;
-
 use super::{InterruptController, InterruptVector};
 use crate::arch::io_wait;
 use crate::arch::port::Port;

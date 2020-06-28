@@ -91,14 +91,6 @@ impl PhysicalMemoryManager {
         })
     }
 
-    pub fn alloc_memory_exact_contiguous(
-        &self,
-        address: PhysicalAddress,
-        size: usize,
-    ) -> Option<PhysicalMemory> {
-        todo!()
-    }
-
     /*  pub fn free(&self, frame: Frame) {
             let mut areas = self.areas.lock();
             for area in &mut *areas {

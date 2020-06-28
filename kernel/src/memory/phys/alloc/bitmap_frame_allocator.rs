@@ -39,10 +39,6 @@ impl BitmapFrameAllocator {
         ret
     }
 
-    pub fn is_uninitialized(&self) -> bool {
-        !self.base.is_valid()
-    }
-
     fn field(&self, address: PhysicalAddress) -> usize {
         (address - self.base) / Frame::SIZE / core::mem::size_of::<usize>() / 8
     }
@@ -123,13 +119,11 @@ impl FrameAllocator for BitmapFrameAllocator {
 
         trace!("Freeing {:x?} with {} 0x{:x}", frame, field, mask);
 
-        unsafe {
-            if self.bitmap[field] & mask == 0 {
-                panic!("DOUBLE FREE");
-            }
-
-            self.bitmap[field] ^= mask;
+        if self.bitmap[field] & mask == 0 {
+            panic!("DOUBLE FREE");
         }
+
+        self.bitmap[field] ^= mask;
     }
 
     fn has_address(&self, address: PhysicalAddress) -> bool {

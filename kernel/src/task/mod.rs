@@ -28,14 +28,14 @@ impl Task {
 
 pub struct TaskList {
     tasks: HashMap<TaskID, Arc<Task>>,
-    next_id: TaskID,
+    _next_id: TaskID,
 }
 
 impl TaskList {
     fn new() -> Self {
         TaskList {
             tasks: HashMap::new(),
-            next_id: TaskID(1),
+            _next_id: TaskID(1),
         }
     }
 

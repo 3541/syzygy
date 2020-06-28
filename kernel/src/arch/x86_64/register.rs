@@ -10,7 +10,7 @@
     }
 }*/
 
-pub fn msr_read(addr: u32) -> u64 {
+/*pub fn msr_read(addr: u32) -> u64 {
     let ret_low: u32;
     let ret_high: u32;
     unsafe {
@@ -31,3 +31,4 @@ pub fn msr_read(addr: u32) -> u64 {
 pub fn star_read() -> u64 {
     msr_read(0xC000_0081)
 }
+*/

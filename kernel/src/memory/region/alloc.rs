@@ -5,14 +5,14 @@ use super::VirtualRegion;
 
 pub struct VirtualRegionAllocator<const UNIT: usize> {
     free: Vec<VirtualRegion>,
-    range: VirtualRegion,
+    _range: VirtualRegion,
 }
 
 impl<const UNIT: usize> VirtualRegionAllocator<{ UNIT }> {
     pub fn new(range: VirtualRegion) -> Self {
         VirtualRegionAllocator {
             free: vec![range.clone()],
-            range,
+            _range: range,
         }
     }
 

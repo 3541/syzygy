@@ -1,6 +1,6 @@
 use spin::Once;
 
-static support_bound: Once<u32> = Once::new();
+static SUPPORT_BOUND: Once<u32> = Once::new();
 
 #[repr(u32)]
 enum CpuidLeaf {
@@ -9,7 +9,7 @@ enum CpuidLeaf {
 }
 
 fn highest_request() -> u32 {
-    *support_bound.call_once(|| {
+    *SUPPORT_BOUND.call_once(|| {
         let mut eax = CpuidLeaf::HighestRequest as u32;
         unsafe { asm!("cpuid", inout("eax") eax, out("ebx") _, out("ecx") _, out("edx") _) };
         eax
