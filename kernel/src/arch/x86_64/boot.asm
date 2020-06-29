@@ -195,7 +195,6 @@ start64:
         ;; pass stack_bottom
         mov rsi, stack_bottom
 
-
         ;; make rbp null so that there is an endpoint for stack walking
         mov rbp, 0
 
@@ -223,11 +222,11 @@ gdt64:
 .data: equ $ - gdt64
         ;; writable
 	dq (1 << 41) | (1 << 44) | (1 << 47)
-.userdata: equ $ - gdt64
-        dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
-.usercode: equ $ - gdt64
+;;.userdata: equ $ - gdt64       
+;;       dq (1 << 41) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47)
+;; .usercode: equ $ - gdt64
         ;;                         user        mode
-        dq (1 << 43) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47) | (1 << 53)
+;;         dq (1 << 43) | (1 << 44) | (1 << 45) | (1 << 46) | (1 << 47) | (1 << 53)
 
 .end:
 .pointer:
@@ -236,6 +235,7 @@ gdt64:
 .pointer_low:
 	dw gdt64.end - gdt64 -1
 	dq gdt64 - KERNEL_BASE
+
 section .bss
 align 0x1000
 stack_bottom:
