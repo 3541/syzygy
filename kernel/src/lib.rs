@@ -38,6 +38,7 @@ use logc::{debug, info};
 
 use initramfs::Initramfs;
 
+use arch::gdt;
 use arch::interrupt;
 use arch::port::Port;
 use constants::KERNEL_BASE;
@@ -235,6 +236,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     };
     task::init(table, region);
     info!("CREATED task 0");
+
+    gdt::init();
+    info!("INITIALIZED new GDT.");
 
     memory::init_heap();
     info!("INITIALIZED real kernel heap.");
