@@ -1,5 +1,5 @@
 #[repr(u8)]
 pub enum PrivilegeLevel {
-    Kernel,
+    //    Kernel,
     User = 3,
 }

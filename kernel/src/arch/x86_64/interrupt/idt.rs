@@ -75,7 +75,7 @@ impl Idt {
     }
 
     pub fn load(&self) {
-        let p = IDTPointer {
+        let p = IdtPointer {
             limit: (size_of::<Self>() - 1) as u16,
             address: self as *const _ as u64,
         };
@@ -95,7 +95,7 @@ fn current_cs() -> u16 {
 }
 
 #[repr(C, packed)]
-struct IDTPointer {
+struct IdtPointer {
     limit: u16,
     #[cfg(target_arch = "x86_64")]
     address: u64,
