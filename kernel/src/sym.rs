@@ -37,6 +37,9 @@ impl<'a> Symbols<'a> {
     fn init(&mut self, sym_data: &'a [u8]) {
         self.0 = Vec::with_capacity(2500);
         for line in unsafe { str::from_utf8_unchecked(sym_data) }.lines() {
+            if line == "                 U __tls_get_addr" {
+                continue;
+            }
             let mut fields = line.split(' ');
 
             let addr = VirtualAddress::new(
@@ -50,12 +53,12 @@ impl<'a> Symbols<'a> {
             let sym = fields.next().unwrap();
 
             self.0.push((addr, sym));
-            if self.0[self.0.len() - 1] != (addr, sym) {
+            /*            if self.0[self.0.len() - 1] != (addr, sym) {
                 error!(
                     "Symbol just pushed is not as it should be. At {}",
                     self.0.len() - 1
                 );
-            }
+            }*/
         }
     }
 

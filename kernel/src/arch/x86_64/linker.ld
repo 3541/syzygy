@@ -36,8 +36,23 @@ SECTIONS {
         . = ALIGN(4K);
     }
 
-    .data.rel.ro ALIGN(4K) : AT(ADDR(.data.rel.ro) - KERNEL_BASE) {
+    .tdata ALIGN(4K) : AT(ADDR(.tdata) - KERNEL_BASE) {
+        TDATA_START = .;
+        *(.tdata .tdata.*)
+        . += 8;
+        . = ALIGN(4K);
+        TDATA_END = .;
+    }
+
+    .tbss ALIGN(4K) : AT(ADDR(.tbss) - KERNEL_BASE) {
+        TBSS_START = .;
+        *(.tbss .tbss.*)
+        . = ALIGN(4K);
+        TBSS_END = .;
+    }
+
+/*    .data.rel.ro ALIGN(4K) : AT(ADDR(.data.rel.ro) - KERNEL_BASE) {
         *(.data.rel.ro.local*) *(.data.rel.ro .data.rel.ro.*)
         . = ALIGN(4K);
-    }
+    }*/
 }

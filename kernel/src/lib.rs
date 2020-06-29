@@ -10,6 +10,7 @@
 #![feature(naked_functions)]
 #![feature(asm)]
 #![allow(incomplete_features)]
+// "Thread-local" here is really CPU-local.
 #![feature(thread_local)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]
@@ -44,6 +45,7 @@ use constants::KERNEL_BASE;
 use driver::serial;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::paging::EntryFlags;
+use memory::region::VirtualRegionAllocator;
 use memory::{Address, PhysicalAddress, PhysicalMemory, VirtualAddress, VirtualRegion};
 use sym::SYMBOLS;
 
@@ -233,8 +235,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
             memory::paging::table::RECURSIVE_MAPPING_BASE - region_base,
         )
     };
-    task::init(table, region);
-    info!("CREATED task 0");
+    let kernel_region_allocator = VirtualRegionAllocator::new(region);
+    task::init(table, kernel_region_allocator);
+    info!("CREATED task 0.");
 
     gdt::init();
     info!("INITIALIZED new GDT.");
