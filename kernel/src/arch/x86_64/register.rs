@@ -1,14 +1,43 @@
-/*macro_rules! gpr_access {
-    ($name:ident, $t:ty, read) => {
-        pub mod read {
+macro_rules! reg_access {
+    ($name:ident, $t:ty, r) => {
+            #[inline(always)]
             pub fn $name() -> $t {
                 let ret;
                 unsafe { llvm_asm!(concat!("mov $0, ", stringify!($name)) : "=r"(ret) ::: "intel") };
                 ret
             }
-        }
+    };
+
+    ($name:ident, $t:ty, w) => {
+            #[inline(always)]
+            pub fn $name(value: $t) {
+                unsafe { llvm_asm!(concat!("mov ", stringify!($name), ", $0") :: "r"(value) :: "intel", "volatile") };
+            }
+    };
+}
+
+pub mod read {
+    reg_access!(cr2, usize, r);
+}
+
+pub mod write {
+    use crate::memory::VirtualAddress;
+
+    /// # Safety
+    /// Caller must guarantee safety in the context of the particular MSR being written.
+    pub unsafe fn msr(address: u32, v: u64) {
+        let v_low = v as u32;
+        let v_high = v >> 32 as u32;
+
+        asm!("wrmsr", in("ecx") address, in("edx") v_high, in("eax") v_low);
     }
-}*/
+
+    /// # Safety
+    /// Caller must guarantee that `address` is a valid base for relative addressing.
+    pub unsafe fn fs_base(address: VirtualAddress) {
+        msr(0xC000_0100, *address as u64)
+    }
+}
 
 /*pub fn msr_read(addr: u32) -> u64 {
     let ret_low: u32;

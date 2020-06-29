@@ -1,7 +1,7 @@
 use logc::error;
 
 use super::InterruptStackFrame;
-use crate::panic::StackFrame;
+use crate::arch::register::read;
 
 /*unsafe fn print_backtrace(stack: &InterruptStackFrame) {
     crate::panic::print_backtrace(&StackFrame {
@@ -81,13 +81,11 @@ errc_handler_halt!(general_protection_fault);
 generic_handler_ret!(breakpoint);
 
 pub extern "x86-interrupt" fn page_fault(stack: &mut InterruptStackFrame, err: usize) {
-    let mut cr2: usize;
-    unsafe { llvm_asm!("mov %cr2, $0" : "=r"(cr2)) };
     crate::println!(
         "EXCEPTION: page_fault accessing 0x{:x}\n\
          {:?}\n\
          {:#x?}",
-        cr2,
+        read::cr2(),
         error_code::PageFault::from_bits(err).unwrap(),
         stack
     );
