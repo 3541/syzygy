@@ -102,7 +102,8 @@ if qemu.found()
       '-s',
       '-serial', 'mon:stdio',
       '-m', qemu_memory,
-      '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04'
+      '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
+      '-d', 'cpu_reset'
     ]
   )
 endif
