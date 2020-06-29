@@ -13,6 +13,7 @@ impl Idt {
     pub fn new() -> Idt {
         let mut ret = Idt::empty();
 
+        // Exceptions
         ret.set_handler(
             InterruptVector::DivideByZero,
             exception::divide_by_zero,
@@ -44,6 +45,7 @@ impl Idt {
             PrivilegeLevel::User,
         );
 
+        // Hardware
         ret.set_handler(InterruptVector::Timer, irq::timer, PrivilegeLevel::User);
         ret.set_handler(
             InterruptVector::Keyboard,
