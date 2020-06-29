@@ -4,8 +4,6 @@ mod idt;
 mod irq;
 mod pic;
 
-use core::sync::atomic::{AtomicUsize, Ordering};
-
 use logc::info;
 use spin::{Mutex, MutexGuard, Once};
 
@@ -81,30 +79,39 @@ pub struct InterruptStackFrame {
     stack_segment: u64,
 }
 
-static DISABLE_COUNT: AtomicUsize = AtomicUsize::new(1);
+pub fn is_enabled() -> bool {
+    let flags: u64;
+    unsafe {
+        asm!(
+            "pushfq",
+            "pop {}",
+            out(reg) flags
+        )
+    };
 
-#[inline]
-pub fn enable() {
-    if DISABLE_COUNT.fetch_sub(1, Ordering::SeqCst) == 1 {
-        enable_always()
-    }
-}
-
-#[inline]
-pub fn disable() {
-    if DISABLE_COUNT.fetch_add(1, Ordering::SeqCst) == 0 {
-        disable_always()
-    }
+    flags & (1 << 9) != 0
 }
 
 #[inline(always)]
-pub fn enable_always() {
+pub fn enable() {
     unsafe { llvm_asm!("sti" :::: "volatile") }
 }
 
 #[inline(always)]
-pub fn disable_always() {
+pub fn disable() {
     unsafe { llvm_asm!("cli" :::: "volatile") }
+}
+
+pub fn without_interrupts<T>(f: impl Fn() -> T) -> T {
+    let was_enabled = is_enabled();
+    if was_enabled {
+        disable();
+    }
+    let ret = f();
+    if was_enabled {
+        enable();
+    }
+    ret
 }
 
 fn idt() -> MutexGuard<'static, Idt> {
@@ -127,11 +134,4 @@ pub fn init() {
     unsafe { pic.init() };
     *controller = Controller::Pic(pic);
     enable();
-}
-
-pub fn without_interrupts<T>(f: impl Fn() -> T) -> T {
-    disable();
-    let ret = f();
-    enable();
-    ret
 }
