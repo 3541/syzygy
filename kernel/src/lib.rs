@@ -10,7 +10,6 @@
 #![feature(naked_functions)]
 #![feature(asm)]
 #![allow(incomplete_features)]
-#![feature(const_generics)]
 #![feature(thread_local)]
 #![feature(step_trait)]
 #![feature(step_trait_ext)]

@@ -4,12 +4,12 @@ mod temp_page;
 
 use core::mem::forget;
 
-use logc::{debug, trace};
+use logc::debug;
 use multiboot2::ElfSectionIter;
 
 pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
 
-use super::region::{VirtualRegion, VirtualRegionAllocator};
+use super::region::VirtualRegionAllocator;
 use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
 use crate::constants::KERNEL_BASE;
 use mapper::{Mapper, TLBFlush};
@@ -18,18 +18,18 @@ use temp_page::TempPage;
 
 pub struct Pager {
     table: TopLevelTable,
-    kernel_allocator: VirtualRegionAllocator<{ Frame::SIZE }>,
+    kernel_allocator: VirtualRegionAllocator,
 }
 
 impl Pager {
-    pub fn new(table: TopLevelTable, region: VirtualRegion) -> Self {
+    pub fn new(table: TopLevelTable, kernel_allocator: VirtualRegionAllocator) -> Self {
         Pager {
             table,
-            kernel_allocator: VirtualRegionAllocator::new(region),
+            kernel_allocator,
         }
     }
 
-    pub fn kernel_allocator(&mut self) -> &mut VirtualRegionAllocator<{ Frame::SIZE }> {
+    pub fn kernel_allocator(&mut self) -> &mut VirtualRegionAllocator {
         &mut self.kernel_allocator
     }
 
@@ -84,7 +84,7 @@ pub unsafe fn remap_kernel(
                 "Kernel sections must be 4K aligned."
             );
 
-            trace!(
+            debug!(
                 "Mapping section 0x{:x}-0x{:x} (0x{:x}).",
                 section.start_address(),
                 section.end_address(),
@@ -95,13 +95,16 @@ pub unsafe fn remap_kernel(
                 m,
                 PhysicalAddress::new((section.start_address() as usize) - *KERNEL_BASE),
                 (section.end_address() - section.start_address()) as usize,
-                EntryFlags::from_elf(&section),
+                EntryFlags::from_elf(&section) | EntryFlags::GLOBAL,
             );
         }
 
         debug!("Mapping VGA buffer.");
         let vga_buffer = Frame(crate::vga_text::VGA_BUFFER_ADDRESS);
-        tlb_flush.consume(m.map_kernel_space(&vga_buffer, EntryFlags::WRITABLE));
+        tlb_flush.consume(m.map_kernel_space(
+            &vga_buffer,
+            EntryFlags::WRITABLE | EntryFlags::GLOBAL | EntryFlags::NO_EXECUTE,
+        ));
         forget(vga_buffer);
 
         debug!("Mapping Multiboot info structures.");
@@ -109,7 +112,7 @@ pub unsafe fn remap_kernel(
             m,
             PhysicalAddress::new(multiboot_info.start_address() - *KERNEL_BASE),
             (multiboot_info.end_address() - multiboot_info.start_address()) as usize,
-            EntryFlags::PRESENT,
+            EntryFlags::PRESENT | EntryFlags::GLOBAL | EntryFlags::NO_EXECUTE,
         );
 
         tlb_flush.consume_other(closure_tlb_flush);

@@ -2,13 +2,14 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::VirtualRegion;
+use crate::memory::Frame;
 
-pub struct VirtualRegionAllocator<const UNIT: usize> {
+pub struct VirtualRegionAllocator {
     free: Vec<VirtualRegion>,
     _range: VirtualRegion,
 }
 
-impl<const UNIT: usize> VirtualRegionAllocator<{ UNIT }> {
+impl VirtualRegionAllocator {
     pub fn new(range: VirtualRegion) -> Self {
         VirtualRegionAllocator {
             free: vec![range.clone()],
@@ -17,7 +18,7 @@ impl<const UNIT: usize> VirtualRegionAllocator<{ UNIT }> {
     }
 
     pub fn alloc(&mut self, size: usize) -> Option<VirtualRegion> {
-        if size % UNIT != 0 {
+        if size % Frame::SIZE != 0 {
             None
         } else {
             let from_region_index = self
