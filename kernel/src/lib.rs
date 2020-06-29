@@ -105,6 +105,11 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     vga_text::WRITER.lock().clear_screen();
     println!("ENTERED kmain.");
 
+    // Load the IDT as early as possible so exceptions are caught. Interrupts are not
+    // enabled yet.
+    interrupt::load_idt();
+    println!("LOADED IDT.");
+
     log::init();
     info!("INITIALIZED log.");
 
@@ -202,9 +207,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
     info!("INITIALIZED ACPI.");
 
-    interrupt::init();
-    info!("INITIALIZED interrupts.");
-
     unsafe { memory::init_allocator() };
     info!("INITIALIZED temporary kernel heap.");
 
@@ -283,6 +285,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         ip, sp
     );
     unsafe { arch::process::enter_ring3(ip, sp) };*/
+
+    interrupt::init();
+    info!("INITIALIZED interrupts.");
 
     info!("ENTERING halt loop.");
     arch::halt_loop()

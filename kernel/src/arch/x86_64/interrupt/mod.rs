@@ -111,6 +111,10 @@ fn idt() -> MutexGuard<'static, Idt> {
     IDT.call_once(|| Mutex::new(Idt::new())).lock()
 }
 
+pub fn load_idt() {
+    idt().load();
+}
+
 pub fn init() {
     let mut controller = INTERRUPT_CONTROLLER.lock();
 
@@ -122,7 +126,6 @@ pub fn init() {
     let mut pic = PicChain::new();
     unsafe { pic.init() };
     *controller = Controller::Pic(pic);
-    idt().load();
     enable();
 }
 
