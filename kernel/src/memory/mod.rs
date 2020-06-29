@@ -159,6 +159,10 @@ impl VirtualAddress {
         self.0
     }
 
+    pub fn as_mut_ptr(&self) -> *mut u8 {
+        **self as *mut _
+    }
+
     pub const fn pml4_index(&self) -> usize {
         self.table_index(3)
     }
