@@ -15,7 +15,7 @@ use bump_allocator::BumpAllocator;
 
 pub const HEAP_SIZE: usize = 4 * MB;
 
-static mut INIT_HEAP: [u8; 200 * KB] = [0; 200 * KB];
+static mut INIT_HEAP: [u8; 400 * KB] = [0; 400 * KB];
 
 #[cfg(not(test))]
 #[global_allocator]
