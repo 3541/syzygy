@@ -57,12 +57,6 @@ pub enum InterruptVector {
     Keyboard,
 }
 
-impl Into<u8> for InterruptVector {
-    fn into(self) -> u8 {
-        self as u8
-    }
-}
-
 pub unsafe trait InterruptController {
     fn end_of_interrupt(&mut self, interrupt: InterruptVector);
     fn disable(&mut self);
