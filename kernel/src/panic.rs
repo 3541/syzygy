@@ -35,7 +35,7 @@ pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
             }
             error!("{:#}", demangle(s));
         } else {
-            error!("{:?} (No symbol found. Probably unloaded.)", stack_frame);
+            error!("IP: 0x{:x} (No symbol found.)", stack_frame.rip as usize);
         }
         stack_frame = &*stack_frame.rbp;
     }
