@@ -106,4 +106,18 @@ if qemu.found()
       '-d', 'cpu_reset'
     ]
   )
+
+  run_target(
+    'debug',
+    command: [
+      qemu,
+      '-cdrom', iso,
+      '-s',
+      '-serial', 'mon:stdio',
+      '-m', qemu_memory,
+      '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
+      '-d', 'cpu_reset',
+      '-S'
+    ]
+  )
 endif
