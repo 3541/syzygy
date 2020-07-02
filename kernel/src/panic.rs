@@ -1,5 +1,4 @@
 use logc::error;
-use rustc_demangle::demangle;
 
 use crate::memory::{Address, RawVirtualAddress, VirtualAddress};
 use crate::sym::SYMBOLS;
@@ -33,7 +32,7 @@ pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
             if s == "stack_bottom" {
                 break;
             }
-            error!("{:#}", demangle(s));
+            error!("{:#}", s);
         } else {
             error!("IP: 0x{:x} (No symbol found.)", stack_frame.rip as usize);
         }

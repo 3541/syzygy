@@ -12,9 +12,10 @@ qemu = find_program(
 )
 grub_mkrescue = find_program('grub-mkrescue', native: true)
 xorriso = find_program('xorriso', native: true) # This is required for grub-mkrescue
-cp_stamp = find_program('./scripts/copy_with_stamp.sh')
+cp_stamp = find_program('scripts/copy_with_stamp.sh')
 mkdir = find_program('mkdir', native: true)
-cargo_wrapper = find_program('./scripts/run_cargo.sh')
+cargo_wrapper = find_program('scripts/run_cargo.sh')
+gen_sym = find_program('scripts/sym.sh')
 
 # Subprojects
 subdir('kernel')

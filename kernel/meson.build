@@ -83,9 +83,7 @@ kernel_sym = custom_target(
   'kernel-symbols',
   output: 'kernel.sym',
   command: [
-    nm,
-    '--numeric-sort',
-    '--reverse-sort',
+    gen_sym,
     kernel
   ],
   capture: true
