@@ -52,11 +52,11 @@ kernel_lib = custom_target(
     cargo_wrapper,
     'xargo',
     '@OUTDIR@',
-    '@OUTDIR@/x86_64-elf',
+    '@OUTDIR@/x86_64-pc-elf-none',
     'libsyzygy.a',
     '@OUTPUT@',
     '--target',
-    cpu + '-elf',
+    cpu + '-pc-elf-none',
 #    xargo_flags,
     '-p',
     'syzygy'
