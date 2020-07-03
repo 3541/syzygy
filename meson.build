@@ -9,10 +9,17 @@ qemu_flags = [
   '-m', qemu_memory,
   '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
   '-d', 'cpu_reset',
-  '-enable-kvm',
-  '-cpu', 'qemu64,+pdpe1gb,+tsc-deadline',
   '-debugcon', 'stdio'
 ]
+if get_option('kvm')
+  qemu_flags += [
+    '-enable-kvm',
+    '-cpu', 'kvm64,+pdpe1gb,+tsc-deadline'
+  ]
+else
+  qemu_flags += [ '-cpu', 'qemu64,+pdpe1gb' ]
+endif
+
 
 # Programs
 qemu = find_program(
@@ -22,10 +29,10 @@ qemu = find_program(
 )
 grub_mkrescue = find_program('grub-mkrescue', native: true)
 xorriso = find_program('xorriso', native: true) # This is required for grub-mkrescue
-cp_stamp = find_program('scripts/copy_with_stamp.sh')
+cp_stamp = find_program('scripts/copy_with_stamp.sh', native: true)
 mkdir = find_program('mkdir', native: true)
-cargo_wrapper = find_program('scripts/run_cargo.sh')
-gen_sym = find_program('scripts/sym.sh')
+cargo_wrapper = find_program('scripts/run_cargo.sh', native: true)
+gen_sym = find_program('scripts/sym.sh', native: true)
 
 # Subprojects
 subdir('kernel')
