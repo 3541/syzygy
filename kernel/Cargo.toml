@@ -24,6 +24,4 @@ hashbrown = "*"
 array-init = "*"
 
 [features]
-integration-tests = []
-trace = []
-
+vga_log = []

@@ -14,6 +14,16 @@ kernel_asm_src = files([
                         'src/arch/' + cpu + '/boot.asm',
                         'src/arch/' + cpu + '/multiboot_header.asm'
                       ])
+any_features = false
+kernel_features = []
+if get_option('vga_log')
+  kernel_features += 'vga_log'
+  any_features = true
+endif
+
+if any_features
+  kernel_features = ['--features', kernel_features]
+endif
 
 # Programs
 
@@ -59,7 +69,9 @@ kernel_lib = custom_target(
     cpu + '-pc-elf-none',
 #    xargo_flags,
     '-p',
-    'syzygy'
+    'syzygy',
+    '-Zpackage-features',
+    kernel_features
   ],
   depend_files: kernel_src,
   console: true

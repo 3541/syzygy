@@ -1,0 +1,1 @@
+option('vga_log', type : 'boolean', value : false)

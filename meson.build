@@ -3,6 +3,16 @@ project('syzygy', ['rust', 'c'], version: '0.1.0')
 # Variable declarations
 rustc_flags = ['-Zsymbol-mangling-version=v0']
 qemu_memory = '4G'
+qemu_flags = [
+  '-s',
+#  '-serial', 'mon:stdio',
+  '-m', qemu_memory,
+  '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
+  '-d', 'cpu_reset',
+  '-enable-kvm',
+  '-cpu', 'qemu64,+pdpe1gb,+tsc-deadline',
+  '-debugcon', 'stdio'
+]
 
 # Programs
 qemu = find_program(
@@ -94,17 +104,15 @@ iso = custom_target(
   depends: [grub_cfg, iso_files]
 )
 
+
+
 if qemu.found()
   run_target(
     'run',
     command: [
       qemu,
       '-cdrom', iso,
-      '-s',
-      '-serial', 'mon:stdio',
-      '-m', qemu_memory,
-      '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
-      '-d', 'cpu_reset'
+      qemu_flags
     ]
   )
 
@@ -113,11 +121,7 @@ if qemu.found()
     command: [
       qemu,
       '-cdrom', iso,
-      '-s',
-      '-serial', 'mon:stdio',
-      '-m', qemu_memory,
-      '-device', 'isa-debug-exit,iobase=0xF4,iosize=0x04',
-      '-d', 'cpu_reset',
+      qemu_flags,
       '-S'
     ]
   )
