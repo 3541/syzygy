@@ -48,9 +48,15 @@ impl logc::Log for Log {
                 Level::Error => Color::Red,
             };
 
+            let target = if record.target().len() >= 8 {
+                &record.target()[8..]
+            } else {
+                "init"
+            };
+
             unsafe {
                 write!(DEBUG_PORT, "{}", record.level().fg(color.into())).unwrap();
-                writeln!(DEBUG_PORT, " ({}): {}", record.target(), record.args()).unwrap();
+                writeln!(DEBUG_PORT, " ({}): {}", target, record.args()).unwrap();
             }
 
             if cfg!(feature = "vga_log") {
@@ -61,7 +67,7 @@ impl logc::Log for Log {
                     writer.set_color(color, Color::White);
                     write!(*writer, "{}", record.level()).unwrap();
                     writer.set_color_code(prev_color);
-                    writeln!(*writer, " ({}): {}", record.target(), record.args()).unwrap();
+                    writeln!(*writer, " ({}): {}", target, record.args()).unwrap();
                 })
             }
         }
