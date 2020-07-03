@@ -13,6 +13,8 @@ _start:
 	call check_multiboot
 	call check_cpuid
 	call check_pae
+        call check_long_mode
+        call check_gb_pages
 
 	call setup_page_tables
 	call enable_paging
@@ -83,17 +85,27 @@ check_long_mode:
 	mov eax, 0x80000000
 	cpuid
 	cmp eax, 0x80000001
-	jb .no_long_mode
+	jb .no
 
 	; check for long mode
 	mov eax, 0x80000001
 	cpuid
 	test edx, 1 << 29
-	jz .no_long_mode
+	jz .no
 	ret
-.no_long_mode:
-	mov al, '2'
+.no:
+	mov al, '3'
 	jmp err
+
+check_gb_pages:
+        mov eax, 0x80000001
+        cpuid
+        test edx, 1 << 26
+        jz .no
+        ret
+.no:
+        mov al, '4'
+        jmp err
 
 setup_page_tables:
 	; Map pml4 recursively
