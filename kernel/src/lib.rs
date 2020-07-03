@@ -42,7 +42,8 @@ use arch::gdt;
 use arch::interrupt;
 use arch::port::Port;
 use constants::KERNEL_BASE;
-use driver::serial;
+//use driver::serial;
+use driver::bochs_debug;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::paging::EntryFlags;
 use memory::region::VirtualRegionAllocator;
@@ -68,7 +69,8 @@ macro_rules! print {
 #[doc(hidden)]
 pub fn _print(args: core::fmt::Arguments) {
     vga_text::_print(args);
-    serial::_print(args);
+    bochs_debug::_print(args);
+    //    serial::_print(args);
 }
 
 #[macro_export]
