@@ -14,7 +14,7 @@ qemu_flags = [
 if get_option('kvm')
   qemu_flags += [
     '-enable-kvm',
-    '-cpu', 'kvm64,+pdpe1gb,+tsc-deadline'
+    '-cpu', 'kvm64,+pdpe1gb,+tsc-deadline,+invtsc'
   ]
 else
   qemu_flags += [ '-cpu', 'qemu64,+pdpe1gb' ]
@@ -33,6 +33,7 @@ cp_stamp = find_program('scripts/copy_with_stamp.sh', native: true)
 mkdir = find_program('mkdir', native: true)
 cargo_wrapper = find_program('scripts/run_cargo.sh', native: true)
 gen_sym = find_program('scripts/sym.sh', native: true)
+make_fs = find_program('scripts/make_fs.sh', native: true)
 
 # Subprojects
 subdir('kernel')
@@ -68,21 +69,21 @@ initramfs = custom_target(
   depends: initramfs_files
 )
 
-iso_dir = custom_target(
-  'make-iso-dir',
-  output: 'iso_build',
+fs_dir = custom_target(
+  'make-fs-dir',
+  output: 'fs_build',
   command: [mkdir, '-p', '@OUTPUT@' + '/boot/grub'],
 )
 
-iso_files = custom_target(
-  'copy-iso-files',
-  output: 'iso_files.stamp',
+fs_files = custom_target(
+  'copy-fs-files',
+  output: 'fs_files.stamp',
   command: [
     cp_stamp,
     '@OUTPUT@',
     kernel,
     initramfs,
-    iso_dir.full_path() + '/boot/'
+    fs_dir.full_path() + '/boot/'
   ],
 )
 
@@ -93,43 +94,56 @@ grub_cfg = custom_target(
     cp_stamp,
     '@OUTPUT@',
     meson.source_root() + '/kernel/src/arch/x86_common/grub.cfg',
-    iso_dir.full_path() + '/boot/grub/grub.cfg'
+    fs_dir.full_path() + '/boot/grub/grub.cfg'
   ],
-  depends: iso_dir,
+  depends: fs_dir,
   depend_files: meson.source_root() + '/kernel/src/arch/x86_common/grub.cfg'
 )
 
 iso = custom_target(
-  'generate-iso',
-  build_by_default: true,
+  'make-iso',
   output: 'syzygy.iso',
   command: [
     grub_mkrescue,
     '-o', '@OUTPUT@',
-    iso_dir
+    fs_dir
   ],
-  depends: [grub_cfg, iso_files]
+  console: true,
+  depends: [grub_cfg, fs_files]
 )
 
-
+image = custom_target(
+  'make-image',
+  build_by_default: true,
+  output: 'syzygy.img',
+  command: [
+    'sudo', make_fs,
+    fs_dir,
+    '@OUTPUT@'
+  ],
+  console: true,
+  depends: [grub_cfg, fs_files]
+)
 
 if qemu.found()
   run_target(
     'run',
     command: [
       qemu,
-      '-cdrom', iso,
+      '-drive', 'format=raw,file=' + image.full_path(),
       qemu_flags
-    ]
+    ],
+    depends: image
   )
 
   run_target(
     'debug',
     command: [
       qemu,
-      '-cdrom', iso,
+      '-drive', 'format=raw,file=' + image.full_path(),
       qemu_flags,
       '-S'
-    ]
+    ],
+    depends: image
   )
 endif
