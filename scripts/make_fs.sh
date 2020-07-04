@@ -26,7 +26,7 @@ trap cleanup EXIT
 files="$1"
 image="$2"
 
-image_size=$(expr $(du -sh "$files" | cut -d'.' -f1) + 20)
+image_size=$(($(du -sh "$files" | cut -d'.' -f1) + 20))
 
 if [ -e "$image" ]; then
     rm "$image"
