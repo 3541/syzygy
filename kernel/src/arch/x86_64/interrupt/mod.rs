@@ -1,16 +1,20 @@
+// Elevated so irq_handler is available in other submodules.
+#[macro_use]
+mod irq;
+
 mod apic;
 mod exception;
 mod idt;
-mod irq;
 mod pic;
+mod timer;
 
-use logc::info;
+use logc::debug;
 use spin::{Mutex, MutexGuard, Once};
 
 use crate::arch::cpuid;
 use crate::memory::VirtualAddress;
 
-use apic::Apic;
+use apic::LocalApic;
 use idt::Idt;
 use pic::PicChain;
 
@@ -24,7 +28,7 @@ pub static IDT: Once<Mutex<Idt>> = Once::new();
 
 pub enum Controller {
     Pic(PicChain),
-    Apic(Apic),
+    LocalApic(LocalApic),
     Uninitialized,
 }
 
@@ -32,7 +36,7 @@ unsafe impl InterruptController for Controller {
     fn end_of_interrupt(&mut self, interrupt: InterruptVector) {
         match self {
             Controller::Pic(chain) => chain.end_of_interrupt(interrupt),
-            Controller::Apic(apic) => apic.end_of_interrupt(interrupt),
+            Controller::LocalApic(apic) => apic.end_of_interrupt(interrupt),
             Controller::Uninitialized => {
                 panic!("Tried to EOI an uninitialized InterruptController.")
             }
@@ -53,8 +57,9 @@ pub enum InterruptVector {
     DoubleFault = 8,
     GeneralProtectionFault = 13,
     PageFault = 14,
-    Timer = PicChain::PIC1_OFFSET,
-    Keyboard,
+    Timer = 0x30,
+
+    Spurious = 255,
 }
 
 pub unsafe trait InterruptController {
@@ -96,7 +101,7 @@ pub fn disable() {
     unsafe { llvm_asm!("cli" :::: "volatile") }
 }
 
-pub fn without_interrupts<T>(f: impl Fn() -> T) -> T {
+pub fn without_interrupts<T>(f: impl FnOnce() -> T) -> T {
     let was_enabled = is_enabled();
     if was_enabled {
         disable();
@@ -117,15 +122,19 @@ pub fn load_idt() {
 }
 
 pub fn init() {
-    let mut controller = INTERRUPT_CONTROLLER.lock();
+    let mut pic = unsafe { PicChain::new() };
 
     if cpuid::has_apic() {
-        info!("CPU has an APIC.");
+        debug!("CPU has an APIC.");
+
+        pic.disable();
+        debug!("PIC disabled.");
+
+        *INTERRUPT_CONTROLLER.lock() = Controller::LocalApic(LocalApic::new());
     } else {
-        info!("CPU does not have an APIC.");
+        debug!("CPU does not have an APIC.");
+        *INTERRUPT_CONTROLLER.lock() = Controller::Pic(pic);
     }
-    let mut pic = PicChain::new();
-    unsafe { pic.init() };
-    *controller = Controller::Pic(pic);
-    enable();
+
+    enable()
 }

@@ -18,6 +18,17 @@ macro_rules! reg_access {
 
 pub mod read {
     reg_access!(cr2, usize, r);
+
+    pub fn msr(address: u32) -> u64 {
+        let ret_low: u32;
+        let ret_high: u32;
+        unsafe { asm!("rdmsr", in("ecx") address, out("edx") ret_high, out("eax") ret_low) };
+        ((ret_high as u64) << 32) | ret_low as u64
+    }
+
+    pub fn apic_base() -> u64 {
+        msr(0x1B)
+    }
 }
 
 pub mod write {
@@ -36,6 +47,10 @@ pub mod write {
     /// Caller must guarantee that `address` is a valid base for relative addressing.
     pub unsafe fn fs_base(address: VirtualAddress) {
         msr(0xC000_0100, *address as u64)
+    }
+
+    pub unsafe fn tsc_deadline(value: u64) {
+        msr(0x6E0, value);
     }
 }
 

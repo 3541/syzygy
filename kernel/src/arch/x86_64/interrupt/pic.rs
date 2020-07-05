@@ -31,6 +31,7 @@ impl Pic {
 
 pub struct PicChain(Pic, Pic);
 
+// TODO: Move to the correct offset if actually used.
 impl PicChain {
     const PIC1_COMMAND_ADDRESS: u16 = 0x20;
     const PIC1_DATA_ADDRESS: u16 = Self::PIC1_COMMAND_ADDRESS + 1;
@@ -40,8 +41,8 @@ impl PicChain {
     const PIC2_DATA_ADDRESS: u16 = Self::PIC2_COMMAND_ADDRESS + 1;
     pub const PIC2_OFFSET: u8 = Self::PIC1_OFFSET + 8;
 
-    pub fn new() -> PicChain {
-        PicChain(
+    pub unsafe fn new() -> PicChain {
+        let mut ret = PicChain(
             Pic {
                 offset: PicChain::PIC1_OFFSET,
                 command: Port::new(PicChain::PIC1_COMMAND_ADDRESS),
@@ -52,17 +53,22 @@ impl PicChain {
                 command: Port::new(PicChain::PIC2_COMMAND_ADDRESS),
                 data: Port::new(PicChain::PIC2_DATA_ADDRESS),
             },
-        )
+        );
+        ret.init();
+        ret
+    }
+
+    pub fn mask_all(&mut self) {
+        unsafe {
+            self.0.data.write(0xFF);
+            self.1.data.write(0xFF);
+        }
     }
 
     /// # Safety
     /// Caller must guarantee that:
-    /// * APIC is not being used.
     /// * PIC is in a correct state to be initialized.
     pub unsafe fn init(&mut self) {
-        let mask0 = self.0.data.read();
-        let mask1 = self.1.data.read();
-
         self.0.command.write(Command::Init as u8);
         io_wait();
         self.1.command.write(Command::Init as u8);
@@ -85,8 +91,9 @@ impl PicChain {
         self.1.data.write(Command::Mode8086 as u8);
         io_wait();
 
-        self.0.data.write(mask0);
-        self.1.data.write(mask1);
+        // All lines masked except IRQ2 the first PIC.
+        self.0.data.write(0xFF & !(1 << 2));
+        self.1.data.write(0xFF);
     }
 }
 
@@ -102,6 +109,6 @@ unsafe impl InterruptController for PicChain {
     }
 
     fn disable(&mut self) {
-        todo!()
+        self.mask_all();
     }
 }

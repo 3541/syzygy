@@ -159,8 +159,12 @@ impl VirtualAddress {
         self.0
     }
 
-    pub fn as_mut_ptr(&self) -> *mut u8 {
+    pub fn as_mut_ptr<T>(&mut self) -> *mut T {
         **self as *mut _
+    }
+
+    pub fn as_ptr<T>(&mut self) -> *const T {
+        **self as *const _
     }
 
     pub const fn pml4_index(&self) -> usize {

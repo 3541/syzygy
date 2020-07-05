@@ -29,6 +29,11 @@ pub fn halt() {
     unsafe { llvm_asm!("hlt" :::: "volatile") }
 }
 
+#[inline]
+pub fn mfence() {
+    unsafe { asm!("mfence") }
+}
+
 pub fn halt_loop() -> ! {
     loop {
         halt()

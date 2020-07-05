@@ -66,16 +66,19 @@ impl TaskList {
         let mut kernel_tls = kernel_allocator
             .alloc(tls_size)
             .expect("Unable to allocate memory for TLS.");
-        kernel_tls.map(&mut table, EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE);
+        kernel_tls.map(
+            &mut table,
+            EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE | EntryFlags::GLOBAL,
+        );
 
-        let tbss_start = kernel_tls.start() + tdata_size;
+        let mut tbss_start = kernel_tls.start() + tdata_size;
         unsafe {
-            ptr::copy(
+            ptr::copy_nonoverlapping(
                 &TDATA_START as *const u8,
                 kernel_tls.start().as_mut_ptr(),
                 tbss_start - kernel_tls.start(),
             );
-            ptr::write_bytes(tbss_start.as_mut_ptr(), 0, tbss_size);
+            ptr::write_bytes(tbss_start.as_mut_ptr::<u8>(), 0, tbss_size);
             let fs_pointer = (*kernel_tls.end() as usize - size_of::<usize>()) as *mut usize;
             ptr::write(fs_pointer, *kernel_tls.end());
             register::write::fs_base(VirtualAddress::new(fs_pointer as usize));
