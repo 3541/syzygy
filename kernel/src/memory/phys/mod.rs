@@ -59,11 +59,12 @@ pub struct PhysicalMemory {
 
 impl PhysicalMemory {
     pub unsafe fn region(start: PhysicalAddress, size: usize) -> PhysicalMemory {
-        let frames = (*start.previous_aligned(Frame::SIZE)
+        let frames: Vec<_> = (*start.previous_aligned(Frame::SIZE)
             ..=*(start + size - 1).previous_aligned(Frame::SIZE))
             .step_by(Frame::SIZE)
             .map(|a| Frame(PhysicalAddress::new_unchecked(a)))
             .collect();
+        assert!(frames.len() > 0);
         PhysicalMemory {
             frames,
             kind: PhysicalMemoryKind::Region,
