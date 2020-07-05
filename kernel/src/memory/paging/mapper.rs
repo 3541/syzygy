@@ -130,7 +130,7 @@ impl Mapper {
         );
         table[index].set(frame.address(), flags | EntryFlags::PRESENT);
 
-        if flags.contains(EntryFlags::WRITABLE) {
+        /*        if flags.contains(EntryFlags::WRITABLE) {
             let new_mem = unsafe { &mut *(*address as *mut u8) };
             let mut old = *new_mem;
             core::mem::swap(new_mem, &mut 8);
@@ -139,7 +139,7 @@ impl Mapper {
                 old, 8,
                 "Can't write to just-mapped writable page. Something is up.\ntable: {:x?}, index: {}", table, index
             );
-        }
+        }*/
 
         MapperResult(address)
     }
