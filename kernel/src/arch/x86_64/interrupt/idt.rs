@@ -3,11 +3,11 @@ use core::mem::{size_of, transmute};
 use super::{exception, irq, Handler, HandlerErr, InterruptVector};
 use crate::arch::PrivilegeLevel;
 
-pub struct Idt([Entry; 40]);
+pub struct Idt([Entry; 256]);
 
 impl Idt {
     pub fn empty() -> Idt {
-        Idt([Entry::missing(); 40])
+        Idt([Entry::missing(); 256])
     }
 
     pub fn new() -> Idt {
@@ -47,9 +47,14 @@ impl Idt {
 
         // Hardware
         ret.set_handler(InterruptVector::Timer, irq::timer, PrivilegeLevel::User);
-        ret.set_handler(
+        /*     ret.set_handler(
             InterruptVector::Keyboard,
             irq::keyboard,
+            PrivilegeLevel::User,
+        );*/
+        ret.set_handler(
+            InterruptVector::Spurious,
+            irq::spurious,
             PrivilegeLevel::User,
         );
 
