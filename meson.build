@@ -19,7 +19,9 @@ if get_option('kvm')
 else
   qemu_flags += [ '-cpu', 'qemu64,+pdpe1gb' ]
 endif
-
+if not get_option('display')
+  qemu_flags += [ '-display', 'none' ]
+endif
 
 # Programs
 qemu = find_program(
@@ -35,7 +37,7 @@ cargo_wrapper = find_program('scripts/run_cargo.sh', native: true)
 gen_sym = find_program('scripts/sym.sh', native: true)
 make_fs = find_program('scripts/make_fs.sh', native: true)
 
-# Subprojects
+# Subdirectories
 subdir('kernel')
 subdir('initramfs')
 
