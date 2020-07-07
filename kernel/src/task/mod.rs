@@ -29,6 +29,10 @@ impl Task {
     pub fn pager(&self) -> MutexGuard<Pager> {
         self.pager.lock()
     }
+
+    pub fn current() -> Arc<Task> {
+        TaskList::the().current().clone()
+    }
 }
 
 pub struct TaskList {
@@ -37,11 +41,11 @@ pub struct TaskList {
 }
 
 impl TaskList {
-    fn new() -> Self {
-        TaskList {
+    fn new() -> RwLock<TaskList> {
+        RwLock::new(TaskList {
             tasks: HashMap::new(),
             _next_id: TaskID(1),
-        }
+        })
     }
 
     fn init(
@@ -93,34 +97,26 @@ impl TaskList {
         );
     }
 
+    pub fn the() -> RwLockReadGuard<'static, TaskList> {
+        TASK_LIST.call_once(TaskList::new).read()
+    }
+
+    pub fn the_mut() -> RwLockWriteGuard<'static, TaskList> {
+        TASK_LIST.call_once(TaskList::new).write()
+    }
+
+    pub fn current_id() -> TaskID {
+        TaskID(TASK_ID.load(Ordering::SeqCst))
+    }
+
     pub fn current(&self) -> &Arc<Task> {
         &self
             .tasks
-            .get(&current_id())
+            .get(&TaskList::current_id())
             .expect("Current task is missing.")
     }
 }
 
-pub fn current_id() -> TaskID {
-    TaskID(TASK_ID.load(Ordering::SeqCst))
-}
-
-fn create_task_list() -> RwLock<TaskList> {
-    RwLock::new(TaskList::new())
-}
-
-pub fn task_list() -> RwLockReadGuard<'static, TaskList> {
-    TASK_LIST.call_once(create_task_list).read()
-}
-
-pub fn task_list_mut() -> RwLockWriteGuard<'static, TaskList> {
-    TASK_LIST.call_once(create_task_list).write()
-}
-
-pub fn current_task() -> Arc<Task> {
-    task_list().current().clone()
-}
-
 pub fn init(table: ActiveTopLevelTable, kernel_allocator: VirtualRegionAllocator) {
-    task_list_mut().init(table, kernel_allocator);
+    TaskList::the_mut().init(table, kernel_allocator);
 }

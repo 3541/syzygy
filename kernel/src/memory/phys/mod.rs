@@ -6,7 +6,7 @@ use core::ops::Drop;
 
 use super::paging::EntryFlags;
 use super::{Address, PhysicalAddress, VirtualRegion};
-use crate::task::current_task;
+use crate::task::Task;
 
 pub use self::alloc::PHYSICAL_ALLOCATOR;
 
@@ -84,7 +84,7 @@ impl PhysicalMemory {
     }
 
     pub fn map_for_kernel(self, flags: EntryFlags) -> Option<VirtualRegion> {
-        let task = current_task();
+        let task = Task::current();
         let mut pager = task.pager();
         let allocator = pager.kernel_allocator();
 
