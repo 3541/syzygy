@@ -56,7 +56,11 @@ impl ApicTimer {
     }
 
     irq_handler!(InterruptVector::Timer => fn tsc_deadline_handler(_stack) {
-        debug!("TSC deadline timer ISR.");
+        if read_tsc() < register::read::tsc_deadline() {
+            warn!("Spurious TSC deadline interrupt. Ignoring.");
+            return;
+        }
+
         unsafe { register::write::tsc_deadline(read_tsc() + 1_000_000_000) };
     });
 }

@@ -29,6 +29,10 @@ pub mod read {
     pub fn apic_base() -> u64 {
         msr(0x1B)
     }
+
+    pub fn tsc_deadline() -> u64 {
+        msr(0x6E0)
+    }
 }
 
 pub mod write {
