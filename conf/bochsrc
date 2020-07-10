@@ -10,5 +10,5 @@ ata1-slave: type=none
 ata2: enabled=false
 ata3: enabled=false
 vga: extension=vbe, update_freq=60, realtime=0
-cpuid: 1g_pages=true
+cpuid: 1g_pages=true, x86_64=true
 port_e9_hack: enabled=1

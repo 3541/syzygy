@@ -29,6 +29,12 @@ qemu = find_program(
   required: false,
   native: true
 )
+bochs = find_program(
+  'bochs',
+  required: false,
+  native: true
+)
+run_bochs = find_program('scripts/run_bochs.sh', native: true)
 grub_mkrescue = find_program('grub-mkrescue', native: true)
 xorriso = find_program('xorriso', native: true) # This is required for grub-mkrescue
 cp_stamp = find_program('scripts/copy_with_stamp.sh', native: true)
@@ -146,6 +152,22 @@ if qemu.found()
       qemu_flags,
       '-S'
     ],
+    depends: image
+  )
+endif
+
+if bochs.found() and not qemu.found()
+  run_target(
+    'run',
+    command: [ run_bochs, bochs.path() ],
+    depends: image
+  )
+endif
+
+if bochs.found()
+  run_target(
+    'bochs',
+    command: [ run_bochs, bochs.path() ],
     depends: image
   )
 endif
