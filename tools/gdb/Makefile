@@ -27,9 +27,9 @@ $(out): $(src) $(patch)
 	@echo [configure]
 	$(quiet)cd $(build)/work && $(build)/gdb-9.2/configure --prefix=$(install)
 	@echo [build]
-	$(quiet)make -C $(build)/work
+	$(quiet)$(MAKE) -C $(build)/work
 	@echo [install]
-	$(quiet)make -C $(build)/work install
+	$(quiet)$(MAKE) -C $(build)/work install
 
 $(src):
 	@echo [fetch] $@
