@@ -3,7 +3,7 @@ quiet ?= @
 BASE ?= $(CURDIR)/../..
 
 build := $(CURDIR)/build
-src := $(build)/gdb-9.1.tar.xz
+src := $(build)/gdb-9.2.tar.xz
 url := "https://ftp.gnu.org/gnu/gdb/$(notdir $(src))"
 install := $(BASE)/tools/install
 out := $(install)/bin/gdb
@@ -25,7 +25,7 @@ $(out): $(src) $(patch)
 	@echo [patch] $(patch)
 	$(quiet)cd $(build) && patch -p0 < $(patch)
 	@echo [configure]
-	$(quiet)cd $(build)/work && $(build)/gdb-9.1/configure --prefix=$(install)
+	$(quiet)cd $(build)/work && $(build)/gdb-9.2/configure --prefix=$(install)
 	@echo [build]
 	$(quiet)make -C $(build)/work
 	@echo [install]
