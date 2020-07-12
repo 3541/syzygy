@@ -58,28 +58,28 @@ impl ActiveTopLevelTable {
     }
 
     pub fn with(&mut self, table: &mut InactiveTopLevelTable, then: impl FnOnce(&mut Mapper)) {
-        let prev_pml4_address: usize;
-        unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(prev_pml4_address) ::: "volatile") };
-        let prev_pml4_address = PhysicalAddress::new(prev_pml4_address);
+        let active_pml4_address: usize;
+        unsafe { llvm_asm!("mov %cr3, %rax" : "={rax}"(active_pml4_address) ::: "volatile") };
+        let active_pml4_address = PhysicalAddress::new(active_pml4_address);
 
-        let mut temp = TempPage::new(Frame(prev_pml4_address));
-        let prev_pml4 = temp.map_and_pun_frame(self);
+        let mut temp = TempPage::new(Frame(active_pml4_address));
+        let active_pml4 = temp.map_and_pun_frame(self);
 
-        trace!("NEW TABLE IS AT 0x{:x?}", table.address());
+        trace!("NEW TABLE IS AT {}", table.address());
 
-        self.get_mut()[511].set(table.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+        active_pml4[511].set(table.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
         super::flush_tlb();
 
         then(self);
 
-        prev_pml4[511].set(
-            prev_pml4_address,
+        active_pml4[511].set(
+            active_pml4_address,
             EntryFlags::PRESENT | EntryFlags::WRITABLE,
         );
 
         super::flush_tlb();
-        forget(temp.0);
+        forget(temp.unmap(self));
     }
 
     pub fn switch(&mut self, new: InactiveTopLevelTable) -> InactiveTopLevelTable {
@@ -181,7 +181,7 @@ impl Entry {
 
     pub fn set(&mut self, address: PhysicalAddress, flags: EntryFlags) {
         trace!("ENTERED set");
-        trace!("Address: {}, Entry: {:x?}", address, self);
+        trace!("Address: {}, Entry was: {:x?}", address, self);
         assert_eq!(*address & !Self::ADDRESS_MASK, 0);
         self.0 = *address | flags.bits();
         trace!("Self is now {:x?}", self);
