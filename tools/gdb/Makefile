@@ -16,6 +16,7 @@ all: $(out)
 clean:
 	@echo [clean]
 	$(quiet)rm -rf $(build)/*
+	$(quiet)rm $(out)
 	$(quiet)mkdir -p $(build)
 
 $(out): $(src) $(patch)
