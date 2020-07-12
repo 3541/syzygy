@@ -135,6 +135,4 @@ pub fn init() {
         debug!("CPU does not have an APIC.");
         *INTERRUPT_CONTROLLER.lock() = Controller::Pic(pic);
     }
-
-    enable()
 }
