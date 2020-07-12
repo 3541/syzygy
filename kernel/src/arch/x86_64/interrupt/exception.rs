@@ -68,7 +68,7 @@ mod error_code {
             const WRITE_ACCESS = 1 << 1;
             const USER_MODE = 1 << 2;
             const RESERVED_WRITE = 1 << 3;
-            const INSRUCTION_FETCH = 1 << 4;
+            const INSTRUCTION_FETCH = 1 << 4;
         }
     }
 }
