@@ -22,8 +22,10 @@ impl ApicTimer {
             if !cpuid::has_invariant_tsc() {
                 warn!("Using APIC timer in TSC deadline mode without invariant TSC. Expect timer issues.");
             }
+            debug!("CPU supports TSC deadline mode.");
             ApicTimerMode::TscDeadline
         } else {
+            debug!("CPU does not support TSC deadline mode. Using oneshot.");
             ApicTimerMode::Oneshot
         };
 
@@ -45,14 +47,17 @@ impl ApicTimer {
                     PrivilegeLevel::User,
                 );
             }
-            ApicTimerMode::Oneshot => todo!(),
+            ApicTimerMode::Oneshot => warn!("Oneshot timer is not yet implemented."),
         }
 
         ret
     }
 
     pub unsafe fn arm(&mut self, delay: u64) {
-        register::write::tsc_deadline(read_tsc() + delay);
+        match self.mode {
+            ApicTimerMode::TscDeadline => register::write::tsc_deadline(read_tsc() + delay),
+            ApicTimerMode::Oneshot => warn!("Oneshot timer is not yet implemented."),
+        }
     }
 
     irq_handler!(InterruptVector::Timer => fn tsc_deadline_handler(_stack) {
