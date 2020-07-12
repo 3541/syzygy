@@ -24,8 +24,8 @@ pub fn io_wait() {
 }
 
 #[inline]
-pub fn halt() {
-    unsafe { llvm_asm!("hlt" :::: "volatile") }
+pub fn enable_interrupts_and_halt() {
+    unsafe { asm!("sti", "hlt", options(nomem, nostack)) }
 }
 
 #[inline]
@@ -33,8 +33,13 @@ pub fn mfence() {
     unsafe { asm!("mfence") }
 }
 
+#[inline]
+pub fn pause() {
+    unsafe { asm!("pause") }
+}
+
 pub fn halt_loop() -> ! {
     loop {
-        halt()
+        enable_interrupts_and_halt()
     }
 }
