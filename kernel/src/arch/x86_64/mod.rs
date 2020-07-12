@@ -5,6 +5,7 @@ pub mod interrupt;
 pub mod port;
 pub mod register;
 pub mod ring;
+pub mod task;
 pub mod constants {
     use crate::memory::VirtualAddress;
 

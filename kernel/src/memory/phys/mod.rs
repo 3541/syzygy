@@ -1,5 +1,6 @@
 pub mod alloc;
 
+use ::alloc::sync::Arc;
 use ::alloc::vec::Vec;
 use core::fmt;
 use core::ops::Drop;
@@ -85,12 +86,13 @@ impl PhysicalMemory {
 
     pub fn map_for_kernel(self, flags: EntryFlags) -> Option<VirtualRegion> {
         let task = Task::current();
-        let mut pager = task.pager();
+        let lock = task.lock();
+        let pager = lock.pager();
         let allocator = pager.kernel_allocator();
 
         let mut mapping = allocator.alloc(self.size())?;
 
-        mapping.map_to(pager.mapper(), self, flags);
+        mapping.map_to(&mut pager.active_table(), Arc::new(self), flags);
         Some(mapping)
     }
 }

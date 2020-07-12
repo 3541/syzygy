@@ -79,15 +79,18 @@ pub unsafe fn init_allocator() {
 #[cfg(not(test))]
 pub fn init_heap() {
     let task_list = TaskList::the();
-    let task = task_list.current();
+    let task = task_list.current().lock();
 
-    let mut pager = task.pager();
+    let pager = task.pager();
     let mut heap = pager
         .kernel_allocator()
         .alloc(HEAP_SIZE)
         .expect("Unable to allocate memory for the main heap.");
 
-    heap.map(pager.mapper(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+    heap.map(
+        &mut pager.active_table(),
+        EntryFlags::PRESENT | EntryFlags::WRITABLE,
+    );
 
     debug!(
         "Mapped heap at {} - {} (0x{:x})",

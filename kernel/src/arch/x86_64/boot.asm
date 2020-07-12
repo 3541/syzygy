@@ -248,8 +248,12 @@ gdt64:
 	dw gdt64.end - gdt64 -1
 	dq gdt64 - KERNEL_BASE
 
+global INIT_STACK_END
+global INIT_STACK_START
 section .bss
 align 0x1000
+INIT_STACK_START:
 stack_bottom:
 	resb 32768
 stack_top:
+INIT_STACK_END:

@@ -1,28 +1,46 @@
-use alloc::vec;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
+
+use spin::Mutex;
 
 use super::VirtualRegion;
 use crate::memory::Frame;
 
+#[derive(Debug)]
 pub struct VirtualRegionAllocator {
-    free: Vec<VirtualRegion>,
+    free: Mutex<Vec<VirtualRegion>>,
     _range: VirtualRegion,
 }
 
-impl VirtualRegionAllocator {
-    pub fn new(range: VirtualRegion) -> Self {
+impl Clone for VirtualRegionAllocator {
+    fn clone(&self) -> VirtualRegionAllocator {
         VirtualRegionAllocator {
-            free: vec![range.clone()],
-            _range: range,
+            free: Mutex::new(self.free.lock().clone()),
+            _range: self._range.clone(),
         }
     }
+}
 
-    pub fn alloc(&mut self, size: usize) -> Option<VirtualRegion> {
+impl VirtualRegionAllocator {
+    pub fn new(mut range: VirtualRegion) -> Arc<VirtualRegionAllocator> {
+        assert!(!range.is_mapped() && !range.was_allocated());
+        let ret = Arc::new(VirtualRegionAllocator {
+            free: Mutex::new(Vec::new()),
+            _range: range.clone(),
+        });
+
+        range.allocator = Some(Arc::downgrade(&ret));
+        ret.free.lock().push(range);
+
+        ret
+    }
+
+    pub fn alloc(&self, size: usize) -> Option<VirtualRegion> {
         if size % Frame::SIZE != 0 {
             None
         } else {
-            let from_region_index = self
-                .free
+            let mut free = self.free.lock();
+            let from_region_index = free
                 .iter_mut()
                 .enumerate()
                 .filter(|(_, r)| r.size >= size)
@@ -30,18 +48,22 @@ impl VirtualRegionAllocator {
                 .0;
 
             // Use a null Region as a placeholder.
-            self.free.push(VirtualRegion::null());
-            let from_region = self.free.swap_remove(from_region_index);
+            free.push(VirtualRegion::null());
+            let from_region = free.swap_remove(from_region_index);
             match from_region.cleave(size) {
                 Ok((region, leftover)) => {
-                    self.free[from_region_index] = leftover;
+                    free[from_region_index] = leftover;
                     Some(region)
                 }
                 Err(original) => {
-                    self.free[from_region_index] = original;
+                    free[from_region_index] = original;
                     None
                 }
             }
         }
+    }
+
+    pub fn free(&self, _region: &mut VirtualRegion) {
+        todo!()
     }
 }

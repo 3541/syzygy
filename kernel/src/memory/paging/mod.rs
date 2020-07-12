@@ -2,41 +2,88 @@ pub mod mapper;
 pub mod table;
 mod temp_page;
 
-use core::mem::forget;
+use alloc::sync::Arc;
+use core::mem::{forget, replace};
 
 use logc::debug;
 use multiboot2::ElfSectionIter;
+use spin::{Mutex, MutexGuard};
 
 pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
+pub use temp_page::TempPage;
 
 use super::region::VirtualRegionAllocator;
 use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
 use crate::constants::KERNEL_BASE;
 use mapper::{Mapper, TLBFlush};
 use table::InactiveTopLevelTable;
-use temp_page::TempPage;
 
 pub struct Pager {
     table: TopLevelTable,
-    kernel_allocator: VirtualRegionAllocator,
+    kernel_allocator: Arc<VirtualRegionAllocator>,
 }
 
 impl Pager {
-    pub fn new(table: TopLevelTable, kernel_allocator: VirtualRegionAllocator) -> Self {
+    pub fn new(&self) -> Pager {
+        // The kernel virtual allocator is shared between all tasks.
+        let kernel_allocator = self.kernel_allocator.clone();
+        if let TopLevelTable::Active(current_table) = &self.table {
+            let new_table = current_table.lock().clone_kernel_mappings();
+
+            Pager {
+                table: TopLevelTable::Inactive(Mutex::new(new_table)),
+                kernel_allocator,
+            }
+        } else {
+            panic!("Tried to create new pager from inactive pager.");
+        }
+    }
+
+    pub fn create_existing(
+        table: TopLevelTable,
+        kernel_allocator: Arc<VirtualRegionAllocator>,
+    ) -> Pager {
         Pager {
             table,
             kernel_allocator,
         }
     }
 
-    pub fn kernel_allocator(&mut self) -> &mut VirtualRegionAllocator {
-        &mut self.kernel_allocator
+    pub fn kernel_allocator(&self) -> &VirtualRegionAllocator {
+        &self.kernel_allocator
     }
 
-    pub fn mapper(&mut self) -> &mut Mapper {
-        match &mut self.table {
-            TopLevelTable::Active(t) => &mut *t,
-            _ => panic!("Tried to get mapper on an inactive table, somehow."),
+    pub fn page_table(&mut self) -> &mut TopLevelTable {
+        &mut self.table
+    }
+
+    pub fn active_table(&self) -> MutexGuard<ActiveTopLevelTable> {
+        match &self.table {
+            TopLevelTable::Active(t) => t.lock(),
+            _ => panic!("Table not active."),
+        }
+    }
+
+    pub fn inactive_table(&self) -> MutexGuard<InactiveTopLevelTable> {
+        match &self.table {
+            TopLevelTable::Inactive(t) => t.lock(),
+            _ => panic!("Table not inactive."),
+        }
+    }
+
+    pub fn take_inactive_table(&mut self) -> InactiveTopLevelTable {
+        match replace(&mut self.table, TopLevelTable::None) {
+            TopLevelTable::Inactive(table) => table.into_inner(),
+            TopLevelTable::Active(_) => panic!("Tried to take from an active table."),
+            TopLevelTable::None => panic!("Tried to take a TopLevelTable::None."),
+        }
+    }
+
+    pub fn take_active_table(&mut self) -> ActiveTopLevelTable {
+        match replace(&mut self.table, TopLevelTable::None) {
+            TopLevelTable::Active(table) => table.into_inner(),
+            TopLevelTable::Inactive(_) => panic!("Tried to take from an inactive table."),
+            TopLevelTable::None => panic!("Tried to take a TopLevelTable::None."),
         }
     }
 }

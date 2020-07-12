@@ -6,9 +6,11 @@ use core::ops::{Deref, DerefMut, Index, IndexMut};
 use bitflags::bitflags;
 use logc::trace;
 use multiboot2::{ElfSection, ElfSectionFlags};
+use spin::Mutex;
 
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
+use crate::constants::KERNEL_BASE;
 use crate::memory::{
     Address, Frame, PhysicalAddress, RawVirtualAddress, VirtualAddress, PHYSICAL_ALLOCATOR,
 };
@@ -88,11 +90,34 @@ impl ActiveTopLevelTable {
         let old = InactiveTopLevelTable(Frame(PhysicalAddress::new(cr3)));
         trace!("Read {} from cr3", old.address());
 
-        trace!("Writing 0x{:x} to cr3", *new.address());
-        unsafe { llvm_asm!("mov %rax, %cr3" :: "{rax}"(*new.address()) :: "volatile") };
+        // Save a TLB flush if the table is the same.
+        if old.address() != new.address() {
+            trace!("Writing 0x{:x} to cr3", *new.address());
+            unsafe { llvm_asm!("mov %rax, %cr3" :: "{rax}"(*new.address()) :: "volatile") };
+        }
         forget(new.0);
 
         old
+    }
+
+    pub fn clone_kernel_mappings(&mut self) -> InactiveTopLevelTable {
+        let mut new_table = InactiveTopLevelTable::new(
+            self,
+            TempPage::new(
+                PHYSICAL_ALLOCATOR
+                    .alloc_frame()
+                    .expect("Unable to allocate a frame."),
+            ),
+        );
+
+        for i in KERNEL_BASE.pml4_index()..Table::<PML4>::ENTRIES {
+            let entry = self.get()[i].clone();
+            self.with(&mut new_table, |mapper| {
+                mapper.get_mut()[i] = entry;
+            })
+        }
+
+        new_table
     }
 }
 
@@ -117,8 +142,26 @@ impl InactiveTopLevelTable {
 }
 
 pub enum TopLevelTable {
-    Active(ActiveTopLevelTable),
-    Inactive(InactiveTopLevelTable),
+    Active(Mutex<ActiveTopLevelTable>),
+    Inactive(Mutex<InactiveTopLevelTable>),
+    // Note: this is _only_ for use in the middle of a task switch.
+    None,
+}
+
+impl TopLevelTable {
+    /*    pub fn physical_address(&self) -> PhysicalAddress {
+        match self {
+            TopLevelTable::Active(table) => {
+                let table = table.lock();
+                let virtual_address = VirtualAddress::new(table.get() as *const _ as usize);
+                table
+                    .translate(virtual_address)
+                    .expect("Couldn't translate address for currently active PML4.")
+            }
+            TopLevelTable::Inactive(table) => table.lock().address(),
+            TopLevelTable::None => panic!("TopLevelTable::None"),
+        }
+    }*/
 }
 
 bitflags! {
@@ -212,11 +255,8 @@ impl<T: TableType> fmt::Debug for Table<T> {
 }
 
 impl<T: TableType> Table<T> {
-    #[cfg(target_arch = "x86")]
-    const ENTRIES: usize = 1024;
-
     #[cfg(target_arch = "x86_64")]
-    const ENTRIES: usize = 512;
+    pub const ENTRIES: usize = 512;
 
     pub fn zero(&mut self) {
         for e in self.entries.iter_mut() {

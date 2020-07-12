@@ -1,6 +1,7 @@
 pub mod alloc;
 
-use ::alloc::sync::Arc;
+use ::alloc::sync::{Arc, Weak};
+use core::mem::forget;
 
 use super::paging::mapper::Mapper;
 use super::paging::EntryFlags;
@@ -14,6 +15,7 @@ pub struct VirtualRegion {
     start: VirtualAddress,
     size: usize,
     backing: Option<Arc<PhysicalMemory>>,
+    allocator: Option<Weak<VirtualRegionAllocator>>,
 }
 
 impl VirtualRegion {
@@ -22,6 +24,7 @@ impl VirtualRegion {
             start: VirtualAddress::new(0),
             size: 0,
             backing: None,
+            allocator: None,
         }
     }
 
@@ -37,34 +40,55 @@ impl VirtualRegion {
         self.start + self.size
     }
 
+    /*    pub fn backing(&self) -> Option<&Arc<PhysicalMemory>> {
+        self.backing.as_ref()
+    }*/
+
+    pub fn is_mapped(&self) -> bool {
+        self.backing.is_some()
+    }
+
+    pub fn was_allocated(&self) -> bool {
+        self.allocator.is_some()
+    }
+
+    /*    pub fn pages(&self) -> impl Iterator<Item = VirtualAddress> {
+        (self.start..(self.start + self.size)).step_by(Frame::SIZE)
+    }*/
+
     pub fn cleave(self, size: usize) -> Result<(VirtualRegion, VirtualRegion), VirtualRegion> {
         if self.backing.is_some() || size > self.size - 8 || self.size % 8 != 0 {
             Err(self)
         } else {
-            Ok((
+            let ret = Ok((
                 VirtualRegion {
                     start: self.start,
                     size,
                     backing: None,
+                    allocator: self.allocator.clone(),
                 },
                 VirtualRegion {
                     start: self.start + size,
                     size: self.size - size,
                     backing: None,
+                    allocator: self.allocator.clone(),
                 },
-            ))
+            ));
+            forget(self);
+            ret
         }
     }
 
-    pub const unsafe fn new(start: VirtualAddress, size: usize) -> Self {
+    pub const unsafe fn new(start: VirtualAddress, size: usize) -> VirtualRegion {
         VirtualRegion {
             start,
             size,
             backing: None,
+            allocator: None,
         }
     }
 
-    pub fn map_to(&mut self, mapper: &mut Mapper, memory: PhysicalMemory, flags: EntryFlags) {
+    pub fn map_to(&mut self, mapper: &mut Mapper, memory: Arc<PhysicalMemory>, flags: EntryFlags) {
         let frames = memory.frames();
         assert!(self.size / Frame::SIZE == frames.len());
 
@@ -75,7 +99,7 @@ impl VirtualRegion {
             mapper.map_to(address, frame, flags).flush();
         }
 
-        self.backing = Some(Arc::new(memory));
+        self.backing = Some(memory);
     }
 
     pub fn map(&mut self, mapper: &mut Mapper, flags: EntryFlags) {
@@ -84,8 +108,12 @@ impl VirtualRegion {
         let memory = PHYSICAL_ALLOCATOR
             .alloc_memory(self.size)
             .expect("Failed to allocate physical memory.");
-        self.map_to(mapper, memory, flags);
+        self.map_to(mapper, Arc::new(memory), flags);
     }
+
+    /*    pub fn unmap(&mut self, mapper: &mut Mapper) {
+        self.pages().for_each(|page| mapper.unmap(page).flush());
+    }*/
 
     /*
 
@@ -108,4 +136,16 @@ impl VirtualRegion {
             })
         }
     }*/
+}
+
+impl Drop for VirtualRegion {
+    fn drop(&mut self) {
+        if self.size == 0 {
+            return;
+        }
+
+        if let Some(allocator) = self.allocator.as_mut().map(|a| a.upgrade()).flatten() {
+            allocator.free(self);
+        }
+    }
 }

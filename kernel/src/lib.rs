@@ -291,6 +291,22 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     interrupt::init();
     info!("INITIALIZED interrupts.");
 
+    debug!("Tasking test.");
+
+    task::TaskList::the_mut().spawn(task_test);
+
+    for _ in 0..10 {
+        info!("Task 0");
+        task::switch_to(task::TaskId(1));
+    }
+
     info!("ENTERING halt loop.");
     arch::halt_loop()
+}
+
+fn task_test() {
+    loop {
+        info!("Task 1");
+        task::switch_to(task::TaskId(0));
+    }
 }
