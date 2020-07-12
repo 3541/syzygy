@@ -3,7 +3,6 @@ pub mod driver;
 pub mod gdt;
 pub mod interrupt;
 pub mod port;
-pub mod process;
 pub mod register;
 pub mod ring;
 pub mod constants {
