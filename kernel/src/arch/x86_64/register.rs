@@ -1,3 +1,9 @@
+pub mod msr {
+    pub const FS_BASE: u32 = 0xC000_0100;
+    pub const TSC_DEADLINE: u32 = 0x6E0;
+    pub const APIC_BASE: u32 = 0x1B;
+}
+
 macro_rules! reg_access {
     ($name:ident, $t:ty, r) => {
             #[inline(always)]
@@ -19,6 +25,7 @@ macro_rules! reg_access {
 pub mod read {
     reg_access!(cr2, usize, r);
 
+    #[inline(always)]
     pub fn msr(address: u32) -> u64 {
         let ret_low: u32;
         let ret_high: u32;
@@ -27,11 +34,11 @@ pub mod read {
     }
 
     pub fn apic_base() -> u64 {
-        msr(0x1B)
+        msr(super::msr::APIC_BASE)
     }
 
     pub fn tsc_deadline() -> u64 {
-        msr(0x6E0)
+        msr(super::msr::TSC_DEADLINE)
     }
 }
 
@@ -40,6 +47,7 @@ pub mod write {
 
     /// # Safety
     /// Caller must guarantee safety in the context of the particular MSR being written.
+    #[inline(always)]
     pub unsafe fn msr(address: u32, v: u64) {
         let v_low = v as u32;
         let v_high = v >> 32 as u32;
@@ -49,12 +57,13 @@ pub mod write {
 
     /// # Safety
     /// Caller must guarantee that `address` is a valid base for relative addressing.
+    #[inline(always)]
     pub unsafe fn fs_base(address: VirtualAddress) {
-        msr(0xC000_0100, *address as u64)
+        msr(super::msr::FS_BASE, *address as u64)
     }
 
     pub unsafe fn tsc_deadline(value: u64) {
-        msr(0x6E0, value);
+        msr(super::msr::TSC_DEADLINE, value);
     }
 }
 
