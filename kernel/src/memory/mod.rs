@@ -237,6 +237,17 @@ impl Sub<VirtualAddress> for VirtualAddress {
     }
 }
 
+impl Sub<usize> for VirtualAddress {
+    type Output = VirtualAddress;
+
+    fn sub(self, rhs: usize) -> VirtualAddress {
+        VirtualAddress::new(
+            self.checked_sub(rhs)
+                .expect("Physical address subtraction underflowed"),
+        )
+    }
+}
+
 impl Add<VirtualAddress> for VirtualAddress {
     type Output = VirtualAddress;
 
