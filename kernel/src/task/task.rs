@@ -104,12 +104,9 @@ impl Task {
     }
 
     #[naked]
+    #[inline(never)]
     pub(super) unsafe fn switch_to(&mut self, other: &mut Task) {
         interrupt::disable();
-        /*        asm!(
-                // Preserve callee-saved registers.
-                "push rbx", "push r12", "push r13", "push r14", "push r15", "push rbp"
-        );*/
         self.cpu_state.save();
 
         self.state = TaskState::Inactive;
@@ -131,10 +128,6 @@ impl Task {
         llvm_asm!("mov $0, rsp" : "=r"(self.stack_pointer) :: "memory" : "intel", "volatile");
         llvm_asm!("mov rsp, $0" :: "r"(other.stack_pointer) :: "intel", "volatile");
 
-        /*        asm!(
-                // Restore callee-saved registers.
-                "pop rbp", "pop r15", "pop r14", "pop r13", "pop r12", "pop rbx"
-        );*/
         other.cpu_state.restore();
 
         // And return into the new task.

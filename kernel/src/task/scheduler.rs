@@ -34,6 +34,7 @@ impl TaskId {
     }
 }
 
+// Eventually there should be a separate task queue for each CPU.
 pub struct Scheduler {
     tasks: HashMap<TaskId, Arc<Mutex<Task>>>,
     next_id: TaskId,
