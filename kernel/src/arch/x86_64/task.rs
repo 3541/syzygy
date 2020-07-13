@@ -1,7 +1,7 @@
 use crate::arch::register;
 use crate::task::CpuState;
 
-pub struct State {
+pub struct X86_64CpuState {
     rbx: u64,
     r12: u64,
     r13: u64,
@@ -12,9 +12,9 @@ pub struct State {
     fs_base_low: u32,
 }
 
-impl State {
-    pub fn empty() -> State {
-        State {
+impl X86_64CpuState {
+    pub fn empty() -> X86_64CpuState {
+        X86_64CpuState {
             rbx: 0,
             r12: 0,
             r13: 0,
@@ -32,7 +32,7 @@ impl State {
     }
 }
 
-unsafe impl CpuState for State {
+unsafe impl CpuState for X86_64CpuState {
     #[inline(always)]
     unsafe fn save(&mut self) {
         asm!("mov {}, rbp", out(reg) self.rbp, out("rbx") self.rbx, out("r12") self.r12, out("r13") self.r13, out("r14") self.r14, out("r15") self.r15);

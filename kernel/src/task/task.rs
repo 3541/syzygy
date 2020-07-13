@@ -6,7 +6,7 @@ use spin::Mutex;
 
 use super::{CpuState, Scheduler};
 use crate::arch::interrupt;
-use crate::arch::task::State;
+use crate::arch::task::X86_64CpuState as State;
 use crate::memory::paging::{EntryFlags, Pager, TopLevelTable};
 use crate::{Address, VirtualAddress, VirtualRegion};
 
