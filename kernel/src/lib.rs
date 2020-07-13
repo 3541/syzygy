@@ -49,6 +49,7 @@ use memory::paging::EntryFlags;
 use memory::region::VirtualRegionAllocator;
 use memory::{Address, PhysicalAddress, PhysicalMemory, VirtualAddress, VirtualRegion};
 use sym::SYMBOLS;
+use task::Scheduler;
 
 #[cfg(feature = "integration-tests")]
 #[no_mangle]
@@ -293,11 +294,11 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     debug!("Tasking test.");
 
-    task::TaskList::the_mut().spawn(task_test);
+    Scheduler::the_mut().spawn(task_test);
 
     for _ in 0..10 {
         info!("Task 0");
-        task::switch_to(task::TaskId(1));
+        Scheduler::switch_to(task::TaskId(1));
     }
 
     info!("ENTERING halt loop.");
@@ -307,6 +308,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 fn task_test() {
     loop {
         info!("Task 1");
-        task::switch_to(task::TaskId(0));
+        Scheduler::switch_to(task::TaskId(0));
     }
 }

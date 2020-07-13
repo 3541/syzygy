@@ -9,7 +9,7 @@ use super::paging::table::EntryFlags;
 use super::size::{KB, MB};
 use super::{Address, VirtualAddress, VirtualRegion};
 use crate::sync::SpinLocked;
-use crate::task::TaskList;
+use crate::task::Scheduler;
 use bump_allocator::BumpAllocator;
 //use fake_allocator::FakeAllocator;
 
@@ -78,7 +78,7 @@ pub unsafe fn init_allocator() {
 
 #[cfg(not(test))]
 pub fn init_heap() {
-    let task_list = TaskList::the();
+    let task_list = Scheduler::the();
     let task = task_list.current().lock();
 
     let pager = task.pager();

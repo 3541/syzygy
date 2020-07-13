@@ -1,22 +1,27 @@
 use alloc::sync::Arc;
 use core::mem::size_of;
 use core::ptr;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use hashbrown::HashMap;
+use logc::trace;
 use spin::{Mutex, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::Task;
 use crate::arch::register;
+use crate::arch::{interrupt, pause};
 use crate::memory::paging::{ActiveTopLevelTable, EntryFlags, Pager, TopLevelTable};
 use crate::memory::region::VirtualRegionAllocator;
 use crate::memory::{Address, VirtualAddress, VirtualRegion};
 
-static TASK_LIST: Once<RwLock<TaskList>> = Once::new();
+static SCHEDULER: Once<RwLock<Scheduler>> = Once::new();
 
 // TODO: Static Arc<Mutex>> of the current task?
 #[thread_local]
 static TASK_ID: AtomicUsize = AtomicUsize::new(0);
+
+#[thread_local]
+static SWITCHING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Eq, Hash, PartialEq, Debug, Copy, Clone)]
 pub struct TaskId(pub usize);
@@ -29,14 +34,14 @@ impl TaskId {
     }
 }
 
-pub struct TaskList {
+pub struct Scheduler {
     tasks: HashMap<TaskId, Arc<Mutex<Task>>>,
     next_id: TaskId,
 }
 
-impl TaskList {
-    fn new() -> RwLock<TaskList> {
-        RwLock::new(TaskList {
+impl Scheduler {
+    fn new() -> RwLock<Scheduler> {
+        RwLock::new(Scheduler {
             tasks: HashMap::new(),
             next_id: TaskId(1),
         })
@@ -109,12 +114,12 @@ impl TaskList {
             .insert(self.next_id.next(), Arc::new(Mutex::new(new_task)));
     }
 
-    pub fn the() -> RwLockReadGuard<'static, TaskList> {
-        TASK_LIST.call_once(TaskList::new).read()
+    pub fn the() -> RwLockReadGuard<'static, Scheduler> {
+        SCHEDULER.call_once(Scheduler::new).read()
     }
 
-    pub fn the_mut() -> RwLockWriteGuard<'static, TaskList> {
-        TASK_LIST.call_once(TaskList::new).write()
+    pub fn the_mut() -> RwLockWriteGuard<'static, Scheduler> {
+        SCHEDULER.call_once(Scheduler::new).write()
     }
 
     pub fn current_id() -> TaskId {
@@ -128,11 +133,50 @@ impl TaskList {
     pub fn current(&self) -> &Arc<Mutex<Task>> {
         &self
             .tasks
-            .get(&TaskList::current_id())
+            .get(&Scheduler::current_id())
             .expect("Current task is missing.")
     }
 
     pub fn get(&self, id: TaskId) -> Option<&Arc<Mutex<Task>>> {
         self.tasks.get(&id)
+    }
+
+    pub fn switch_to(target_task: TaskId) {
+        trace!("About to switch tasks. Trying to get switch lock.");
+        while SWITCHING.compare_and_swap(false, true, Ordering::SeqCst) {
+            pause();
+        }
+
+        trace!("Acquiring pointers to tasks.");
+
+        // Acquire pointers to the tasks so locks are not held into the switch.
+        let (current, target) = {
+            let list = Scheduler::the();
+            let mut current = list
+                .get(Scheduler::current_id())
+                .expect("Current task does not exist.")
+                .lock();
+            let mut target = list
+                .get(target_task)
+                .expect("Target task does not exist.")
+                .lock();
+
+            (&mut *current as *mut Task, &mut *target as *mut Task)
+        };
+
+        Scheduler::set_current_id(target_task);
+
+        trace!(
+            "About to switch. Pointers are 0x{:x} and 0x{:x}",
+            current as usize,
+            target as usize
+        );
+
+        trace!("Releasing switch lock.");
+
+        interrupt::disable();
+        SWITCHING.store(false, Ordering::SeqCst);
+        unsafe { (*current).switch_to(&mut *target) };
+        interrupt::enable();
     }
 }

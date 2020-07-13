@@ -4,7 +4,7 @@ use core::mem::size_of;
 use logc::trace;
 use spin::Mutex;
 
-use super::{CpuState, TaskList};
+use super::{CpuState, Scheduler};
 use crate::arch::interrupt;
 use crate::arch::task::State;
 use crate::memory::paging::{EntryFlags, Pager, TopLevelTable};
@@ -100,7 +100,7 @@ impl Task {
     }
 
     pub fn current() -> Arc<Mutex<Task>> {
-        TaskList::the().current().clone()
+        Scheduler::the().current().clone()
     }
 
     #[naked]
