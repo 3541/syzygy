@@ -294,20 +294,23 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     debug!("Tasking test.");
 
-    Scheduler::the_mut().spawn(task_test);
+    Scheduler::the_mut().spawn(|| task_test(1));
+    Scheduler::the_mut().spawn(|| task_test(2));
+    Scheduler::the_mut().spawn(|| task_test(3));
+    Scheduler::the_mut().spawn(|| task_test(4));
 
     for _ in 0..10 {
         info!("Task 0");
-        Scheduler::switch_to(task::TaskId(1));
+        Scheduler::schedule();
     }
 
     info!("ENTERING halt loop.");
     arch::halt_loop()
 }
 
-fn task_test() {
+fn task_test(task: u32) {
     loop {
-        info!("Task 1");
-        Scheduler::switch_to(task::TaskId(0));
+        info!("Task {}", task);
+        Scheduler::schedule();
     }
 }

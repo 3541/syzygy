@@ -1,3 +1,4 @@
+use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::mem::size_of;
 use core::ptr;
@@ -37,6 +38,7 @@ impl TaskId {
 // Eventually there should be a separate task queue for each CPU.
 pub struct Scheduler {
     tasks: HashMap<TaskId, Arc<Mutex<Task>>>,
+    queue: VecDeque<TaskId>,
     next_id: TaskId,
 }
 
@@ -44,8 +46,16 @@ impl Scheduler {
     fn new() -> RwLock<Scheduler> {
         RwLock::new(Scheduler {
             tasks: HashMap::new(),
-            next_id: TaskId(1),
+            queue: VecDeque::with_capacity(10),
+            next_id: TaskId(0),
         })
+    }
+
+    fn insert(&mut self, task: Task) {
+        let id = self.next_id.next();
+
+        self.tasks.insert(id, Arc::new(Mutex::new(task)));
+        self.queue.push_back(id);
     }
 
     pub(super) fn init(
@@ -94,25 +104,18 @@ impl Scheduler {
         let stack_start = unsafe { VirtualAddress::new(&INIT_STACK_START as *const u8 as usize) };
         let stack_end = unsafe { VirtualAddress::new(&INIT_STACK_END as *const u8 as usize) };
 
-        self.tasks.insert(
-            TaskId(0),
-            Arc::new(Mutex::new(unsafe {
-                Task::create_existing(
-                    Pager::create_existing(
-                        TopLevelTable::Active(Mutex::new(table)),
-                        kernel_allocator,
-                    ),
-                    kernel_tls,
-                    VirtualRegion::new(stack_start, stack_end - stack_start),
-                )
-            })),
-        );
+        self.insert(unsafe {
+            Task::create_existing(
+                Pager::create_existing(TopLevelTable::Active(Mutex::new(table)), kernel_allocator),
+                kernel_tls,
+                VirtualRegion::new(stack_start, stack_end - stack_start),
+            )
+        });
     }
 
     pub fn spawn(&mut self, f: fn()) {
         let new_task = self.current().lock().new(f);
-        self.tasks
-            .insert(self.next_id.next(), Arc::new(Mutex::new(new_task)));
+        self.insert(new_task);
     }
 
     pub fn the() -> RwLockReadGuard<'static, Scheduler> {
@@ -143,6 +146,10 @@ impl Scheduler {
     }
 
     pub fn switch_to(target_task: TaskId) {
+        if target_task == Scheduler::current_id() {
+            return;
+        }
+
         trace!("About to switch tasks. Trying to get switch lock.");
         while SWITCHING.compare_and_swap(false, true, Ordering::SeqCst) {
             pause();
@@ -179,5 +186,20 @@ impl Scheduler {
         SWITCHING.store(false, Ordering::SeqCst);
         unsafe { (*current).switch_to(&mut *target) };
         interrupt::enable();
+    }
+
+    pub fn schedule() {
+        let target = {
+            let mut scheduler_lock = Scheduler::the_mut();
+
+            let next_task = scheduler_lock
+                .queue
+                .pop_front()
+                .expect("Tried to schedule with nothing in the queue.");
+            scheduler_lock.queue.push_back(next_task);
+            next_task
+        };
+
+        Scheduler::switch_to(target);
     }
 }
