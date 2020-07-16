@@ -8,6 +8,7 @@ pub mod size;
 use core::fmt;
 use core::iter::Step;
 use core::marker::Sized;
+use core::mem::{size_of, transmute_copy};
 use core::ops::{Add, AddAssign, Deref, Sub};
 
 pub use heap::{init_allocator, init_heap};
@@ -165,6 +166,14 @@ impl VirtualAddress {
 
     pub fn as_ptr<T>(&mut self) -> *const T {
         **self as *const _
+    }
+
+    /// # Safety
+    /// This is safe _only_ if `T` is `!Sized` and `param` is correct. Note that
+    /// the meaning of "correct" varies for different kinds of DST.
+    pub unsafe fn as_mut_fat_ptr<T: ?Sized>(&mut self, param: usize) -> *mut T {
+        assert_eq!(size_of::<*mut T>(), 2 * size_of::<usize>());
+        transmute_copy(&(self.raw(), param))
     }
 
     pub const fn pml4_index(&self) -> usize {
