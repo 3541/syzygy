@@ -1,12 +1,14 @@
 pub mod alloc;
 
+use ::alloc::boxed::Box;
 use ::alloc::sync::{Arc, Weak};
 use core::mem::forget;
+use core::ops::{Deref, DerefMut};
 
 use super::paging::mapper::Mapper;
 use super::paging::EntryFlags;
 use super::phys::{Frame, PhysicalMemory, PHYSICAL_ALLOCATOR};
-use super::{Address, VirtualAddress};
+use super::{align_up, Address, VirtualAddress};
 
 pub use self::alloc::VirtualRegionAllocator;
 
@@ -111,6 +113,39 @@ impl VirtualRegion {
         self.map_to(mapper, Arc::new(memory), flags);
     }
 
+    pub fn into_typed<T>(self, offset: usize) -> TypedRegion<T> {
+        TypedRegion {
+            inner: unsafe { Box::from_raw((self.start() + offset).as_mut_ptr()) },
+            region: self,
+        }
+    }
+
+    /// # Safety
+    /// See the comment on `as_mut_fat_ptr`.
+    pub unsafe fn into_typed_unsized<T: ?Sized>(
+        self,
+        offset: usize,
+        param: usize,
+    ) -> TypedRegion<T> {
+        TypedRegion {
+            inner: Box::from_raw((self.start() + offset).as_mut_fat_ptr(param)),
+            region: self,
+        }
+    }
+
+    pub fn grow(self, new_size: usize) -> VirtualRegion {
+        let new_size = align_up(new_size, Frame::SIZE);
+        if new_size <= self.size {
+            return self;
+        }
+
+        todo!(
+            "Actual region growing. Old size: {}, new size: {}",
+            self.size,
+            new_size
+        )
+    }
+
     /*    pub fn unmap(&mut self, mapper: &mut Mapper) {
         self.pages().for_each(|page| mapper.unmap(page).flush());
     }*/
@@ -147,5 +182,39 @@ impl Drop for VirtualRegion {
         if let Some(allocator) = self.allocator.as_mut().map(|a| a.upgrade()).flatten() {
             allocator.free(self);
         }
+    }
+}
+
+pub struct TypedRegion<T: ?Sized> {
+    region: VirtualRegion,
+    inner: Box<T>,
+}
+
+impl<T: ?Sized> TypedRegion<T> {
+    pub fn offset(&self) -> usize {
+        // Need to cast through two pointers to discard the potential fat pointer.
+        self.inner.as_ref() as *const _ as *const () as usize - *self.region.start()
+    }
+
+    pub fn into_region(self) -> VirtualRegion {
+        self.region
+    }
+}
+
+impl<T: ?Sized> Deref for TypedRegion<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        assert!(self.region.is_mapped());
+
+        &self.inner
+    }
+}
+
+impl<T: ?Sized> DerefMut for TypedRegion<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        assert!(self.region.is_mapped());
+
+        &mut self.inner
     }
 }

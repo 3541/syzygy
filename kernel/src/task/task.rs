@@ -8,6 +8,7 @@ use super::{CpuState, Scheduler};
 use crate::arch::interrupt;
 use crate::arch::task::X86_64CpuState as State;
 use crate::memory::paging::{EntryFlags, Pager, TopLevelTable};
+use crate::memory::region::VirtualRegionAllocator;
 use crate::{Address, VirtualAddress, VirtualRegion};
 
 pub enum TaskState {
@@ -97,6 +98,10 @@ impl Task {
 
     pub fn pager(&self) -> &Pager {
         &self.pager
+    }
+
+    pub fn kernel_allocator(&self) -> Arc<VirtualRegionAllocator> {
+        self.pager().kernel_allocator().clone()
     }
 
     pub fn current() -> Arc<Mutex<Task>> {

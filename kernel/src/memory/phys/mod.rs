@@ -20,18 +20,6 @@ impl Frame {
     pub fn address(&self) -> PhysicalAddress {
         self.0
     }
-
-    /*    pub fn end_address(&self) -> PhysicalAddress {
-        self.0 + Self::SIZE
-    }*/
-
-    /*    pub fn containing_address(address: PhysicalAddress) -> Frame {
-        Frame(address.previous_aligned(Self::SIZE))
-    }*/
-
-    /*    pub fn range_inclusive(from: Frame, to: Frame) -> FrameIterator {
-        FrameIterator { from, to }
-    }*/
 }
 
 impl Drop for Frame {
@@ -46,7 +34,7 @@ impl fmt::Display for Frame {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum PhysicalMemoryKind {
     Allocated,
     Region,
@@ -83,6 +71,24 @@ impl PhysicalMemory {
     pub fn into_frames(self) -> Vec<Frame> {
         self.frames
     }
+
+    /*
+    This will be needed to implement virtual region growing.
+    pub unsafe fn grow_region(&mut self, new_size: usize) {
+        assert!(self.kind == PhysicalMemoryKind::Region);
+        let new_size = align_up(new_size, Frame::SIZE);
+
+        if new_size <= self.size() {
+            return;
+        }
+
+        let difference = new_size - self.size();
+
+        let start = self.frames.last().expect("Memory empty.").end();
+        (start..(start + difference))
+            .step_by(Frame::SIZE)
+            .for_each(|a| self.frames.push(Frame(a)));
+    }*/
 
     pub fn map_for_kernel(self, flags: EntryFlags) -> Option<VirtualRegion> {
         let task = Task::current();

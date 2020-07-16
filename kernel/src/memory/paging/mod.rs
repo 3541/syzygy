@@ -49,7 +49,7 @@ impl Pager {
         }
     }
 
-    pub fn kernel_allocator(&self) -> &VirtualRegionAllocator {
+    pub fn kernel_allocator(&self) -> &Arc<VirtualRegionAllocator> {
         &self.kernel_allocator
     }
 

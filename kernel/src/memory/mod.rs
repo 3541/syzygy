@@ -20,6 +20,16 @@ pub use region::VirtualRegion;
 pub type RawPhysicalAddress = usize;
 pub type RawVirtualAddress = usize;
 
+#[inline]
+pub fn align_down(n: usize, align: usize) -> usize {
+    n & !(align - 1)
+}
+
+#[inline]
+pub fn align_up(n: usize, align: usize) -> usize {
+    align_down(n + align - 1, align)
+}
+
 pub trait Address: Deref<Target = usize> + Sized + Eq {
     const SIGN_EX_INVALID_BASE: usize = 0x0000_8000_0000_0000;
     const SIGN_EX_INVALID_TOP: usize = 0xFFFF_8000_0000_0000;
@@ -47,12 +57,12 @@ pub trait Address: Deref<Target = usize> + Sized + Eq {
 
     #[inline]
     fn previous_aligned(&self, align: usize) -> Self {
-        Self::new(**self & !(align - 1))
+        unsafe { Self::new_unchecked(align_down(**self, align)) }
     }
 
     #[inline]
     fn next_aligned(&self, align: usize) -> Self {
-        Self::new(**self + align - 1).previous_aligned(align)
+        unsafe { Self::new_unchecked(align_up(**self, align)) }
     }
 
     #[inline]
@@ -143,6 +153,20 @@ impl Sub<PhysicalAddress> for PhysicalAddress {
     }
 }
 
+unsafe impl Step for PhysicalAddress {
+    fn steps_between(start: &PhysicalAddress, end: &PhysicalAddress) -> Option<usize> {
+        end.checked_sub(**start)
+    }
+
+    fn forward_checked(start: PhysicalAddress, count: usize) -> Option<PhysicalAddress> {
+        Some(PhysicalAddress::new(start.checked_add(count)?))
+    }
+
+    fn backward_checked(start: PhysicalAddress, count: usize) -> Option<PhysicalAddress> {
+        Some(PhysicalAddress::new(start.checked_sub(count)?))
+    }
+}
+
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, Ord, Eq, PartialOrd, PartialEq)]
 pub struct VirtualAddress(RawVirtualAddress);
@@ -168,9 +192,11 @@ impl VirtualAddress {
         **self as *const _
     }
 
-    /// # Safety
+    /// # Safety (tldr: there is none)
     /// This is safe _only_ if `T` is `!Sized` and `param` is correct. Note that
-    /// the meaning of "correct" varies for different kinds of DST.
+    /// the meaning of "correct" varies for different kinds of DST, and is
+    /// actually an implementation detail of fat pointers which is subject to
+    /// change.
     pub unsafe fn as_mut_fat_ptr<T: ?Sized>(&mut self, param: usize) -> *mut T {
         assert_eq!(size_of::<*mut T>(), 2 * size_of::<usize>());
         transmute_copy(&(self.raw(), param))

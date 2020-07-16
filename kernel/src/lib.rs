@@ -207,9 +207,6 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         initramfs_addr, initramfs_end_addr
     );
 
-    driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
-    info!("INITIALIZED ACPI.");
-
     unsafe { memory::init_allocator() };
     info!("INITIALIZED temporary kernel heap.");
 
@@ -288,6 +285,9 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
         ip, sp
     );
     unsafe { arch::process::enter_ring3(ip, sp) };*/
+
+    driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
+    info!("INITIALIZED ACPI.");
 
     interrupt::init();
     info!("INITIALIZED interrupts.");
