@@ -47,12 +47,7 @@ impl<'a> Symbols<'a> {
                     .expect("Unable to parse address as number"),
             );
 
-            // Eat the type
-            fields.next().unwrap();
-
-            let sym = fields.next().unwrap();
-
-            self.0.push((addr, sym));
+            self.0.push((addr, &line[19..]));
             /*            if self.0[self.0.len() - 1] != (addr, sym) {
                 error!(
                     "Symbol just pushed is not as it should be. At {}",
