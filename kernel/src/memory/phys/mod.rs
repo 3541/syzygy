@@ -3,6 +3,7 @@ pub mod alloc;
 use ::alloc::sync::Arc;
 use ::alloc::vec::Vec;
 use core::fmt;
+use core::mem::forget;
 use core::ops::Drop;
 
 use super::paging::EntryFlags;
@@ -68,10 +69,6 @@ impl PhysicalMemory {
         &self.frames
     }
 
-    pub fn into_frames(self) -> Vec<Frame> {
-        self.frames
-    }
-
     /*
     This will be needed to implement virtual region growing.
     pub unsafe fn grow_region(&mut self, new_size: usize) {
@@ -100,5 +97,14 @@ impl PhysicalMemory {
 
         mapping.map_to(&mut pager.active_table(), Arc::new(self), flags);
         Some(mapping)
+    }
+}
+
+impl Drop for PhysicalMemory {
+    fn drop(&mut self) {
+        match self.kind {
+            PhysicalMemoryKind::Region => self.frames.drain(0..).for_each(forget),
+            _ => {}
+        }
     }
 }

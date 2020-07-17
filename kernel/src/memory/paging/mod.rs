@@ -113,9 +113,8 @@ pub unsafe fn remap_kernel(
         let mut closure_tlb_flush = TLBFlush::new();
         let mut map_region_in_kernel =
             |m: &mut Mapper, address: PhysicalAddress, size: usize, flags: EntryFlags| {
-                for frame in PhysicalMemory::region(address, size).into_frames() {
+                for frame in PhysicalMemory::region(address, size).frames() {
                     closure_tlb_flush.consume(m.map_kernel_space(&frame, flags));
-                    forget(frame);
                 }
             };
 
