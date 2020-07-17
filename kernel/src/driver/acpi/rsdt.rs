@@ -1,18 +1,62 @@
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::convert::TryInto;
+use core::fmt::Debug;
 use core::mem::size_of;
 
 use logc::debug;
 
 use super::{AcpiTable, SdtHeader};
 use crate::memory::region::TypedRegion;
-use crate::memory::{PhysicalAddress, VirtualAddress};
+use crate::memory::{Address, PhysicalAddress};
 
 pub enum AcpiRootTable {
     Rsdt(TypedRegion<Rsdt>),
     Xsdt(TypedRegion<Xsdt>),
+    Empty,
+}
+
+impl AcpiRootTable {
+    pub(super) fn pointers(&self) -> Box<dyn Iterator<Item = PhysicalAddress> + '_> {
+        match self {
+            Self::Rsdt(r) => r.pointers(),
+            Self::Xsdt(x) => x.pointers(),
+            Self::Empty => panic!("Invalid."),
+        }
+    }
+}
+
+impl Default for AcpiRootTable {
+    fn default() -> AcpiRootTable {
+        AcpiRootTable::Empty
+    }
 }
 
 trait RootTable: AcpiTable {
-    const POINTER_SIZE: usize;
+    type Pointer: TryInto<usize> + Copy;
+
+    fn n_pointers(&self) -> usize {
+        (self.header().length as usize - size_of::<SdtHeader>()) / size_of::<Self::Pointer>()
+    }
+
+    // Rust pls
+    fn pointers(&self) -> Box<dyn Iterator<Item = PhysicalAddress> + '_>
+    where
+        <Self::Pointer as TryInto<usize>>::Error: Debug,
+    {
+        let mut pointers: Vec<Self::Pointer> = Vec::with_capacity(self.n_pointers());
+        unsafe {
+            ((self as *const _ as *const () as usize + size_of::<SdtHeader>())
+                as *const Self::Pointer)
+                .copy_to_nonoverlapping(pointers.as_mut_ptr(), self.n_pointers());
+            pointers.set_len(self.n_pointers());
+        }
+        Box::new(
+            pointers
+                .into_iter()
+                .map(|a| PhysicalAddress::new(a.try_into().unwrap())),
+        )
+    }
 
     fn from_header(header: TypedRegion<SdtHeader>) -> Option<TypedRegion<Self>> {
         let length = header.length as usize;
@@ -25,13 +69,14 @@ trait RootTable: AcpiTable {
         let ret: TypedRegion<Self> = unsafe {
             region.into_typed_unsized(
                 offset,
-                (length - size_of::<SdtHeader>()) / Self::POINTER_SIZE,
+                (length - size_of::<SdtHeader>()) / size_of::<Self::Pointer>(),
             )
         };
 
         if !ret.is_valid() {
             None
         } else {
+            debug!("\t* (R/X)SDT");
             Some(ret)
         }
     }
@@ -44,15 +89,13 @@ pub struct Rsdt {
 }
 
 impl RootTable for Rsdt {
-    const POINTER_SIZE: usize = size_of::<u32>();
+    type Pointer = u32;
 }
 
 impl AcpiTable for Rsdt {
     const SIGNATURE: &'static str = "RSDT";
 
-    fn new(address: PhysicalAddress) -> Option<TypedRegion<Rsdt>> {
-        let header = unsafe { SdtHeader::new(address).expect("Unable to map RSDT header.") };
-
+    fn new(header: TypedRegion<SdtHeader>) -> Option<TypedRegion<Rsdt>> {
         Rsdt::from_header(header)
     }
 
@@ -64,19 +107,17 @@ impl AcpiTable for Rsdt {
 #[repr(C, packed)]
 pub struct Xsdt {
     header: SdtHeader,
-    pointers: [VirtualAddress],
+    pointers: [PhysicalAddress],
 }
 
 impl RootTable for Xsdt {
-    const POINTER_SIZE: usize = size_of::<VirtualAddress>();
+    type Pointer = PhysicalAddress;
 }
 
 impl AcpiTable for Xsdt {
     const SIGNATURE: &'static str = "XSDT";
 
-    fn new(address: PhysicalAddress) -> Option<TypedRegion<Xsdt>> {
-        let header = unsafe { SdtHeader::new(address).expect("Unable to map XSDT header.") };
-
+    fn new(header: TypedRegion<SdtHeader>) -> Option<TypedRegion<Xsdt>> {
         Xsdt::from_header(header)
     }
 

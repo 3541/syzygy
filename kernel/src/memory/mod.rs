@@ -153,6 +153,12 @@ impl Sub<PhysicalAddress> for PhysicalAddress {
     }
 }
 
+impl Into<usize> for PhysicalAddress {
+    fn into(self) -> usize {
+        *self
+    }
+}
+
 unsafe impl Step for PhysicalAddress {
     fn steps_between(start: &PhysicalAddress, end: &PhysicalAddress) -> Option<usize> {
         end.checked_sub(**start)
@@ -192,7 +198,7 @@ impl VirtualAddress {
         **self as *const _
     }
 
-    /// # Safety (tldr: there is none)
+    /// # Safety (profoundly cursed)
     /// This is safe _only_ if `T` is `!Sized` and `param` is correct. Note that
     /// the meaning of "correct" varies for different kinds of DST, and is
     /// actually an implementation detail of fat pointers which is subject to
