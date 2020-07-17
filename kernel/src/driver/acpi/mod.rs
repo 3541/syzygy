@@ -54,7 +54,6 @@ impl SdtHeader {
             unsafe { slice::from_raw_parts(self as *const _ as *const u8, self.length as usize) }
                 .iter()
                 .fold(0, |s: u8, b| s.wrapping_add(*b));
-        debug!("Checksum is {}", sum);
         sum == 0
     }
 }
@@ -65,8 +64,6 @@ pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
 
         let signature = rsdp_v2.signature().unwrap();
         let xsdt_address = PhysicalAddress::new(rsdp_v2.xsdt_address());
-
-        debug!("{:x?}", rsdp_v2);
 
         if !rsdp_v2.checksum_is_valid() || signature != "RSD PTR " {
             error!("RSDP invalid!");
@@ -87,8 +84,6 @@ pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
 
         let signature = rsdp_v1.signature().unwrap();
         let rsdt_address = PhysicalAddress::new(rsdp_v1.rsdt_address());
-
-        debug!("{:x?}", rsdp_v1);
 
         if !rsdp_v1.checksum_is_valid() || signature != "RSD PTR " {
             error!("RSDP invalid!");
