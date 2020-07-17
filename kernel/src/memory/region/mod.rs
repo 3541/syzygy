@@ -54,9 +54,9 @@ impl VirtualRegion {
         self.allocator.is_some()
     }
 
-    /*    pub fn pages(&self) -> impl Iterator<Item = VirtualAddress> {
+    pub fn pages(&self) -> impl Iterator<Item = VirtualAddress> {
         (self.start..(self.start + self.size)).step_by(Frame::SIZE)
-    }*/
+    }
 
     pub fn cleave(self, size: usize) -> Result<(VirtualRegion, VirtualRegion), VirtualRegion> {
         if self.backing.is_some() || size > self.size - 8 || self.size % 8 != 0 {
@@ -146,9 +146,15 @@ impl VirtualRegion {
         )
     }
 
-    /*    pub fn unmap(&mut self, mapper: &mut Mapper) {
-        self.pages().for_each(|page| mapper.unmap(page).flush());
-    }*/
+    pub fn unmap(&mut self, mapper: &mut Mapper) {
+        if let Some(ref memory) = self.backing {
+            if Arc::strong_count(memory) == 1 {
+                self.pages().for_each(|page| mapper.unmap(page).flush());
+            }
+        }
+
+        self.backing = None;
+    }
 
     /*
 

@@ -1,6 +1,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::mem::size_of;
+use core::ptr;
 
 use spin::Mutex;
 
@@ -80,7 +81,14 @@ impl VirtualRegionAllocator {
         Some(region.into_typed(offset))
     }
 
-    pub fn free(&self, _region: &mut VirtualRegion) {
-        todo!()
+    pub fn free(&self, region: &mut VirtualRegion) {
+        assert!(ptr::eq(
+            &*region.allocator.as_ref().unwrap().upgrade().unwrap(),
+            self
+        ));
+        // Correctness of unmap is checked therein.
+        region.unmap(&mut Task::current().lock().pager().active_table());
+
+        self.free.lock().push(region.clone());
     }
 }
