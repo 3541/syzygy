@@ -1,5 +1,3 @@
-pub mod timer;
-
 use core::mem::size_of;
 
 use bitflags::bitflags;
@@ -8,8 +6,8 @@ use logc::{debug, trace};
 use super::{InterruptController, InterruptVector};
 use crate::arch::register;
 use crate::memory::paging::EntryFlags;
+use crate::time::arch::ApicTimer;
 use crate::{Address, PhysicalAddress, PhysicalMemory, VirtualRegion};
-use timer::ApicTimer;
 
 // NOTE (Intel SDM)
 // "All 32-bit registers should be accessed using 128-bit aligned 32-bit loads or stores."
@@ -27,7 +25,7 @@ pub enum LocalApicRegisterOffset {
 }
 
 bitflags! {
-    struct LvtFlags: u32 {
+    pub struct LvtFlags: u32 {
         const DELIVERY_MODE_FIXED = 0;
 //        const DELIVERY_MODE_EXTINT = 0b111 << 8;
         const TIMER_MODE_ONESHOT = 0;

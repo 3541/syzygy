@@ -6,16 +6,17 @@ mod apic;
 mod exception;
 mod idt;
 mod pic;
-mod timer;
+
+pub use apic::LvtFlags;
+pub use idt::Idt;
 
 use logc::debug;
-use spin::{Mutex, MutexGuard, Once};
+use spin::Mutex;
 
 use crate::arch::cpuid;
 use crate::memory::VirtualAddress;
 
 use apic::LocalApic;
-use idt::Idt;
 use pic::PicChain;
 
 type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
@@ -24,7 +25,6 @@ type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 type HandlerErr = extern "x86-interrupt" fn(&mut InterruptStackFrame, usize);
 
 pub static INTERRUPT_CONTROLLER: Mutex<Controller> = Mutex::new(Controller::Uninitialized);
-pub static IDT: Once<Mutex<Idt>> = Once::new();
 
 pub enum Controller {
     Pic(PicChain),
@@ -111,14 +111,6 @@ pub fn without_interrupts<T>(f: impl FnOnce() -> T) -> T {
         enable();
     }
     ret
-}
-
-fn idt() -> MutexGuard<'static, Idt> {
-    IDT.call_once(|| Mutex::new(Idt::new())).lock()
-}
-
-pub fn load_idt() {
-    idt().load();
 }
 
 pub fn init() {

@@ -16,6 +16,7 @@
 #![feature(step_trait_ext)]
 #![forbid(unused_must_use)]
 
+#[macro_use]
 mod arch;
 mod constants;
 mod driver;
@@ -25,6 +26,7 @@ mod panic;
 mod sym;
 mod sync;
 mod task;
+mod time;
 mod tree;
 mod vga_text;
 
@@ -110,7 +112,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
 
     // Load the IDT as early as possible so exceptions are caught. Interrupts are not
     // enabled yet.
-    interrupt::load_idt();
+    interrupt::Idt::the().load();
     println!("LOADED IDT.");
 
     log::init();

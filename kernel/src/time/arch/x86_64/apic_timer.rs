@@ -1,9 +1,8 @@
 use logc::{debug, warn};
 
-use super::{InterruptVector, LvtFlags};
+use super::tsc::read_tsc;
 use crate::arch::{self, cpuid, register, PrivilegeLevel};
-use crate::interrupt::idt;
-use crate::interrupt::timer::read_tsc;
+use crate::interrupt::{Idt, InterruptVector, LvtFlags};
 use crate::VirtualAddress;
 
 pub enum ApicTimerMode {
@@ -41,7 +40,7 @@ impl ApicTimer {
                 }
                 arch::mfence();
 
-                idt().set_handler(
+                Idt::the().set_handler(
                     InterruptVector::Timer,
                     ApicTimer::tsc_deadline_handler,
                     PrivilegeLevel::User,

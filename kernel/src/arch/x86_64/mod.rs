@@ -1,6 +1,7 @@
 pub mod cpuid;
 pub mod driver;
 pub mod gdt;
+#[macro_use]
 pub mod interrupt;
 pub mod port;
 pub mod register;

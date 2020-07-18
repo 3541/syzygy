@@ -1,11 +1,18 @@
 use core::mem::{size_of, transmute};
 
+use spin::{Mutex, MutexGuard, Once};
+
 use super::{exception, irq, Handler, HandlerErr, InterruptVector};
 use crate::arch::PrivilegeLevel;
 
 pub struct Idt([Entry; 256]);
 
 impl Idt {
+    pub fn the() -> MutexGuard<'static, Idt> {
+        static IDT: Once<Mutex<Idt>> = Once::new();
+        IDT.call_once(|| Mutex::new(Idt::new())).lock()
+    }
+
     pub fn empty() -> Idt {
         Idt([Entry::missing(); 256])
     }
