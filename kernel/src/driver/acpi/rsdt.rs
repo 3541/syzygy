@@ -39,7 +39,8 @@ trait RootTable: AcpiTable {
         (self.header().length as usize - size_of::<SdtHeader>()) / size_of::<Self::Pointer>()
     }
 
-    // Rust pls
+    // Rust pls. This is necessary because taking references to unaligned memory
+    // is undefined behavior.
     fn pointers(&self) -> Box<dyn Iterator<Item = PhysicalAddress> + '_>
     where
         <Self::Pointer as TryInto<usize>>::Error: Debug,
