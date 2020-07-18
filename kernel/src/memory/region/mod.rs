@@ -1,9 +1,9 @@
 pub mod alloc;
 
-use ::alloc::boxed::Box;
 use ::alloc::sync::{Arc, Weak};
-use core::mem::forget;
+use core::mem::{forget, replace};
 use core::ops::{Deref, DerefMut};
+use core::ptr::Unique;
 
 use super::paging::mapper::Mapper;
 use super::paging::EntryFlags;
@@ -119,7 +119,7 @@ impl VirtualRegion {
 
     pub fn into_typed<T>(self, offset: usize) -> TypedRegion<T> {
         TypedRegion {
-            inner: unsafe { Box::from_raw((self.start() + offset).as_mut_ptr()) },
+            inner: Unique::new((self.start() + offset).as_mut_ptr()).unwrap(),
             region: self,
         }
     }
@@ -132,7 +132,7 @@ impl VirtualRegion {
         param: usize,
     ) -> TypedRegion<T> {
         TypedRegion {
-            inner: Box::from_raw((self.start() + offset).as_mut_fat_ptr(param)),
+            inner: Unique::new((self.start() + offset).as_mut_fat_ptr(param)).unwrap(),
             region: self,
         }
     }
@@ -197,17 +197,17 @@ impl Drop for VirtualRegion {
 
 pub struct TypedRegion<T: ?Sized> {
     region: VirtualRegion,
-    inner: Box<T>,
+    inner: Unique<T>,
 }
 
 impl<T: ?Sized> TypedRegion<T> {
     pub fn offset(&self) -> usize {
-        // Need to cast through two pointers to discard the potential fat pointer.
-        self.inner.as_ref() as *const _ as *const () as usize - *self.region.start()
+        // Need to cast through a thin pointer to discard the potential fat pointer.
+        self.inner.as_ptr() as *const () as usize - *self.region.start()
     }
 
-    pub fn into_region(self) -> VirtualRegion {
-        self.region
+    pub fn into_region(mut self) -> VirtualRegion {
+        replace(&mut self.region, VirtualRegion::null())
     }
 }
 
@@ -217,7 +217,7 @@ impl<T: ?Sized> Deref for TypedRegion<T> {
     fn deref(&self) -> &T {
         assert!(self.region.is_mapped());
 
-        &self.inner
+        unsafe { self.inner.as_ref() }
     }
 }
 
@@ -225,6 +225,12 @@ impl<T: ?Sized> DerefMut for TypedRegion<T> {
     fn deref_mut(&mut self) -> &mut T {
         assert!(self.region.is_mapped());
 
-        &mut self.inner
+        unsafe { self.inner.as_mut() }
+    }
+}
+
+impl<T: ?Sized> Drop for TypedRegion<T> {
+    fn drop(&mut self) {
+        drop(unsafe { self.inner.as_mut() });
     }
 }
