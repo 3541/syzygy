@@ -49,8 +49,15 @@ impl BumpAllocator {
         }
     }
 
-    pub unsafe fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
+    pub unsafe fn dealloc(&mut self, ptr: *mut u8, _layout: Layout) {
         trace!("{:x?} deallocating", *self);
+
+        if !self
+            .backing
+            .contains(VirtualAddress::new_unchecked(ptr as usize))
+        {
+            panic!("Tried to free un-allocated memory.");
+        }
 
         self.count -= 1;
         if self.count == 0 {

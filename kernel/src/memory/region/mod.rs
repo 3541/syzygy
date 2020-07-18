@@ -42,6 +42,10 @@ impl VirtualRegion {
         self.start + self.size
     }
 
+    pub fn contains(&self, address: VirtualAddress) -> bool {
+        self.start <= address && address < self.end()
+    }
+
     /*    pub fn backing(&self) -> Option<&Arc<PhysicalMemory>> {
         self.backing.as_ref()
     }*/
