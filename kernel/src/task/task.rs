@@ -4,9 +4,9 @@ use core::mem::size_of;
 use logc::trace;
 use spin::Mutex;
 
+use super::arch::CpuSaveState;
 use super::{CpuState, Scheduler};
 use crate::arch::interrupt;
-use crate::arch::task::X86_64CpuState as State;
 use crate::memory::paging::{EntryFlags, Pager, TopLevelTable};
 use crate::memory::region::VirtualRegionAllocator;
 use crate::{Address, VirtualAddress, VirtualRegion};
@@ -23,7 +23,7 @@ pub struct Task {
     stack_pointer: VirtualAddress,
     kernel_stack: VirtualRegion,
     state: TaskState,
-    cpu_state: State,
+    cpu_state: CpuSaveState,
 }
 
 impl Task {
@@ -38,7 +38,7 @@ impl Task {
             stack_pointer: VirtualAddress::new(0),
             state: TaskState::Active,
             kernel_stack,
-            cpu_state: State::empty(),
+            cpu_state: CpuSaveState::empty(),
         }
     }
 
@@ -83,7 +83,7 @@ impl Task {
                 .write_volatile(f as usize)
         };
 
-        let mut cpu_state = State::empty();
+        let mut cpu_state = CpuSaveState::empty();
         cpu_state.set_fs_base(*(self.kernel_tls.end() - size_of::<usize>()) as u64);
 
         Task {

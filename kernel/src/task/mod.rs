@@ -1,3 +1,4 @@
+mod arch;
 mod scheduler;
 mod task;
 
@@ -14,6 +15,7 @@ use crate::memory::region::VirtualRegionAllocator;
 pub unsafe trait CpuState {
     unsafe fn save(&mut self);
     unsafe fn restore(&self);
+    fn empty() -> Self;
 }
 
 pub fn init(table: ActiveTopLevelTable, kernel_allocator: Arc<VirtualRegionAllocator>) {
