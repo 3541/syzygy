@@ -12,8 +12,8 @@ use core::mem::{size_of, transmute_copy};
 use core::ops::{Add, AddAssign, Deref, Sub};
 
 pub use heap::{init_allocator, init_heap};
-pub use phys::alloc::{FrameAllocator, PhysicalMemoryManager};
-pub use phys::{Frame, PhysicalMemory, PHYSICAL_ALLOCATOR};
+pub use phys::alloc::{FrameAllocator, PhysicalMemoryAllocator};
+pub use phys::{Frame, PhysicalMemory};
 pub use region::VirtualRegion;
 //pub use watermark_frame_allocator::WatermarkFrameAllocator;
 

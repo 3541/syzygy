@@ -13,7 +13,9 @@ pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
 pub use temp_page::TempPage;
 
 use super::region::VirtualRegionAllocator;
-use super::{Address, Frame, PhysicalAddress, PhysicalMemory, VirtualAddress, PHYSICAL_ALLOCATOR};
+use super::{
+    Address, Frame, PhysicalAddress, PhysicalMemory, PhysicalMemoryAllocator, VirtualAddress,
+};
 use crate::constants::KERNEL_BASE;
 use mapper::{Mapper, TLBFlush};
 use table::InactiveTopLevelTable;
@@ -102,7 +104,7 @@ pub unsafe fn remap_kernel(
     elf_sections: ElfSectionIter,
     multiboot_info: &multiboot2::BootInformation,
 ) {
-    let frame = PHYSICAL_ALLOCATOR
+    let frame = PhysicalMemoryAllocator::the()
         .alloc_frame()
         .expect("Need free frame to remap kernel.");
     let temp = TempPage::new(frame);

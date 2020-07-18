@@ -15,8 +15,6 @@ use crate::memory::paging::{ActiveTopLevelTable, EntryFlags, Pager, TopLevelTabl
 use crate::memory::region::VirtualRegionAllocator;
 use crate::memory::{Address, VirtualAddress, VirtualRegion};
 
-static SCHEDULER: Once<RwLock<Scheduler>> = Once::new();
-
 // TODO: Static Arc<Mutex>> of the current task?
 #[thread_local]
 static TASK_ID: AtomicUsize = AtomicUsize::new(0);
@@ -42,6 +40,8 @@ pub struct Scheduler {
     next_id: TaskId,
 }
 
+static SCHEDULER: Once<RwLock<Scheduler>> = Once::new();
+
 impl Scheduler {
     fn new() -> RwLock<Scheduler> {
         RwLock::new(Scheduler {
@@ -49,6 +49,14 @@ impl Scheduler {
             queue: VecDeque::with_capacity(10),
             next_id: TaskId(0),
         })
+    }
+
+    pub fn the() -> RwLockReadGuard<'static, Scheduler> {
+        SCHEDULER.call_once(Scheduler::new).read()
+    }
+
+    pub fn the_mut() -> RwLockWriteGuard<'static, Scheduler> {
+        SCHEDULER.call_once(Scheduler::new).write()
     }
 
     fn insert(&mut self, task: Task) {
@@ -116,14 +124,6 @@ impl Scheduler {
     pub fn spawn(&mut self, f: fn()) {
         let new_task = self.current().lock().new(f);
         self.insert(new_task);
-    }
-
-    pub fn the() -> RwLockReadGuard<'static, Scheduler> {
-        SCHEDULER.call_once(Scheduler::new).read()
-    }
-
-    pub fn the_mut() -> RwLockWriteGuard<'static, Scheduler> {
-        SCHEDULER.call_once(Scheduler::new).write()
     }
 
     pub fn current_id() -> TaskId {

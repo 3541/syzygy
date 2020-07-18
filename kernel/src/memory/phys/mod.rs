@@ -10,7 +10,7 @@ use super::paging::EntryFlags;
 use super::{Address, PhysicalAddress, VirtualRegion};
 use crate::task::Task;
 
-pub use self::alloc::PHYSICAL_ALLOCATOR;
+pub use self::alloc::PhysicalMemoryAllocator;
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct Frame(pub PhysicalAddress);
@@ -25,7 +25,7 @@ impl Frame {
 
 impl Drop for Frame {
     fn drop(&mut self) {
-        unsafe { PHYSICAL_ALLOCATOR.free(self) };
+        unsafe { PhysicalMemoryAllocator::the().free(self) };
     }
 }
 

@@ -45,11 +45,15 @@ use arch::interrupt;
 use arch::port::Port;
 use constants::KERNEL_BASE;
 //use driver::serial;
+use driver::acpi::Acpi;
 use driver::bochs_debug;
 use memory::paging::table::ActiveTopLevelTable;
 use memory::paging::EntryFlags;
 use memory::region::VirtualRegionAllocator;
-use memory::{Address, PhysicalAddress, PhysicalMemory, VirtualAddress, VirtualRegion};
+use memory::{
+    Address, PhysicalAddress, PhysicalMemory, PhysicalMemoryAllocator, VirtualAddress,
+    VirtualRegion,
+};
 use sym::SYMBOLS;
 use task::Scheduler;
 
@@ -213,7 +217,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     info!("INITIALIZED temporary kernel heap.");
 
     unsafe {
-        memory::PHYSICAL_ALLOCATOR.init(
+        PhysicalMemoryAllocator::the().init(
             kernel_start_addr_phys,
             kernel_end_addr_phys,
             multiboot_info_addr_phys,
@@ -288,7 +292,7 @@ pub extern "C" fn kmain(multiboot_info_addr: usize, _stack_bottom: usize) {
     );
     unsafe { arch::process::enter_ring3(ip, sp) };*/
 
-    driver::acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
+    Acpi::init(multiboot_info.rsdp_v1_tag(), multiboot_info.rsdp_v2_tag());
     info!("INITIALIZED ACPI.");
 
     interrupt::init();

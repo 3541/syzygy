@@ -12,6 +12,11 @@ pub static SYMBOLS: GlobalSymbolTable = GlobalSymbolTable::new();
 pub struct GlobalSymbolTable<'a>(RwLock<Symbols<'a>>);
 
 impl<'a> GlobalSymbolTable<'a> {
+    pub fn the() -> RwLockReadGuard<'static, Symbols<'static>> {
+        static SYMBOLS: GlobalSymbolTable = GlobalSymbolTable::new();
+        SYMBOLS.0.read()
+    }
+
     const fn new() -> Self {
         Self(RwLock::new(Symbols::empty()))
     }
@@ -20,10 +25,6 @@ impl<'a> GlobalSymbolTable<'a> {
         let mut lock = self.0.write();
         assert_eq!(lock.len(), 0, "Tried to init kernel symbols twice.");
         lock.init(sym_data);
-    }
-
-    pub fn get(&self) -> RwLockReadGuard<Symbols> {
-        self.0.read()
     }
 }
 

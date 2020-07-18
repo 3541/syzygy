@@ -1,7 +1,7 @@
 use logc::error;
 
 use crate::memory::{Address, RawVirtualAddress, VirtualAddress};
-use crate::sym::SYMBOLS;
+use crate::sym::GlobalSymbolTable;
 
 #[derive(Debug, Copy, Clone)]
 #[repr(packed)]
@@ -25,7 +25,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 pub unsafe fn print_backtrace(mut stack_frame: &StackFrame) {
-    let syms = SYMBOLS.get();
+    let syms = GlobalSymbolTable::the();
     error!("-----");
     while stack_frame.rbp as RawVirtualAddress != 0 {
         if let Some(s) = syms.find(VirtualAddress::new(stack_frame.rip as RawVirtualAddress)) {

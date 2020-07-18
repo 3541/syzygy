@@ -7,7 +7,7 @@ use core::ptr::Unique;
 
 use super::paging::mapper::Mapper;
 use super::paging::EntryFlags;
-use super::phys::{Frame, PhysicalMemory, PHYSICAL_ALLOCATOR};
+use super::phys::{Frame, PhysicalMemory, PhysicalMemoryAllocator};
 use super::{align_up, Address, VirtualAddress};
 
 pub use self::alloc::VirtualRegionAllocator;
@@ -111,7 +111,7 @@ impl VirtualRegion {
     pub fn map(&mut self, mapper: &mut Mapper, flags: EntryFlags) {
         assert!(self.backing.is_none());
 
-        let memory = PHYSICAL_ALLOCATOR
+        let memory = PhysicalMemoryAllocator::the()
             .alloc_memory(self.size)
             .expect("Failed to allocate physical memory.");
         self.map_to(mapper, Arc::new(memory), flags);

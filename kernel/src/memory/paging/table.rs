@@ -12,7 +12,7 @@ use super::mapper::Mapper;
 use super::temp_page::TempPage;
 use crate::constants::KERNEL_BASE;
 use crate::memory::{
-    Address, Frame, PhysicalAddress, RawVirtualAddress, VirtualAddress, PHYSICAL_ALLOCATOR,
+    Address, Frame, PhysicalAddress, PhysicalMemoryAllocator, RawVirtualAddress, VirtualAddress,
 };
 
 // NOTE: Magic virtual addresses
@@ -104,7 +104,7 @@ impl ActiveTopLevelTable {
         let mut new_table = InactiveTopLevelTable::new(
             self,
             TempPage::new(
-                PHYSICAL_ALLOCATOR
+                PhysicalMemoryAllocator::the()
                     .alloc_frame()
                     .expect("Unable to allocate a frame."),
             ),
@@ -300,7 +300,7 @@ impl<T: TableType + NestedTableType> Table<T> {
                         index,
                         (self as *mut _) as usize
                     );
-                    let f = PHYSICAL_ALLOCATOR
+                    let f = PhysicalMemoryAllocator::the()
                         .alloc_frame()
                         .expect("No frames available?");
                     trace!("Got frame");

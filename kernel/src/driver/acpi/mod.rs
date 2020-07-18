@@ -14,14 +14,6 @@ use crate::task::Task;
 use hpet::Hpet;
 use rsdt::{AcpiRootTable, Rsdt, Xsdt};
 
-static mut ACPI: Option<Acpi> = None;
-
-#[derive(Default)]
-struct Acpi {
-    root: AcpiRootTable,
-    hpet: Option<TypedRegion<Hpet>>,
-}
-
 trait AcpiTable {
     const SIGNATURE: &'static str;
 
@@ -66,69 +58,89 @@ impl SdtHeader {
     }
 }
 
-pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
-    if let Some(rsdp_v2) = rsdp_v2 {
-        debug!("Got RSDPv2.");
+#[derive(Default)]
+pub struct Acpi {
+    root: AcpiRootTable,
+    hpet: Option<TypedRegion<Hpet>>,
+}
 
-        let signature = rsdp_v2.signature().unwrap();
-        let xsdt_address = PhysicalAddress::new(rsdp_v2.xsdt_address());
+static mut ACPI: Option<Acpi> = None;
 
-        if !rsdp_v2.checksum_is_valid() || signature != "RSD PTR " {
-            error!("RSDP invalid!");
-            error!("\tChecksum: {}", rsdp_v2.checksum_is_valid());
-            error!("\tSignature: {}", rsdp_v2.signature().unwrap_or("(none)"));
-            return;
-        } else {
-            debug!("\tValid.");
-        }
-
-        unsafe {
-            ACPI = Some(Acpi {
-                root: AcpiRootTable::Xsdt(
-                    Xsdt::new(SdtHeader::new(xsdt_address).expect("Unable to map XSDT header."))
-                        .expect("Invalid XSDT."),
-                ),
-                ..Default::default()
-            });
-        }
-    } else if let Some(rsdp_v1) = rsdp_v1 {
-        debug!("Got RSDPv1.");
-
-        let signature = rsdp_v1.signature().unwrap();
-        let rsdt_address = PhysicalAddress::new(rsdp_v1.rsdt_address());
-
-        if !rsdp_v1.checksum_is_valid() || signature != "RSD PTR " {
-            error!("RSDP invalid!");
-            error!("\tChecksum: {}", rsdp_v1.checksum_is_valid());
-            error!("\tSignature: {}", rsdp_v1.signature().unwrap_or("(none)"));
-            return;
-        } else {
-            debug!("\tValid.");
-        }
-
-        unsafe {
-            ACPI = Some(Acpi {
-                root: AcpiRootTable::Rsdt(
-                    Rsdt::new(SdtHeader::new(rsdt_address).expect("Unable to map RSDT header."))
-                        .expect("Invalid RSDT."),
-                ),
-                ..Default::default()
-            });
-        }
-    } else {
-        debug!("No RSDP");
-        warn!("This is currently not handled.");
+impl Acpi {
+    /// # Safety
+    /// This is safe so long as it is only called after acpi::init
+    pub fn the() -> Option<&'static Acpi> {
+        unsafe { ACPI.as_ref() }
     }
 
-    let mut acpi = unsafe { ACPI.as_mut().unwrap() };
-    for pointer in acpi.root.pointers() {
-        if let Some(header) = unsafe { SdtHeader::new(pointer) } {
-            match unsafe { str::from_utf8_unchecked(&header.signature) } {
-                Hpet::SIGNATURE => acpi.hpet = Hpet::new(header),
-                s => warn!("\t\t* {} (unhandled)", s),
+    pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
+        if let Some(rsdp_v2) = rsdp_v2 {
+            debug!("Got RSDPv2.");
+
+            let signature = rsdp_v2.signature().unwrap();
+            let xsdt_address = PhysicalAddress::new(rsdp_v2.xsdt_address());
+
+            if !rsdp_v2.checksum_is_valid() || signature != "RSD PTR " {
+                error!("RSDP invalid!");
+                error!("\tChecksum: {}", rsdp_v2.checksum_is_valid());
+                error!("\tSignature: {}", rsdp_v2.signature().unwrap_or("(none)"));
+                return;
+            } else {
+                debug!("\tValid.");
+            }
+
+            unsafe {
+                ACPI = Some(Acpi {
+                    root: AcpiRootTable::Xsdt(
+                        Xsdt::new(
+                            SdtHeader::new(xsdt_address).expect("Unable to map XSDT header."),
+                        )
+                        .expect("Invalid XSDT."),
+                    ),
+                    ..Default::default()
+                });
+            }
+        } else if let Some(rsdp_v1) = rsdp_v1 {
+            debug!("Got RSDPv1.");
+
+            let signature = rsdp_v1.signature().unwrap();
+            let rsdt_address = PhysicalAddress::new(rsdp_v1.rsdt_address());
+
+            if !rsdp_v1.checksum_is_valid() || signature != "RSD PTR " {
+                error!("RSDP invalid!");
+                error!("\tChecksum: {}", rsdp_v1.checksum_is_valid());
+                error!("\tSignature: {}", rsdp_v1.signature().unwrap_or("(none)"));
+                return;
+            } else {
+                debug!("\tValid.");
+            }
+
+            unsafe {
+                ACPI = Some(Acpi {
+                    root: AcpiRootTable::Rsdt(
+                        Rsdt::new(
+                            SdtHeader::new(rsdt_address).expect("Unable to map RSDT header."),
+                        )
+                        .expect("Invalid RSDT."),
+                    ),
+                    ..Default::default()
+                });
             }
         } else {
-            warn!("Could not map the header for an ACPI table at {}.", pointer);
+            debug!("No RSDP");
+            warn!("This is currently not handled.");
+        }
+
+        let mut acpi = unsafe { ACPI.as_mut().unwrap() };
+        for pointer in acpi.root.pointers() {
+            if let Some(header) = unsafe { SdtHeader::new(pointer) } {
+                match unsafe { str::from_utf8_unchecked(&header.signature) } {
+                    Hpet::SIGNATURE => acpi.hpet = Hpet::new(header),
+                    s => warn!("\t\t* {} (unhandled)", s),
+                }
+            } else {
+                warn!("Could not map the header for an ACPI table at {}.", pointer);
+            }
         }
     }
 }

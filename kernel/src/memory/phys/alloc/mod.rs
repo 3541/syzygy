@@ -12,8 +12,6 @@ use super::{Frame, PhysicalMemory, PhysicalMemoryKind};
 use crate::memory::PhysicalAddress;
 use bitmap_frame_allocator::BitmapFrameAllocator;
 
-pub static PHYSICAL_ALLOCATOR: PhysicalMemoryManager = unsafe { PhysicalMemoryManager::new() };
-
 pub trait FrameAllocator {
     fn alloc(&mut self) -> Option<Frame>;
     fn alloc_exact(&mut self, addr: PhysicalAddress) -> Option<Frame>;
@@ -22,17 +20,23 @@ pub trait FrameAllocator {
     fn has(&self, frame: &Frame) -> bool;
 }
 
-pub struct PhysicalMemoryManager {
+pub struct PhysicalMemoryAllocator {
     areas: Mutex<Vec<Box<dyn FrameAllocator + Send>>>,
 }
 
-impl PhysicalMemoryManager {
+impl PhysicalMemoryAllocator {
     /// # Safety
     /// Caller must guarantee that allocations are not made before initialization.
     pub const unsafe fn new() -> Self {
         Self {
             areas: Mutex::new(Vec::new()),
         }
+    }
+
+    pub fn the() -> &'static PhysicalMemoryAllocator {
+        static PHYSICAL_ALLOCATOR: PhysicalMemoryAllocator =
+            unsafe { PhysicalMemoryAllocator::new() };
+        &PHYSICAL_ALLOCATOR
     }
 
     /// # Safety
