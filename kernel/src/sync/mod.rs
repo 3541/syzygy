@@ -1,4 +1,10 @@
-use spin::{Mutex, MutexGuard};
+mod spin;
+
+use ::spin::{Mutex, MutexGuard};
+
+pub use self::spin::{
+    RawSpinLock, RwSpinLock, RwSpinLockReadGuard, RwSpinLockWriteGuard, SpinLock, SpinLockGuard,
+};
 
 pub struct SpinLocked<T>(Mutex<T>);
 
