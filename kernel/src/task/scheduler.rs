@@ -2,25 +2,25 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::mem::size_of;
 use core::ptr;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use hashbrown::HashMap;
 use logc::trace;
 use spin::{Mutex, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use super::Task;
-use crate::arch::register;
-use crate::arch::{interrupt, pause};
+use crate::arch::{interrupt, register};
 use crate::memory::paging::{ActiveTopLevelTable, EntryFlags, Pager, TopLevelTable};
 use crate::memory::region::VirtualRegionAllocator;
 use crate::memory::{Address, VirtualAddress, VirtualRegion};
+use crate::sync::RawSpinLock;
 
 // TODO: Static Arc<Mutex>> of the current task?
 #[thread_local]
 static TASK_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[thread_local]
-static SWITCHING: AtomicBool = AtomicBool::new(false);
+static SWITCHING: RawSpinLock = RawSpinLock::new();
 
 #[derive(Eq, Hash, PartialEq, Debug, Copy, Clone)]
 pub struct TaskId(pub usize);
@@ -151,9 +151,7 @@ impl Scheduler {
         }
 
         trace!("About to switch tasks. Trying to get switch lock.");
-        while SWITCHING.compare_and_swap(false, true, Ordering::SeqCst) {
-            pause();
-        }
+        SWITCHING.lock();
 
         trace!("Acquiring pointers to tasks.");
 
@@ -183,8 +181,10 @@ impl Scheduler {
         trace!("Releasing switch lock.");
 
         interrupt::disable();
-        SWITCHING.store(false, Ordering::SeqCst);
-        unsafe { (*current).switch_to(&mut *target) };
+        unsafe {
+            SWITCHING.unlock();
+            (*current).switch_to(&mut *target);
+        }
         interrupt::enable();
     }
 
