@@ -6,10 +6,11 @@ use alloc::vec::Vec;
 
 use logc::debug;
 use multiboot2::{MemoryAreaIter, MemoryAreaType};
-use spin::Mutex;
 
 use super::{Frame, PhysicalMemory, PhysicalMemoryKind};
 use crate::memory::PhysicalAddress;
+use crate::sync::SpinLock;
+
 use bitmap_frame_allocator::BitmapFrameAllocator;
 
 pub trait FrameAllocator {
@@ -21,7 +22,7 @@ pub trait FrameAllocator {
 }
 
 pub struct PhysicalMemoryAllocator {
-    areas: Mutex<Vec<Box<dyn FrameAllocator + Send>>>,
+    areas: SpinLock<Vec<Box<dyn FrameAllocator + Send>>>,
 }
 
 impl PhysicalMemoryAllocator {
@@ -29,7 +30,7 @@ impl PhysicalMemoryAllocator {
     /// Caller must guarantee that allocations are not made before initialization.
     pub const unsafe fn new() -> Self {
         Self {
-            areas: Mutex::new(Vec::new()),
+            areas: SpinLock::new(Vec::new()),
         }
     }
 

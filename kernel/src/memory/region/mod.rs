@@ -3,7 +3,6 @@ pub mod alloc;
 use ::alloc::sync::{Arc, Weak};
 use core::mem::{forget, replace};
 use core::ops::{Deref, DerefMut};
-use core::ptr::Unique;
 
 use super::paging::mapper::Mapper;
 use super::paging::EntryFlags;
@@ -119,7 +118,7 @@ impl VirtualRegion {
 
     pub fn into_typed<T>(self, offset: usize) -> TypedRegion<T> {
         TypedRegion {
-            inner: Unique::new((self.start() + offset).as_mut_ptr()).unwrap(),
+            inner: unsafe { &mut *(self.start() + offset).as_mut_ptr() },
             region: self,
         }
     }
@@ -132,7 +131,7 @@ impl VirtualRegion {
         param: usize,
     ) -> TypedRegion<T> {
         TypedRegion {
-            inner: Unique::new((self.start() + offset).as_mut_fat_ptr(param)).unwrap(),
+            inner: &mut *(self.start() + offset).as_mut_fat_ptr(param),
             region: self,
         }
     }
@@ -195,15 +194,15 @@ impl Drop for VirtualRegion {
     }
 }
 
-pub struct TypedRegion<T: ?Sized> {
+pub struct TypedRegion<T: ?Sized + 'static> {
     region: VirtualRegion,
-    inner: Unique<T>,
+    inner: &'static mut T,
 }
 
 impl<T: ?Sized> TypedRegion<T> {
     pub fn offset(&self) -> usize {
         // Need to cast through a thin pointer to discard the potential fat pointer.
-        self.inner.as_ptr() as *const () as usize - *self.region.start()
+        self.inner as *const _ as *const () as usize - *self.region.start()
     }
 
     pub fn into_region(mut self) -> VirtualRegion {
@@ -216,21 +215,19 @@ impl<T: ?Sized> Deref for TypedRegion<T> {
 
     fn deref(&self) -> &T {
         assert!(self.region.is_mapped());
-
-        unsafe { self.inner.as_ref() }
+        self.inner
     }
 }
 
 impl<T: ?Sized> DerefMut for TypedRegion<T> {
     fn deref_mut(&mut self) -> &mut T {
         assert!(self.region.is_mapped());
-
-        unsafe { self.inner.as_mut() }
+        self.inner
     }
 }
 
 impl<T: ?Sized> Drop for TypedRegion<T> {
     fn drop(&mut self) {
-        drop(unsafe { self.inner.as_mut() });
+        drop(&mut self.inner)
     }
 }

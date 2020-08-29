@@ -3,22 +3,22 @@ use alloc::vec::Vec;
 use core::ops::Deref;
 
 use logc::error;
-use spin::{RwLock, RwLockReadGuard};
 
+use crate::sync::{RwSpinLock, RwSpinLockReadGuard};
 use crate::{println, Address, VirtualAddress};
 
 pub static SYMBOLS: GlobalSymbolTable = GlobalSymbolTable::new();
 
-pub struct GlobalSymbolTable<'a>(RwLock<Symbols<'a>>);
+pub struct GlobalSymbolTable<'a>(RwSpinLock<Symbols<'a>>);
 
 impl<'a> GlobalSymbolTable<'a> {
-    pub fn the() -> RwLockReadGuard<'static, Symbols<'static>> {
+    pub fn the() -> RwSpinLockReadGuard<'static, Symbols<'static>> {
         static SYMBOLS: GlobalSymbolTable = GlobalSymbolTable::new();
         SYMBOLS.0.read()
     }
 
     const fn new() -> Self {
-        Self(RwLock::new(Symbols::empty()))
+        Self(RwSpinLock::new(Symbols::empty()))
     }
 
     pub fn init(&self, sym_data: &'a [u8]) {

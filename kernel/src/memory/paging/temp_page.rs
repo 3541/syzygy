@@ -1,22 +1,18 @@
-use core::sync::atomic::{AtomicBool, Ordering};
-
 use super::mapper::Mapper;
 use super::table::{ActiveTopLevelTable, Table, PML4};
 use super::EntryFlags;
-use crate::arch::pause;
 use crate::memory::{Frame, PhysicalAddress, VirtualAddress};
+use crate::sync::RawSpinLock;
 
 pub struct TempPage(pub Frame);
 
-static IN_USE: AtomicBool = AtomicBool::new(false);
+static IN_USE: RawSpinLock = RawSpinLock::new();
 
 impl TempPage {
     const ADDRESS: VirtualAddress = unsafe { VirtualAddress::new_const(0xe000e000) };
 
     pub fn map(&mut self, active: &mut ActiveTopLevelTable) {
-        while IN_USE.compare_and_swap(false, true, Ordering::SeqCst) {
-            pause();
-        }
+        IN_USE.lock();
 
         assert!(active.virtual_address_to_frame(Self::ADDRESS).is_none());
         active
@@ -26,7 +22,7 @@ impl TempPage {
 
     pub fn unmap(self, active: &mut Mapper) -> Frame {
         active.unmap(Self::ADDRESS).flush();
-        IN_USE.store(false, Ordering::SeqCst);
+        unsafe { IN_USE.unlock() };
         self.0
     }
 

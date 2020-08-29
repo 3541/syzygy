@@ -3,7 +3,7 @@ pub mod arch;
 use alloc::boxed::Box;
 use core::time::Duration;
 
-use spin::Mutex;
+use crate::sync::SpinLock;
 
 pub trait HardwareTimer {
     fn arm(&mut self, duration: usize);
@@ -12,14 +12,14 @@ pub trait HardwareTimer {
 
 pub struct Timer {
     calibration: Duration,
-    timer: Mutex<Box<dyn HardwareTimer>>,
+    timer: SpinLock<Box<dyn HardwareTimer>>,
 }
 
 impl Timer {
     pub fn new(timer: Box<dyn HardwareTimer>) -> Timer {
         Timer {
             calibration: timer.calibration(),
-            timer: Mutex::new(timer),
+            timer: SpinLock::new(timer),
         }
     }
 }

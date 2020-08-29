@@ -2,25 +2,25 @@ use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use core::mem::size_of;
 use core::ptr;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use hashbrown::HashMap;
 use logc::trace;
-use spin::{Mutex, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use spin::Once;
 
 use super::Task;
-use crate::arch::register;
-use crate::arch::{interrupt, pause};
+use crate::arch::{interrupt, register};
 use crate::memory::paging::{ActiveTopLevelTable, EntryFlags, Pager, TopLevelTable};
 use crate::memory::region::VirtualRegionAllocator;
 use crate::memory::{Address, VirtualAddress, VirtualRegion};
+use crate::sync::{RawSpinLock, RwSpinLock, RwSpinLockReadGuard, RwSpinLockWriteGuard, SpinLock};
 
-// TODO: Static Arc<Mutex>> of the current task?
+// TODO: Static Arc<SpinLock>> of the current task?
 #[thread_local]
 static TASK_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[thread_local]
-static SWITCHING: AtomicBool = AtomicBool::new(false);
+static SWITCHING: RawSpinLock = RawSpinLock::new();
 
 #[derive(Eq, Hash, PartialEq, Debug, Copy, Clone)]
 pub struct TaskId(pub usize);
@@ -35,34 +35,34 @@ impl TaskId {
 
 // Eventually there should be a separate task queue for each CPU.
 pub struct Scheduler {
-    tasks: HashMap<TaskId, Arc<Mutex<Task>>>,
+    tasks: HashMap<TaskId, Arc<SpinLock<Task>>>,
     queue: VecDeque<TaskId>,
     next_id: TaskId,
 }
 
-static SCHEDULER: Once<RwLock<Scheduler>> = Once::new();
+static SCHEDULER: Once<RwSpinLock<Scheduler>> = Once::new();
 
 impl Scheduler {
-    fn new() -> RwLock<Scheduler> {
-        RwLock::new(Scheduler {
+    fn new() -> RwSpinLock<Scheduler> {
+        RwSpinLock::new(Scheduler {
             tasks: HashMap::new(),
             queue: VecDeque::with_capacity(10),
             next_id: TaskId(0),
         })
     }
 
-    pub fn the() -> RwLockReadGuard<'static, Scheduler> {
+    pub fn the() -> RwSpinLockReadGuard<'static, Scheduler> {
         SCHEDULER.call_once(Scheduler::new).read()
     }
 
-    pub fn the_mut() -> RwLockWriteGuard<'static, Scheduler> {
+    pub fn the_mut() -> RwSpinLockWriteGuard<'static, Scheduler> {
         SCHEDULER.call_once(Scheduler::new).write()
     }
 
     fn insert(&mut self, task: Task) {
         let id = self.next_id.next();
 
-        self.tasks.insert(id, Arc::new(Mutex::new(task)));
+        self.tasks.insert(id, Arc::new(SpinLock::new(task)));
         self.queue.push_back(id);
     }
 
@@ -114,7 +114,10 @@ impl Scheduler {
 
         self.insert(unsafe {
             Task::create_existing(
-                Pager::create_existing(TopLevelTable::Active(Mutex::new(table)), kernel_allocator),
+                Pager::create_existing(
+                    TopLevelTable::Active(SpinLock::new(table)),
+                    kernel_allocator,
+                ),
                 kernel_tls,
                 VirtualRegion::new(stack_start, stack_end - stack_start),
             )
@@ -134,14 +137,14 @@ impl Scheduler {
         TASK_ID.store(id.0, Ordering::SeqCst)
     }
 
-    pub fn current(&self) -> &Arc<Mutex<Task>> {
+    pub fn current(&self) -> &Arc<SpinLock<Task>> {
         &self
             .tasks
             .get(&Scheduler::current_id())
             .expect("Current task is missing.")
     }
 
-    pub fn get(&self, id: TaskId) -> Option<&Arc<Mutex<Task>>> {
+    pub fn get(&self, id: TaskId) -> Option<&Arc<SpinLock<Task>>> {
         self.tasks.get(&id)
     }
 
@@ -151,9 +154,7 @@ impl Scheduler {
         }
 
         trace!("About to switch tasks. Trying to get switch lock.");
-        while SWITCHING.compare_and_swap(false, true, Ordering::SeqCst) {
-            pause();
-        }
+        SWITCHING.lock();
 
         trace!("Acquiring pointers to tasks.");
 
@@ -183,8 +184,10 @@ impl Scheduler {
         trace!("Releasing switch lock.");
 
         interrupt::disable();
-        SWITCHING.store(false, Ordering::SeqCst);
-        unsafe { (*current).switch_to(&mut *target) };
+        unsafe {
+            SWITCHING.unlock();
+            (*current).switch_to(&mut *target);
+        }
         interrupt::enable();
     }
 

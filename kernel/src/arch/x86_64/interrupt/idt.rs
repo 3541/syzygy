@@ -1,16 +1,17 @@
 use core::mem::{size_of, transmute};
 
-use spin::{Mutex, MutexGuard, Once};
+use spin::Once;
 
 use super::{exception, irq, Handler, HandlerErr, InterruptVector};
 use crate::arch::PrivilegeLevel;
+use crate::sync::{SpinLock, SpinLockGuard};
 
 pub struct Idt([Entry; 256]);
 
 impl Idt {
-    pub fn the() -> MutexGuard<'static, Idt> {
-        static IDT: Once<Mutex<Idt>> = Once::new();
-        IDT.call_once(|| Mutex::new(Idt::new())).lock()
+    pub fn the() -> SpinLockGuard<'static, Idt> {
+        static IDT: Once<SpinLock<Idt>> = Once::new();
+        IDT.call_once(|| SpinLock::new(Idt::new())).lock()
     }
 
     pub fn empty() -> Idt {

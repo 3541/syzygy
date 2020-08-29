@@ -7,7 +7,6 @@ use core::mem::{forget, replace};
 
 use logc::debug;
 use multiboot2::ElfSectionIter;
-use spin::{Mutex, MutexGuard};
 
 pub use table::{ActiveTopLevelTable, EntryFlags, TopLevelTable};
 pub use temp_page::TempPage;
@@ -17,6 +16,7 @@ use super::{
     Address, Frame, PhysicalAddress, PhysicalMemory, PhysicalMemoryAllocator, VirtualAddress,
 };
 use crate::constants::KERNEL_BASE;
+use crate::sync::{SpinLock, SpinLockGuard};
 use mapper::{Mapper, TLBFlush};
 use table::InactiveTopLevelTable;
 
@@ -33,7 +33,7 @@ impl Pager {
             let new_table = current_table.lock().clone_kernel_mappings();
 
             Pager {
-                table: TopLevelTable::Inactive(Mutex::new(new_table)),
+                table: TopLevelTable::Inactive(SpinLock::new(new_table)),
                 kernel_allocator,
             }
         } else {
@@ -59,14 +59,14 @@ impl Pager {
         &mut self.table
     }
 
-    pub fn active_table(&self) -> MutexGuard<ActiveTopLevelTable> {
+    pub fn active_table(&self) -> SpinLockGuard<ActiveTopLevelTable> {
         match &self.table {
             TopLevelTable::Active(t) => t.lock(),
             _ => panic!("Table not active."),
         }
     }
 
-    pub fn inactive_table(&self) -> MutexGuard<InactiveTopLevelTable> {
+    pub fn inactive_table(&self) -> SpinLockGuard<InactiveTopLevelTable> {
         match &self.table {
             TopLevelTable::Inactive(t) => t.lock(),
             _ => panic!("Table not inactive."),

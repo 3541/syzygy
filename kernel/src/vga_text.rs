@@ -2,13 +2,13 @@ use core::fmt::{self, Write};
 
 use lazy_static::lazy_static;
 use rgb::RGB8;
-use spin::Mutex;
 use volatile::Volatile;
 
 use crate::arch::port::Port;
 use crate::constants::KERNEL_BASE;
 use crate::interrupt::without_interrupts;
 use crate::memory::PhysicalAddress;
+use crate::sync::SpinLock;
 
 pub const VGA_BUFFER_ADDRESS: PhysicalAddress = Buffer::ADDRESS;
 const VGA_INPUT_STATUS: u16 = 0x3DA;
@@ -87,7 +87,7 @@ impl Buffer {
 }
 
 lazy_static! {
-    pub static ref WRITER: Mutex<Writer> = {
+    pub static ref WRITER: SpinLock<Writer> = {
         // First disable blink.
         unsafe {
             // Go into index state
@@ -103,7 +103,7 @@ lazy_static! {
             addr_data.write(reg & !(1 << 3));
         }
 
-        Mutex::new(Writer {
+        SpinLock::new(Writer {
             column: 0,
             #[cfg(not(feature = "integration-tests"))]
             color: ColorCode::new(Color::Black, Color::White),
