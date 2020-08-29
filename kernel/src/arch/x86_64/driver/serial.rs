@@ -2,10 +2,10 @@ use core::fmt;
 
 use bitflags::bitflags;
 use lazy_static::lazy_static;
-use spin::Mutex;
 
 use crate::arch::port::Port;
 use crate::interrupt::without_interrupts;
+use crate::sync::SpinLock;
 
 const COM1: u16 = 0x3F8;
 
@@ -19,8 +19,8 @@ pub struct SerialPort {
 }
 
 lazy_static! {
-    pub static ref SERIAL1: Mutex<SerialPort> = {
-        Mutex::new({
+    pub static ref SERIAL1: SpinLock<SerialPort> = {
+        SpinLock::new({
             let mut s = SerialPort::new(COM1);
             s.init();
             s

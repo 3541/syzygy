@@ -4,6 +4,7 @@ use core::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 
 use crate::arch::pause;
 
+#[derive(Debug)]
 pub struct RawSpinLock(AtomicBool);
 
 // This is separated out so it can be used in cases like the scheduler and
@@ -29,6 +30,8 @@ impl RawSpinLock {
     }
 }
 
+#[derive(Debug)]
+>>>>>>> 304c9bfc5084917fab535276f3aaa47e4d534c1b
 pub struct SpinLock<T: ?Sized> {
     lock: RawSpinLock,
     inner: UnsafeCell<T>,
@@ -39,17 +42,22 @@ pub struct SpinLockGuard<'a, T: ?Sized + 'a> {
     inner: &'a mut T,
 }
 
-impl<T: ?Sized> SpinLock<T> {
-    pub const fn new(data: T) -> SpinLock<T>
-    where
-        T: Sized,
-    {
+unsafe impl<T: ?Sized> Sync for SpinLock<T> {}
+
+impl<T> SpinLock<T> {
+    pub const fn new(data: T) -> SpinLock<T> {
         SpinLock {
             lock: RawSpinLock::new(),
             inner: UnsafeCell::new(data),
         }
     }
 
+    pub fn into_inner(self) -> T {
+        self.inner.into_inner()
+    }
+}
+
+impl<T: ?Sized> SpinLock<T> {
     pub fn lock(&self) -> SpinLockGuard<T> {
         self.lock.lock();
         SpinLockGuard {
@@ -152,6 +160,8 @@ impl<T: ?Sized> RwSpinLock<T> {
         }
     }
 }
+
+unsafe impl<T: ?Sized> Sync for RwSpinLock<T> {}
 
 impl<T: ?Sized> Deref for RwSpinLockReadGuard<'_, T> {
     type Target = T;

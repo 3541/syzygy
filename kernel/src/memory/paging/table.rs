@@ -6,7 +6,6 @@ use core::ops::{Deref, DerefMut, Index, IndexMut};
 use bitflags::bitflags;
 use logc::trace;
 use multiboot2::{ElfSection, ElfSectionFlags};
-use spin::Mutex;
 
 use super::mapper::Mapper;
 use super::temp_page::TempPage;
@@ -14,6 +13,7 @@ use crate::constants::KERNEL_BASE;
 use crate::memory::{
     Address, Frame, PhysicalAddress, PhysicalMemoryAllocator, RawVirtualAddress, VirtualAddress,
 };
+use crate::sync::SpinLock;
 
 // NOTE: Magic virtual addresses
 #[cfg(target_arch = "x86_64")]
@@ -142,8 +142,8 @@ impl InactiveTopLevelTable {
 }
 
 pub enum TopLevelTable {
-    Active(Mutex<ActiveTopLevelTable>),
-    Inactive(Mutex<InactiveTopLevelTable>),
+    Active(SpinLock<ActiveTopLevelTable>),
+    Inactive(SpinLock<InactiveTopLevelTable>),
     // Note: this is _only_ for use in the middle of a task switch.
     None,
 }

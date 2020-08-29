@@ -3,24 +3,23 @@ use alloc::vec::Vec;
 use core::mem::size_of;
 use core::ptr;
 
-use spin::Mutex;
-
 use super::{TypedRegion, VirtualRegion};
 use crate::memory::paging::EntryFlags;
 use crate::memory::{align_up, Address, Frame, PhysicalAddress, PhysicalMemory};
+use crate::sync::SpinLock;
 use crate::task::Task;
 
 #[derive(Debug)]
 pub struct VirtualRegionAllocator {
-    free: Mutex<Vec<VirtualRegion>>,
-    _range: VirtualRegion,
+    free: SpinLock<Vec<VirtualRegion>>,
+    range: VirtualRegion,
 }
 
 impl Clone for VirtualRegionAllocator {
     fn clone(&self) -> VirtualRegionAllocator {
         VirtualRegionAllocator {
-            free: Mutex::new(self.free.lock().clone()),
-            _range: self._range.clone(),
+            free: SpinLock::new(self.free.lock().clone()),
+            range: self.range.clone(),
         }
     }
 }
@@ -29,8 +28,8 @@ impl VirtualRegionAllocator {
     pub fn new(mut range: VirtualRegion) -> Arc<VirtualRegionAllocator> {
         assert!(!range.is_mapped() && !range.was_allocated());
         let ret = Arc::new(VirtualRegionAllocator {
-            free: Mutex::new(Vec::new()),
-            _range: range.clone(),
+            free: SpinLock::new(Vec::new()),
+            range: range.clone(),
         });
 
         range.allocator = Some(Arc::downgrade(&ret));

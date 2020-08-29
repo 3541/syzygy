@@ -2,13 +2,13 @@ use alloc::sync::Arc;
 use core::mem::size_of;
 
 use logc::trace;
-use spin::Mutex;
 
 use super::arch::CpuSaveState;
 use super::{CpuState, Scheduler};
 use crate::arch::interrupt;
 use crate::memory::paging::{EntryFlags, Pager, TopLevelTable};
 use crate::memory::region::VirtualRegionAllocator;
+use crate::sync::SpinLock;
 use crate::{Address, VirtualAddress, VirtualRegion};
 
 pub enum TaskState {
@@ -104,7 +104,7 @@ impl Task {
         self.pager().kernel_allocator().clone()
     }
 
-    pub fn current() -> Arc<Mutex<Task>> {
+    pub fn current() -> Arc<SpinLock<Task>> {
         Scheduler::the().current().clone()
     }
 
@@ -124,8 +124,8 @@ impl Task {
             let old_table = self.pager.active_table().switch(new_table);
 
             let new_active_table = self.pager.take_active_table();
-            *self.pager.page_table() = TopLevelTable::Inactive(Mutex::new(old_table));
-            *other.pager.page_table() = TopLevelTable::Active(Mutex::new(new_active_table));
+            *self.pager.page_table() = TopLevelTable::Inactive(SpinLock::new(old_table));
+            *other.pager.page_table() = TopLevelTable::Active(SpinLock::new(new_active_table));
         }
 
         // Use llvm_asm because it can write to VirtualAddress.

@@ -8,7 +8,7 @@ use logc::debug;
 use super::paging::table::EntryFlags;
 use super::size::{KB, MB};
 use super::{Address, VirtualAddress, VirtualRegion};
-use crate::sync::SpinLocked;
+use crate::sync::SpinLock;
 use crate::task::Scheduler;
 use bump_allocator::BumpAllocator;
 //use fake_allocator::FakeAllocator;
@@ -19,7 +19,7 @@ static mut INIT_HEAP: [u8; 400 * KB] = [0; 400 * KB];
 
 #[cfg(not(test))]
 #[global_allocator]
-static ALLOCATOR: SpinLocked<GlobalAllocator> = unsafe { SpinLocked::new(GlobalAllocator::new()) };
+static ALLOCATOR: SpinLock<GlobalAllocator> = unsafe { SpinLock::new(GlobalAllocator::new()) };
 
 struct GlobalAllocator {
     heap: Option<BumpAllocator>,
@@ -46,7 +46,7 @@ impl GlobalAllocator {
     }
 }
 
-unsafe impl GlobalAlloc for SpinLocked<GlobalAllocator> {
+unsafe impl GlobalAlloc for SpinLock<GlobalAllocator> {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let mut this = self.lock();
 

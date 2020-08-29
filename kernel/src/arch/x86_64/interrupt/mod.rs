@@ -11,10 +11,10 @@ pub use apic::LvtFlags;
 pub use idt::Idt;
 
 use logc::debug;
-use spin::Mutex;
 
 use crate::arch::cpuid;
 use crate::memory::VirtualAddress;
+use crate::sync::SpinLock;
 
 use apic::LocalApic;
 use pic::PicChain;
@@ -24,7 +24,7 @@ type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 #[cfg(target_arch = "x86_64")]
 type HandlerErr = extern "x86-interrupt" fn(&mut InterruptStackFrame, usize);
 
-pub static INTERRUPT_CONTROLLER: Mutex<Controller> = Mutex::new(Controller::Uninitialized);
+pub static INTERRUPT_CONTROLLER: SpinLock<Controller> = SpinLock::new(Controller::Uninitialized);
 
 pub enum Controller {
     Pic(PicChain),
