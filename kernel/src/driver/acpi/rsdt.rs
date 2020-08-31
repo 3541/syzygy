@@ -46,10 +46,14 @@ trait RootTable: AcpiTable {
         <Self::Pointer as TryInto<usize>>::Error: Debug,
     {
         let mut pointers: Vec<Self::Pointer> = Vec::with_capacity(self.n_pointers());
+
+        // This is basically doing what read_unaligned does.
         unsafe {
-            ((self as *const _ as *const () as usize + size_of::<SdtHeader>())
-                as *const Self::Pointer)
-                .copy_to_nonoverlapping(pointers.as_mut_ptr(), self.n_pointers());
+            ((self as *const _ as *const () as usize + size_of::<SdtHeader>()) as *const u8)
+                .copy_to_nonoverlapping(
+                    pointers.as_mut_ptr() as *mut u8,
+                    self.n_pointers() * size_of::<Self::Pointer>(),
+                );
             pointers.set_len(self.n_pointers());
         }
         Box::new(
@@ -77,7 +81,7 @@ trait RootTable: AcpiTable {
         if !ret.is_valid() {
             None
         } else {
-            debug!("\t* (R/X)SDT");
+            debug!("\t* {}", ret.signature());
             Some(ret)
         }
     }

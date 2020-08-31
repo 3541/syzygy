@@ -23,6 +23,10 @@ trait AcpiTable {
     fn is_valid(&self) -> bool {
         self.header().is_valid(Self::SIGNATURE)
     }
+
+    fn signature(&self) -> &'static str {
+        return Self::SIGNATURE;
+    }
 }
 
 #[repr(C, packed)]
@@ -75,10 +79,10 @@ impl Acpi {
 
     pub fn init(rsdp_v1: Option<&RsdpV1Tag>, rsdp_v2: Option<&RsdpV2Tag>) {
         if let Some(rsdp_v2) = rsdp_v2 {
-            debug!("Got RSDPv2.");
-
             let signature = rsdp_v2.signature().unwrap();
             let xsdt_address = PhysicalAddress::new(rsdp_v2.xsdt_address());
+
+            debug!("Got RSDPv2 with XSDT at {}.", xsdt_address);
 
             if !rsdp_v2.checksum_is_valid() || signature != "RSD PTR " {
                 error!("RSDP invalid!");
@@ -101,10 +105,9 @@ impl Acpi {
                 });
             }
         } else if let Some(rsdp_v1) = rsdp_v1 {
-            debug!("Got RSDPv1.");
-
             let signature = rsdp_v1.signature().unwrap();
             let rsdt_address = PhysicalAddress::new(rsdp_v1.rsdt_address());
+            debug!("Got RSDPv1 with RSDT at {}.", rsdt_address);
 
             if !rsdp_v1.checksum_is_valid() || signature != "RSD PTR " {
                 error!("RSDP invalid!");
