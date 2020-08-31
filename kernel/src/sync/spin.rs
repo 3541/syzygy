@@ -31,7 +31,6 @@ impl RawSpinLock {
 }
 
 #[derive(Debug)]
->>>>>>> 304c9bfc5084917fab535276f3aaa47e4d534c1b
 pub struct SpinLock<T: ?Sized> {
     lock: RawSpinLock,
     inner: UnsafeCell<T>,
