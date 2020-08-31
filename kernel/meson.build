@@ -38,7 +38,6 @@ asm_gen = generator(
   ]
 )
 
-xargo = find_program('xargo', native: true)
 env = find_program('env', native: true)
 nm = find_program('nm', native: true)
 
@@ -60,18 +59,18 @@ kernel_lib = custom_target(
     'RUSTFLAGS=' + rustc_flags_env,
     'DIST_VERSION=' + meson.project_version(),
     cargo_wrapper,
-    'xargo',
+    'cargo',
     '@OUTDIR@',
     '@OUTDIR@/x86_64-pc-elf-none',
     'libsyzygy.a',
     '@OUTPUT@',
     '--target',
     cpu + '-pc-elf-none',
-#    xargo_flags,
     '-p',
     'syzygy',
+    '-Zbuild-std=core,alloc,compiler_builtins',
     '-Zpackage-features',
-    kernel_features
+    kernel_features,
   ],
   depend_files: kernel_src,
   console: true
