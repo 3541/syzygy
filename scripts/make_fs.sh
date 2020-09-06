@@ -16,7 +16,14 @@ cleanup() {
     fi
 
     if [ -e "$loop" ]; then
-        losetup -d "$loop"
+        case $(uname) in
+            FreeBSD)
+                mdconfig -d -u "$loop"
+                ;;
+            *)
+                losetup -d "$loop"
+                ;;
+        esac
         echo "Destroyed ${loop}."
     fi
 }
@@ -35,18 +42,41 @@ fi
 dd if=/dev/zero of="$image" bs=1M count=$image_size
 echo "Created image."
 
-loop=$(losetup --find --show "$image")
+mount_params=""
+case $(uname) in
+    FreeBSD)
+        echo "System is FreeBSD."
+        loop="/dev/$(mdconfig -a -t vnode -f "$image")"
 
-parted -s "$loop" mklabel msdos mkpart primary fat32 32k 100% set 1 boot on
-echo "Created partition table."
+        gpart create -s MBR "$loop"
+        gpart add -t fat32 -a 32k "$loop"
+        echo "Created partition table."
 
-loop_partition="${loop}p1"
+        loop_partition="${loop}s1"
+        newfs_msdos "$loop_partition"
+        
+        mount_params="-t msdosfs"
+        ;;
+    *)
+        if [ $(uname) != "Linux" ]; then
+            echo "System is unknown -- trying Linux."
+        else
+            echo "System is Linux."
+        fi
+        
+        loop=$(losetup --find --show "$image")
 
-mkfs.vfat "$loop_partition"
+        parted -s "$loop" mklabel msdos mkpart primary fat32 32k 100% set 1 boot on
+        echo "Created partition table."
+
+        loop_partition="${loop}p1"
+        mkfs.vfat "$loop_partition"
+        ;;
+esac
 echo "Formatted partition."
-
+    
 mkdir -p mnt
-mount "$loop_partition" mnt
+mount $mount_params "$loop_partition" mnt
 echo "Mounted ${image} (${loop_partition})."
 
 cp -r "$files"/* mnt/
@@ -55,4 +85,8 @@ echo "Copied ${files} to image."
 grub-install --target=i386-pc --boot-directory=mnt/boot --install-modules="normal multiboot2 part_msdos all_video" "$loop"
 echo "Installed grub."
 
-chown 1000:1000 "$image"
+if [ $(uname) == "FreeBSD" ]; then
+    chown 1001:1001 "$image"
+else
+    chown 1000:1000 "$image"
+fi

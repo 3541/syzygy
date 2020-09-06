@@ -35,13 +35,25 @@ bochs = find_program(
   native: true
 )
 run_bochs = find_program('scripts/run_bochs.sh', native: true)
-grub_mkrescue = find_program('grub-mkrescue', native: true)
-xorriso = find_program('xorriso', native: true) # This is required for grub-mkrescue
+grub_mkrescue = find_program('grub-mkrescue', required: false, native: true)
+xorriso = find_program('xorriso', required: false, native: true) # This is required for grub-mkrescue
 cp_stamp = find_program('scripts/copy_with_stamp.sh', native: true)
 mkdir = find_program('mkdir', native: true)
+cargo = find_program('cargo', native: true)
 cargo_wrapper = find_program('scripts/run_cargo.sh', native: true)
 gen_sym = find_program('scripts/sym.sh', native: true)
 make_fs = find_program('scripts/make_fs.sh', native: true)
+rustfilt = find_program('rustfilt', required: false, native: true)
+
+if not rustfilt.found()
+  run_command(cargo,
+              [
+                'install',
+                'rustfilt'
+              ],
+              check: true)
+  rustfilt = find_program('rustfilt', native: true)
+endif
 
 # Subdirectories
 subdir('kernel')
@@ -108,17 +120,19 @@ grub_cfg = custom_target(
   depend_files: meson.source_root() + '/kernel/src/arch/x86_common/grub.cfg'
 )
 
-iso = custom_target(
-  'make-iso',
-  output: 'syzygy.iso',
-  command: [
-    grub_mkrescue,
-    '-o', '@OUTPUT@',
-    fs_dir
-  ],
-  console: true,
-  depends: [grub_cfg, fs_files]
-)
+if grub_mkrescue.found() and xorriso.found()
+  iso = custom_target(
+    'make-iso',
+    output: 'syzygy.iso',
+    command: [
+      grub_mkrescue,
+      '-o', '@OUTPUT@',
+      fs_dir
+    ],
+    console: true,
+    depends: [grub_cfg, fs_files]
+  )
+endif
 
 image = custom_target(
   'make-image',

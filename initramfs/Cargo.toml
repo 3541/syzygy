@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [dependencies]
-hashbrown = { version = "*", features = ["nightly"] }
+hashbrown = "*"
 
 [features]
 kernel = []
