@@ -1,0 +1,2 @@
+option('kvm', type: 'boolean', value: true)
+option('vm_mem', type: 'integer', min: 0, max: 32, value: 4)
