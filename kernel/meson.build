@@ -18,6 +18,15 @@ kernel_asm_obj = nasm_gen.process(kernel_asm_src)
 
 rustc_flags += '-Cforce-frame-pointers=yes'
 
+kernel_features = []
+if get_option('kernel_log_vga')
+  kernel_features += 'log_vga'
+endif
+
+if kernel_features.length() > 0
+  kernel_features = ['--features', kernel_features]
+endif
+
 # Targets
 
 rustc_flags_env = ''
@@ -38,7 +47,9 @@ kernel_rs = custom_target(
     'libsyzygy_kernel.a',
     cpu + '-pc-elf-none',
     '@OUTPUT@',
-    '-Zbuild-std=core,alloc,compiler_builtins'
+    '-Zbuild-std=core,alloc,compiler_builtins',
+    '-Zpackage-features',
+    kernel_features
   ],
   depend_files: kernel_src,
   console: true
