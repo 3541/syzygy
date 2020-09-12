@@ -55,7 +55,9 @@ impl<T> OnceCell<T> {
         self.state
             .store(OnceCellState::Initialized as u8, Ordering::Release);
 
-        int::set(interrupts);
+        if interrupts {
+            int::enable();
+        }
     }
 
     pub fn borrow(&self) -> Option<&T> {

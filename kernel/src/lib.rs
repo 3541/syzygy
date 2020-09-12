@@ -11,10 +11,12 @@
          needed to initialize all submodules.
 */
 
+#[macro_use]
+mod log;
+
 mod consts;
 mod err;
 mod int;
-mod log;
 mod mem;
 mod util;
 
@@ -22,6 +24,8 @@ mod util;
 #[allow(unused)]
 pub extern "C" fn kmain(_multiboot_info_address: usize) {
     log::init();
+
+    println!("-> kmain");
 
     loop {}
 }

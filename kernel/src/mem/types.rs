@@ -33,12 +33,6 @@ pub trait Address: Clone + Display {
 #[derive(Copy, Clone)]
 pub struct PhysicalAddress(RawPhysicalAddress);
 
-impl PhysicalAddress {
-    pub const unsafe fn new_const(address: usize) -> PhysicalAddress {
-        PhysicalAddress(address)
-    }
-}
-
 impl Address for PhysicalAddress {
     type RawAddress = RawPhysicalAddress;
 

@@ -1,6 +1,9 @@
-use crate::util::spin::OnceCell;
+use core::fmt::{self, Write};
 use core::ptr;
 
+use crate::util::sync::spin::{OnceCell, Spinlock, SpinlockGuard};
+
+#[allow(dead_code)]
 #[repr(u8)]
 enum Color {
     Black = 0,
@@ -30,6 +33,7 @@ impl CharColor {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Copy, Clone)]
 #[repr(packed)]
 struct ScreenChar {
@@ -54,6 +58,10 @@ impl ScreenBuffer {
 
         unsafe { ptr::write_volatile(&mut self.0[row][col], value) };
     }
+
+    fn read(&self, row: usize, col: usize) -> ScreenChar {
+        self.0[row][col]
+    }
 }
 
 struct ScreenWriter {
@@ -62,7 +70,7 @@ struct ScreenWriter {
     buffer: &'static mut ScreenBuffer,
 }
 
-static SCREEN_WRITER: OnceCell<ScreenWriter> = OnceCell::new();
+static SCREEN_WRITER: OnceCell<Spinlock<ScreenWriter>> = OnceCell::new();
 
 impl ScreenWriter {
     fn new(fg: Color, bg: Color) -> ScreenWriter {
@@ -73,10 +81,75 @@ impl ScreenWriter {
         }
     }
 
-    //  Todo: Mutex
-    fn the() -> MutexGuard<ScreenWriter>;
+    fn the() -> SpinlockGuard<'static, ScreenWriter> {
+        SCREEN_WRITER.lock()
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        for col in 0..ScreenBuffer::WIDTH {
+            self.buffer.write(
+                row,
+                col,
+                ScreenChar {
+                    character: b' ',
+                    color: self.color,
+                },
+            );
+        }
+    }
+
+    pub fn clear_screen(&mut self) {
+        for row in 0..ScreenBuffer::HEIGHT {
+            self.clear_row(row);
+        }
+    }
+
+    fn new_line(&mut self) {
+        for row in 1..ScreenBuffer::HEIGHT {
+            for col in 0..ScreenBuffer::WIDTH {
+                self.buffer.write(row - 1, col, self.buffer.read(row, col));
+            }
+        }
+        self.clear_row(ScreenBuffer::HEIGHT - 1);
+        self.column = 0;
+    }
+
+    pub fn write_byte(&mut self, byte: u8) {
+        if byte == b'\n' {
+            self.new_line()
+        } else {
+            if self.column >= ScreenBuffer::WIDTH {
+                self.new_line();
+            }
+
+            self.buffer.write(
+                ScreenBuffer::HEIGHT - 1,
+                self.column,
+                ScreenChar {
+                    character: byte,
+                    color: self.color,
+                },
+            );
+            self.column += 1;
+        }
+    }
+}
+
+impl Write for ScreenWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for b in s.bytes() {
+            self.write_byte(b);
+        }
+        Ok(())
+    }
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    ScreenWriter::the().write_fmt(args).unwrap()
 }
 
 pub fn init() {
-    SCREEN_WRITER.init(ScreenWriter::new(Color::White, Color::Black));
+    SCREEN_WRITER.init(Spinlock::new(ScreenWriter::new(Color::White, Color::Black)));
+    ScreenWriter::the().clear_screen();
 }

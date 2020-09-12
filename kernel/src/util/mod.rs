@@ -1,1 +1,1 @@
-pub mod spin;
+pub mod sync;

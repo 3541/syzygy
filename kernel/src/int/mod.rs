@@ -9,10 +9,8 @@ pub fn disable() -> bool {
     ret
 }
 
-pub fn set(state: bool) {
-    if state {
-        sti()
-    } else {
-        cli()
-    }
+pub fn enable() -> bool {
+    let ret = interrupts_enabled();
+    sti();
+    ret
 }

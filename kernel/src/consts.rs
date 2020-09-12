@@ -2,6 +2,7 @@
 
 use crate::mem::VirtualAddress;
 
+#[allow(dead_code)]
 extern "C" {
     static SZ_KERNEL_START: u8;
 }
