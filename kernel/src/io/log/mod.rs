@@ -2,18 +2,24 @@
 
 use core::fmt;
 
+mod arch;
 mod vga_text;
+
+pub use arch::*;
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     if cfg!(feature = "log_vga") {
         vga_text::_print(args);
     }
+    if cfg!(feature = "log_e9") {
+        e9::_print(args);
+    }
 }
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::log::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::io::log::_print(format_args!($($arg)*)));
 }
 
 #[macro_export]

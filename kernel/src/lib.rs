@@ -10,15 +10,16 @@
        - Export a single top-level function init, which should be the only thing
          needed to initialize all submodules.
 */
-
 #[macro_use]
-mod log;
+mod io;
 
 mod consts;
 mod err;
 mod int;
 mod mem;
 mod util;
+
+use io::log;
 
 #[no_mangle]
 #[allow(unused)]
@@ -27,5 +28,5 @@ pub extern "C" fn kmain(_multiboot_info_address: usize) {
 
     println!("-> kmain");
 
-    loop {}
+    unsafe { asm!("hlt") };
 }

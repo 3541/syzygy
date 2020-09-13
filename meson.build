@@ -19,6 +19,10 @@ if get_option('kvm')
   ]
 endif
 
+if not get_option('vm_display') and not get_option('kernel_log_vga')
+  qemu_flags += [ '-display', 'none' ]
+endif
+
 # Programs
 
 nasm = find_program('nasm')

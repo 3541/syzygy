@@ -11,3 +11,4 @@ crate-type = ["staticlib"]
 # All features should have corresponding Meson options.
 [features]
 log_vga = []
+log_e9 = []

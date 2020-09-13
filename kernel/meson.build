@@ -22,9 +22,12 @@ kernel_features = []
 if get_option('kernel_log_vga')
   kernel_features += 'log_vga'
 endif
+if get_option('kernel_log_e9')
+  kernel_features += 'log_e9'
+endif
 
 if kernel_features.length() > 0
-  kernel_features = ['--features', kernel_features]
+  kernel_features = ['--features', ','.join(kernel_features)]
 endif
 
 # Targets
