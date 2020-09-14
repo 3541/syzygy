@@ -30,7 +30,7 @@ pub trait Address: Clone + Display {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct PhysicalAddress(RawPhysicalAddress);
 
 impl Address for PhysicalAddress {
@@ -51,7 +51,7 @@ impl Display for PhysicalAddress {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {

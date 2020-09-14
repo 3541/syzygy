@@ -3,6 +3,7 @@
 #![feature(const_raw_ptr_to_usize_cast)]
 #![feature(llvm_asm)]
 #![feature(asm)]
+#![feature(abi_x86_interrupt)]
 
 /*
    Modules should:
@@ -31,5 +32,8 @@ pub extern "C" fn kmain(_multiboot_info_address: usize) {
 
     info!("This is {}, version {}.", consts::NAME, consts::VERSION);
 
-    unsafe { asm!("hlt") };
+    int::init();
+    info!("INITIALIZED interrupt handlers.");
+
+    util::halt_loop();
 }

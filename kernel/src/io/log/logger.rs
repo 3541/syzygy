@@ -38,7 +38,7 @@ impl Log for Logger {
 
         static MAIN_LEN: usize = "syzygy_kernel ".len();
         let target = if record.target().len() >= MAIN_LEN {
-            &record.target()[MAIN_LEN..]
+            &record.target()[MAIN_LEN + 1..]
         } else {
             "init"
         };

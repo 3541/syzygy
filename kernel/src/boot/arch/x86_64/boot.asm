@@ -167,5 +167,5 @@ SZ_INIT_PD:
         resb 0x1000
         
 SZ_INIT_STACK_BOTTOM:
-        resb 16384
+        resb 32768
 SZ_INIT_STACK_TOP:

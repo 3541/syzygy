@@ -10,6 +10,7 @@ qemu_memory = get_option('vm_mem')
 qemu_flags = [
   '-m', qemu_memory.to_string() + 'G',
   '-d', 'cpu_reset',
+  '-s',
   '-debugcon', 'stdio'
 ]
 
@@ -102,6 +103,17 @@ if qemu.found()
       qemu,
       '-drive', 'format=raw,file=' + image.full_path(),
       qemu_flags
+    ],
+    depends: image
+  )
+
+  run_target(
+    'debug',
+    command: [
+      qemu,
+      '-drive', 'format=raw,file=' + image.full_path(),
+      qemu_flags,
+      '-S'
     ],
     depends: image
   )

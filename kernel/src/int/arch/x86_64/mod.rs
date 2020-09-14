@@ -1,5 +1,44 @@
 // x86_64 interrupts.
 
+mod idt;
+
+pub use idt::Idt;
+
+use crate::mem::VirtualAddress;
+
+#[derive(Copy, Clone)]
+pub enum InterruptVector {
+    DivideByZero,
+    InvalidOpcode,
+    DoubleFault,
+    GeneralProtectionFault,
+    Custom(u8),
+}
+
+impl Into<u8> for InterruptVector {
+    fn into(self) -> u8 {
+        match self {
+            InterruptVector::DivideByZero => 0,
+            InterruptVector::InvalidOpcode => 6,
+            InterruptVector::DoubleFault => 8,
+            InterruptVector::GeneralProtectionFault => 13,
+            InterruptVector::Custom(v) => v,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C, packed)]
+pub struct InterruptStackFrame {
+    ip: VirtualAddress,
+    cs: u64,
+    flags: u64,
+    sp: VirtualAddress,
+    ss: u64,
+}
+
+type Isr = extern "x86-interrupt" fn(&mut InterruptStackFrame);
+
 #[inline(always)]
 pub fn cli() {
     unsafe { llvm_asm!("cli" :::: "volatile") }
@@ -15,4 +54,8 @@ pub fn interrupts_enabled() -> bool {
     unsafe { asm!("pushfq", "pop {}", out(reg) flags) };
 
     flags & (1 << 9) != 0
+}
+
+pub fn init() {
+    idt::init();
 }
