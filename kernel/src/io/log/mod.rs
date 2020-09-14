@@ -3,6 +3,7 @@
 use core::fmt;
 
 mod arch;
+mod logger;
 mod vga_text;
 
 pub use arch::*;
@@ -30,4 +31,6 @@ macro_rules! println {
 
 pub fn init() {
     vga_text::init();
+
+    logger::init();
 }

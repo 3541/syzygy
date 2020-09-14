@@ -21,12 +21,15 @@ mod util;
 
 use io::log;
 
+use log_crate::info;
+
 #[no_mangle]
 #[allow(unused)]
 pub extern "C" fn kmain(_multiboot_info_address: usize) {
     log::init();
+    info!("kmain.");
 
-    println!("-> kmain");
+    info!("This is {}, version {}.", consts::NAME, consts::VERSION);
 
     unsafe { asm!("hlt") };
 }
