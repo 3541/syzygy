@@ -1,0 +1,25 @@
+# Build all image components. Include master branch once scratch is merged.
+
+name: build
+
+on:
+  push:
+    branches: [ scratch ]
+  pull_request:
+    branches: [ scratch ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - uses: actions/setup-haskell@v1.1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+          components: rust-src
+        
+      - name: build
+        run: runhaskell Shakefile.hs build
