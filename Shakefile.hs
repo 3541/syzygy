@@ -32,6 +32,10 @@ main = shakeArgs shakeOptions{shakeFiles = buildDir, shakeProgress = progressSim
     putInfo "Cleaning..."
     removeFilesAfter buildDir ["//*"]
 
+  phony "build" $ do
+    -- Useful for making sure changes build without the overhead of making an image.
+    need $ elems imageFiles
+
   phony "run" $ do
     need [buildDir </> "syzygy.img"]
 
