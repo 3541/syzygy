@@ -37,6 +37,7 @@ main = shakeArgs shakeOptions{shakeFiles = buildDir, shakeProgress = progressSim
     need $ elems imageFiles
 
   phony "run" $ do
+    -- TODO: Intelligently handle not having qemu (run Bochs instead)
     need [buildDir </> "syzygy.img"]
 
     arch <- getConfig "ARCH"
