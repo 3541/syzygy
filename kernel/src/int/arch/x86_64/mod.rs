@@ -12,7 +12,7 @@ pub enum InterruptVector {
     InvalidOpcode,
     DoubleFault,
     GeneralProtectionFault,
-    Custom(u8),
+    Other(u8),
 }
 
 impl Into<u8> for InterruptVector {
@@ -22,7 +22,7 @@ impl Into<u8> for InterruptVector {
             InterruptVector::InvalidOpcode => 6,
             InterruptVector::DoubleFault => 8,
             InterruptVector::GeneralProtectionFault => 13,
-            InterruptVector::Custom(v) => v,
+            InterruptVector::Other(v) => v,
         }
     }
 }
