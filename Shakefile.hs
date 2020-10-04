@@ -9,28 +9,35 @@ import Development.Shake.Command
 import Development.Shake.Config
 import Development.Shake.FilePath
 
+import Build.Boot
 import Build.Kernel
+import Build.Rust
 
 buildDir = "_build"
 imageBuildDir = buildDir </> "image"
 
 imageFiles :: Map.Map String String
 imageFiles = Map.fromList [
-  (imageBuildDir </> "boot" </> "grub" </> "grub.cfg", "boot" </> "grub.cfg"),
-  (imageBuildDir </> "boot" </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
+ -- (imageBuildDir </> "boot" </> "grub" </> "grub.cfg", "boot" </> "grub.cfg"),
+  (imageBuildDir </> "limine.cfg", "boot" </> "limine.cfg"),
+  (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
   ]
 
 scriptPath = AddPath [] ["./scripts"]
 
-
 main :: IO ()
-main = shakeArgs shakeOptions{shakeFiles = buildDir, shakeProgress = progressSimple, shakeColor = True} $ do
+main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True, shakeThreads = 0} $ do
   usingConfigFile $ "cfg" </> "shake.cfg"
   want [buildDir </> "syzygy.img"]
 
   phony "clean" $ do
     putInfo "Cleaning..."
     removeFilesAfter buildDir ["//*"]
+    cleanBoot "limine"
+
+  phony "cleanMeta" $ do
+    putInfo "Cleaning Shake metadata..."
+    removeFilesAfter ".shake" ["//*"]
 
   phony "build" $ do
     -- Useful for making sure changes build without the overhead of making an image.
@@ -56,11 +63,16 @@ main = shakeArgs shakeOptions{shakeFiles = buildDir, shakeProgress = progressSim
       ("-drive format=raw,file=" ++ (buildDir </> "syzygy.img"))
 
   buildDir </> "syzygy.img" %> \out -> do
-    need $ Map.keys imageFiles
+    need (concat ([Map.keys imageFiles,
+                 ["limine" </> "limine-install", "limine" </> "limine.bin",
+                  "scripts" </> "make_fs.sh"]
+                ]))
     cmd_ NoProcessGroup InheritStdin scriptPath Shell
-      "sudo env \"PATH=$PATH\" make_fs.sh" [imageBuildDir] [out]
+      "sudo env \"PATH=$PATH\" make_fs.sh limine" [imageBuildDir] [out]
 
   keys imageFiles |%> \out -> do
     copyFileChanged (imageFiles ! out) out
 
+  rustVersion $ buildDir </> "kernel"
   buildKernel "kernel" buildDir
+  buildBootloader "limine"

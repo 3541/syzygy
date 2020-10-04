@@ -11,3 +11,4 @@ target/*
 Cargo.lock
 _build
 _shake
+.shake

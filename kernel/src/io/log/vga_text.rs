@@ -48,7 +48,7 @@ impl ScreenBuffer {
     const WIDTH: usize = 80;
 
     fn the() -> &'static mut ScreenBuffer {
-        unsafe { &mut *(crate::consts::KERNEL_START + 0xB8000).as_mut_ptr() }
+        unsafe { &mut *(crate::consts::PHYS_BASE + 0xB8000).as_mut_ptr() }
     }
 
     fn write(&mut self, row: usize, col: usize, value: ScreenChar) {

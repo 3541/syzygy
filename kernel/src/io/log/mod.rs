@@ -31,6 +31,5 @@ macro_rules! println {
 
 pub fn init() {
     vga_text::init();
-
     logger::init();
 }

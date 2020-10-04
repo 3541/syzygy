@@ -13,8 +13,16 @@ cargoEnv buildDir = [
   AddEnv "RUSTFLAGS" "-Cforce-frame-pointers=yes -Zsymbol-mangling-version=v0"
   ]
 
+rustVersion :: String -> Rules ()
+rustVersion buildDir = do
+  buildDir </> "rustc.version" %> \out -> do
+    alwaysRerun
+    Stdout stdout <- cmd "rustc --version"
+    writeFileChanged out stdout
+
 cargo :: Partial => String -> String -> String -> [String] -> [String] -> Action ()
 cargo buildDir targetSpec targetProj features args = do
+  need [buildDir </> "rustc.version"]
   currentDir <- liftIO getCurrentDirectory
   let targetPath = currentDir </> "targets"
   let featureArgs = if length features > 0

@@ -4,6 +4,7 @@
 #![feature(llvm_asm)]
 #![feature(asm)]
 #![feature(abi_x86_interrupt)]
+#![feature(const_fn_fn_ptr_basics)]
 
 /*
    Modules should:
@@ -14,26 +15,9 @@
 #[macro_use]
 mod io;
 
+mod boot;
 mod consts;
 mod err;
 mod int;
 mod mem;
 mod util;
-
-use io::log;
-
-use log_crate::info;
-
-#[no_mangle]
-#[allow(unused)]
-pub extern "C" fn kmain(_multiboot_info_address: usize) {
-    log::init();
-    info!("kmain.");
-
-    info!("This is {}, version {}.", consts::NAME, consts::VERSION);
-
-    int::init();
-    info!("INITIALIZED interrupt handlers.");
-
-    util::halt_loop();
-}

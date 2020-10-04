@@ -1,6 +1,7 @@
 module Build.Kernel where
 
 import Data.Maybe
+import System.Directory
 
 import Development.Shake
 import Development.Shake.Config
@@ -14,22 +15,18 @@ buildKernel kernelDir buildDir = do
   let kernelSrcDir = kernelDir </> "src"
   let kernelLinkScriptPath = kernelDir </> "link"
 
+  let kernelLib = kernelBuildDir </> "libsyzygy_kernel.a"
+
   kernelBuildDir </> "sz_kernel.elf" %> \out -> do
     arch <- getConfig "ARCH"
-    asmSrc <- getDirectoryFiles kernelSrcDir ["//" ++ (fromJust arch) ++ "//*.asm"]
-    let asmObj = [kernelBuildDir </> f -<.> ".asm.o" | f <- asmSrc]
     let linkScript = kernelLinkScriptPath </> (fromJust arch) <.> "ld"
-    need (concat [asmObj, [kernelBuildDir </> "libsyzygy_kernel.a", linkScript]])
+    need [kernelLib, linkScript]
 
-    cmd_ "ld -nostdlib -n --gc-sections -T" linkScript
-      "-o" [out] asmObj [kernelBuildDir </> "libsyzygy_kernel.a"]
+    cmd_ "ld -static -nostdlib --as-needed --gc-sections"
+      "-T" linkScript "-o" [out] [kernelLib]
 
-  kernelBuildDir ++ "//*.asm.o" %> \out -> do
-    let src = kernelSrcDir </> (dropDirectory1 $ dropDirectory1 $ (dropExtension out) -<.> "asm")
-    need [src]
-    cmd_ "nasm -felf64" [src] "-o" [out]
-
-  kernelBuildDir </> "libsyzygy_kernel.a" %> \out -> do
+  kernelLib %> \out -> do
+    need [kernelDir </> "Cargo.toml"]
     arch <- getConfig "ARCH"
     rustFeatures <- getConfig "KERNEL_FEATURES"
     
@@ -40,4 +37,4 @@ buildKernel kernelDir buildDir = do
     let targetSpec = fromJust arch ++ "-pc-elf-none"
     cargo kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust $ rustFeatures)
       ["-Zbuild-std=core,alloc,compiler_builtins", "-Zpackage-features"]
-    copyFileChanged (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
+    liftIO $ copyFile (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
