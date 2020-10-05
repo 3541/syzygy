@@ -1,5 +1,7 @@
 // x86_64 interrupts.
 
+#[macro_use]
+mod handler;
 mod idt;
 
 pub use idt::Idt;
@@ -37,7 +39,7 @@ pub struct InterruptStackFrame {
     ss: u64,
 }
 
-type Isr = extern "x86-interrupt" fn(&mut InterruptStackFrame);
+type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
 
 #[inline(always)]
 pub fn cli() {
@@ -56,6 +58,8 @@ pub fn interrupts_enabled() -> bool {
     flags & (1 << 9) != 0
 }
 
-pub fn init() {
+pub fn init() {}
+
+pub fn init_idt() {
     idt::init();
 }

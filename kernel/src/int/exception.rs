@@ -9,7 +9,7 @@ fn fatal(name: &str, stack: &InterruptStackFrame) -> ! {
 
 macro_rules! fatal_exception {
     ($vec:path => $name:ident) => {
-        isr_fn!($vec => fn $name(stack) {
+        handler_fn!($vec => fn $name(stack) {
             fatal(stringify!($name), stack);
         });
     };

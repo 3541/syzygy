@@ -1,6 +1,6 @@
 use core::mem::size_of;
 
-use super::{InterruptVector, Isr};
+use super::{Handler, InterruptVector};
 use crate::int::{exception, InterruptTable, IDT};
 use crate::util::arch::register;
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
@@ -21,7 +21,7 @@ struct IdtEntry {
 impl IdtEntry {
     fn new(
         selector: u16,
-        handler: <Idt as InterruptTable>::Isr,
+        handler: <Idt as InterruptTable>::Handler,
         privilege_level: PrivilegeLevel,
     ) -> IdtEntry {
         let handler = handler as u64;
@@ -64,8 +64,8 @@ impl Idt {
 }
 
 impl InterruptTable for Idt {
-    type Isr = super::Isr;
-    type InterruptVector = super::InterruptVector;
+    type Handler = Handler;
+    type InterruptVector = InterruptVector;
 
     fn new() -> Self {
         let mut ret = Idt::null();
@@ -103,7 +103,7 @@ impl InterruptTable for Idt {
     unsafe fn set_vector(
         &mut self,
         vector: InterruptVector,
-        handler: Isr,
+        handler: Handler,
         privilege: PrivilegeLevel,
     ) {
         let vector: u8 = vector.into();

@@ -14,7 +14,7 @@ fn kmain() {
     info!("This is {}, version {}.", consts::NAME, consts::VERSION);
 
     int::init();
-    info!("INITIALIZED interrupt handlers.");
+    info!("INITIALIZED interrupt.");
 
     util::halt_loop();
 }

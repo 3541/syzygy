@@ -1,9 +1,9 @@
 // Interrupts.
 
-mod arch;
 #[macro_use]
-mod isr;
+pub mod arch;
 mod exception;
+mod isr;
 
 use crate::util::sync::spin::{OnceCell, Spinlock, SpinlockGuard};
 use crate::util::PrivilegeLevel;
@@ -12,7 +12,7 @@ pub use arch::{Idt, InterruptVector};
 
 // Architecture implementations should conform to this trait.
 pub trait InterruptTable: Sized {
-    type Isr;
+    type Handler;
     type InterruptVector;
 
     fn new() -> Self;
@@ -20,7 +20,7 @@ pub trait InterruptTable: Sized {
     unsafe fn set_vector(
         &mut self,
         vector: Self::InterruptVector,
-        handler: Self::Isr,
+        handler: Self::Handler,
         privilege: PrivilegeLevel,
     );
     unsafe fn load(&self);

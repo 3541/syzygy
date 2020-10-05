@@ -12,7 +12,6 @@ pub fn halt_loop() -> ! {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
 #[repr(u8)]
 #[derive(Copy, Clone)]
 pub enum PrivilegeLevel {
