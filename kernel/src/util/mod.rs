@@ -1,11 +1,6 @@
 pub mod arch;
 pub mod sync;
 
-pub fn abort() -> ! {
-    unsafe { asm!("ud2") };
-    unreachable!()
-}
-
 pub fn halt_loop() -> ! {
     loop {
         unsafe { asm!("hlt") };
