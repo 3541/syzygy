@@ -40,6 +40,7 @@ pub struct InterruptStackFrame {
 }
 
 type Handler = extern "x86-interrupt" fn(&mut InterruptStackFrame);
+type HandlerCode = extern "x86-interrupt" fn(&mut InterruptStackFrame, usize);
 
 #[inline(always)]
 pub fn cli() {

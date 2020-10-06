@@ -1,6 +1,6 @@
-use core::mem::size_of;
+use core::mem::{size_of, transmute};
 
-use super::{Handler, InterruptVector};
+use super::{Handler, HandlerCode, InterruptVector};
 use crate::int::{exception, InterruptTable, IDT};
 use crate::util::arch::register;
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
@@ -61,6 +61,16 @@ impl Idt {
     fn null() -> Idt {
         Idt([IdtEntry::null(); 256])
     }
+
+    // Convenience wrapper for setting an exception handler with an error code.
+    unsafe fn set_vector_code(
+        &mut self,
+        vector: InterruptVector,
+        handler: HandlerCode,
+        privilege: PrivilegeLevel,
+    ) {
+        self.set_vector(vector, transmute(handler), privilege)
+    }
 }
 
 impl InterruptTable for Idt {
@@ -81,7 +91,7 @@ impl InterruptTable for Idt {
                 exception::invalid_opcode,
                 PrivilegeLevel::User,
             );
-            ret.set_vector(
+            ret.set_vector_code(
                 InterruptVector::DoubleFault,
                 exception::double_fault,
                 PrivilegeLevel::User,
