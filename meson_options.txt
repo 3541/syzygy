@@ -1,5 +1,0 @@
-option('kvm', type: 'boolean', value: true)
-option('vm_mem', type: 'integer', min: 0, max: 32, value: 4)
-option('vm_display', type: 'boolean', value: false)
-option('kernel_log_vga', type: 'boolean', value: false)
-option('kernel_log_e9', type: 'boolean', value: true)
