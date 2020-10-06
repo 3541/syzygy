@@ -48,4 +48,4 @@ buildBootloader limineDir = do
 
   limineCC %> \out -> do
     need [limineDir </> "toolchain" </> "make_toolchain.sh"]
-    cmd_ (Cwd $ limineDir </> "toolchain") "./make_toolchain.sh -j" (show threads)
+    cmd_ (Cwd $ limineDir </> "toolchain") "./make_toolchain.sh" ("-j" ++ (show threads))
