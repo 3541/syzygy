@@ -20,6 +20,10 @@ pub enum StivaleTagIdentifier {
     Rsdp = 0x9E1786930A375E78,
     Modules = 0x4B6FE466AADE04CE,
     Firmware = 0x359D837855E3858C,
+    Framebuffer = 0x506461D2950408FA,
+    Smp = 0x34D1D96339647025,
+    Uart = 0xB813F9B8DBC78797,
+    Dtb = 0xABB29BD49A2833FA,
 }
 
 pub trait StivaleTagInner {
