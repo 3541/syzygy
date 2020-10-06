@@ -1,3 +1,7 @@
+mod info;
+
+pub use info::StivaleInfo;
+
 use crate::mem::{Address, VirtualAddress};
 
 #[allow(unused)]
