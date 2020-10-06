@@ -59,6 +59,10 @@ impl VirtualAddress {
         VirtualAddress(address)
     }
 
+    pub fn from_ptr<T>(ptr: *const T) -> VirtualAddress {
+        VirtualAddress::new(ptr as usize)
+    }
+
     pub fn as_mut_ptr<T>(&mut self) -> *mut T {
         self.raw() as *mut _
     }
