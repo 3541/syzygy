@@ -6,10 +6,13 @@ use log_crate::debug;
 use crate::mem::map::{Mmap, MmapEntry, MmapType};
 use crate::mem::{Address, PhysicalAddress};
 
+// Despite the #[repr(packed)], these structures are actually safe to access,
+// since they are set up to be correctly-aligned regardless (thanks Stivale).
+
 #[allow(unused)]
 #[derive(PartialEq)]
 #[repr(u64)]
-enum StivaleTagIdentifier {
+pub enum StivaleTagIdentifier {
     Invalid = 0,
     CommandLine = 0xE5E76A1B4597A781,
     Mmap = 0x2187F79E8612DE07,
@@ -29,6 +32,7 @@ impl StivaleTagInner for NullTag {
     const IDENTIFIER: StivaleTagIdentifier = StivaleTagIdentifier::Invalid;
 }
 
+#[allow(unused)]
 #[repr(u32)]
 enum MmapTagEntryType {
     Usable = 1,
@@ -133,7 +137,7 @@ impl StivaleInfo {
         let mut current = self.tags;
 
         loop {
-            if current.identifier == T::IDENTIFIER {
+            if unsafe { current.identifier == T::IDENTIFIER } {
                 return Some(unsafe { transmute(current) });
             }
 
