@@ -1,5 +1,6 @@
 // Architecture-specific submodules should define the entry point kinit, which
-// in turn should call kmain.
+// in turn should call kmain after performing preliminary architecture-specific
+// initialization tasks.
 mod arch;
 
 use log_crate::info;
@@ -14,7 +15,7 @@ fn kmain() {
     info!("This is {}, version {}.", consts::NAME, consts::VERSION);
 
     int::init();
-    info!("INITIALIZED interrupt.");
+    info!("INITIALIZED interrupts.");
 
     util::halt_loop();
 }

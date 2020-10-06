@@ -33,7 +33,7 @@ pub trait Address: Clone + Display {
 #[derive(Debug, Copy, Clone)]
 pub struct PhysicalAddress(RawPhysicalAddress);
 
-impl Address for PhysicalAddress {
+impl const Address for PhysicalAddress {
     type RawAddress = RawPhysicalAddress;
 
     unsafe fn new_unchecked(address: RawPhysicalAddress) -> PhysicalAddress {
@@ -55,10 +55,6 @@ impl Display for PhysicalAddress {
 pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {
-    pub const unsafe fn new_const(address: usize) -> VirtualAddress {
-        VirtualAddress(address)
-    }
-
     pub fn from_ptr<T>(ptr: *const T) -> VirtualAddress {
         VirtualAddress::new(ptr as usize)
     }
@@ -68,7 +64,7 @@ impl VirtualAddress {
     }
 }
 
-impl Address for VirtualAddress {
+impl const Address for VirtualAddress {
     type RawAddress = RawVirtualAddress;
 
     unsafe fn new_unchecked(address: RawVirtualAddress) -> VirtualAddress {

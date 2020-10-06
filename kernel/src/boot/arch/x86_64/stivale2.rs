@@ -1,4 +1,4 @@
-use crate::mem::VirtualAddress;
+use crate::mem::{Address, VirtualAddress};
 
 #[allow(unused)]
 #[repr(packed)]
@@ -21,7 +21,7 @@ impl StivaleHeader {
             _entry_point: 0,
             stack,
             flags: if kaslr { 1 } else { 0 },
-            tags: VirtualAddress::new_const(0),
+            tags: VirtualAddress::new_unchecked(0),
         }
     }
 }

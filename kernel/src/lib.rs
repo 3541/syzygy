@@ -4,6 +4,8 @@
 #![feature(asm)]
 #![feature(abi_x86_interrupt)]
 #![feature(min_const_generics)]
+#![allow(incomplete_features)]
+#![feature(const_trait_impl)]
 
 /*
    Modules should:
