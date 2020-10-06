@@ -2,6 +2,7 @@ mod stivale2;
 
 use crate::boot;
 use crate::int::arch as int;
+use crate::mem::arch::gdt;
 use stivale2::StivaleHeader;
 
 #[link_section = ".bss"]
@@ -16,6 +17,7 @@ static STIVALE_HEADER: StivaleHeader =
 #[no_mangle]
 #[allow(unused)]
 pub extern "C" fn kinit() {
+    gdt::init();
     int::init_idt();
 
     boot::kmain();
