@@ -15,5 +15,6 @@ pub fn halt_loop() -> ! {
 #[repr(u8)]
 #[derive(Copy, Clone)]
 pub enum PrivilegeLevel {
+    Kernel = 0,
     User = 3,
 }
