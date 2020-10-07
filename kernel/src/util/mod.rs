@@ -1,4 +1,5 @@
 pub mod arch;
+pub mod either;
 pub mod sync;
 
 pub fn halt_loop() -> ! {

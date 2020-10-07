@@ -27,7 +27,8 @@ pub struct OnceCell<T> {
     state: AtomicU8,
 }
 
-unsafe impl<T> Sync for OnceCell<T> {}
+// OnceCell<T> is Sync if T is Sync.
+unsafe impl<T: Sync> Sync for OnceCell<T> {}
 
 impl<T> OnceCell<T> {
     pub const fn new() -> OnceCell<T> {

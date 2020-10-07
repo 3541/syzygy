@@ -1,22 +1,25 @@
 pub use Either::{Left, Right};
 
+#[derive(Copy, Clone)]
 pub enum Either<L, R> {
     Left(L),
     Right(R),
 }
 
 impl<L, R> Either<L, R> {
-    pub fn is_left(&self) -> bool {
+    pub fn as_ref(&self) -> Either<&L, &R> {
         match self {
-            Left(_) => true,
-            Right(_) => false,
+            Left(ref l) => Left(l),
+            Right(ref r) => Right(r),
         }
     }
+}
 
-    pub fn unwrap_left(self) -> L {
-        match self {
+impl<T> Either<T, T> {
+    pub fn whichever(&self) -> &T {
+        match self.as_ref() {
             Left(l) => l,
-            Right(_) => panic!("unwrap_left on Either::Right."),
+            Right(r) => r,
         }
     }
 }
