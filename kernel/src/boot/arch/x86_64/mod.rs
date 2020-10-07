@@ -6,10 +6,11 @@ use crate::boot;
 use crate::int::arch as int;
 use crate::io::log;
 use crate::mem::arch::gdt;
+use crate::mem::size;
 use stivale2::{StivaleHeader, StivaleInfo};
 
 #[link_section = ".bss"]
-static INIT_STACK: [u8; 32768] = [0; 32768];
+static INIT_STACK: [u8; 32 * size::KB] = [0; 32 * size::KB];
 
 #[link_section = ".stivale2hdr"]
 #[used]

@@ -1,6 +1,11 @@
 use core::fmt::{self, Display, Formatter};
 use core::ops::Add;
 
+pub mod size {
+    pub const KB: usize = 1024;
+    pub const MB: usize = 1024 * KB;
+}
+
 pub type RawPhysicalAddress = usize;
 pub type RawVirtualAddress = usize;
 
