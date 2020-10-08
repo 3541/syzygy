@@ -26,6 +26,10 @@ macro_rules! fatal_exception {
 }
 
 fatal_exception!(InterruptVector::DivideByZero => fn divide_by_zero);
+fatal_exception!(InterruptVector::Overflow => fn overflow);
+fatal_exception!(InterruptVector::BoundsRange => fn bounds_range);
 fatal_exception!(InterruptVector::InvalidOpcode => fn invalid_opcode);
 fatal_exception!(InterruptVector::DoubleFault => fn double_fault(code));
-fatal_exception!(InterruptVector::GeneralProtectionFault => fn general_protection_fault);
+fatal_exception!(InterruptVector::StackSegment => fn stack_segment(code));
+fatal_exception!(InterruptVector::GeneralProtectionFault => fn general_protection_fault(code));
+fatal_exception!(InterruptVector::PageFault => fn page_fault(code));

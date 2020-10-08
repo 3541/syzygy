@@ -11,9 +11,13 @@ use crate::mem::VirtualAddress;
 #[derive(Copy, Clone)]
 pub enum InterruptVector {
     DivideByZero,
+    Overflow,
+    BoundsRange,
     InvalidOpcode,
     DoubleFault,
+    StackSegment,
     GeneralProtectionFault,
+    PageFault,
     Other(u8),
 }
 
@@ -21,9 +25,13 @@ impl Into<u8> for InterruptVector {
     fn into(self) -> u8 {
         match self {
             InterruptVector::DivideByZero => 0,
+            InterruptVector::Overflow => 4,
+            InterruptVector::BoundsRange => 5,
             InterruptVector::InvalidOpcode => 6,
             InterruptVector::DoubleFault => 8,
+            InterruptVector::StackSegment => 12,
             InterruptVector::GeneralProtectionFault => 13,
+            InterruptVector::PageFault => 14,
             InterruptVector::Other(v) => v,
         }
     }

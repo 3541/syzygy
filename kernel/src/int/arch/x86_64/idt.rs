@@ -87,6 +87,16 @@ impl InterruptTable for Idt {
                 PrivilegeLevel::User,
             );
             ret.set_vector(
+                InterruptVector::Overflow,
+                exception::overflow,
+                PrivilegeLevel::User,
+            );
+            ret.set_vector(
+                InterruptVector::BoundsRange,
+                exception::bounds_range,
+                PrivilegeLevel::User,
+            );
+            ret.set_vector(
                 InterruptVector::InvalidOpcode,
                 exception::invalid_opcode,
                 PrivilegeLevel::User,
@@ -96,9 +106,19 @@ impl InterruptTable for Idt {
                 exception::double_fault,
                 PrivilegeLevel::User,
             );
-            ret.set_vector(
+            ret.set_vector_code(
+                InterruptVector::StackSegment,
+                exception::stack_segment,
+                PrivilegeLevel::User,
+            );
+            ret.set_vector_code(
                 InterruptVector::GeneralProtectionFault,
                 exception::general_protection_fault,
+                PrivilegeLevel::User,
+            );
+            ret.set_vector_code(
+                InterruptVector::PageFault,
+                exception::page_fault,
                 PrivilegeLevel::User,
             );
         }
