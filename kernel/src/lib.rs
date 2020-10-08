@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![feature(const_fn)]
 #![feature(llvm_asm)]
 #![feature(asm)]

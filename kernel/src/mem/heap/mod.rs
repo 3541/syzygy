@@ -1,4 +1,6 @@
 mod ll;
+#[cfg(test)]
+mod test;
 
 use alloc::alloc::{GlobalAlloc, Layout};
 
