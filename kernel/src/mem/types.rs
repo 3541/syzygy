@@ -28,14 +28,14 @@ pub const fn align_up(n: usize, align: usize) -> usize {
 
 #[inline]
 const fn address_is_valid(address: usize) -> bool {
-    address < VirtualAddress::SIGN_EX_INVALID_START || address >= VirtualAddress::SIGN_EX_INVALID_END
+    address < VirtualAddress::NONCANONICAL_START || address >= VirtualAddress::NONCANONICAL_END
 }
 
 pub trait Address: Clone + Display {
     type RawAddress: PartialOrd<usize> + Into<usize> + From<usize>;
 
-    const SIGN_EX_INVALID_START: usize = 0x0000_8000_0000_0000;
-    const SIGN_EX_INVALID_END: usize = 0xFFFF_8000_0000_0000;
+    const NONCANONICAL_START: usize = 0x0000_8000_0000_0000;
+    const NONCANONICAL_END: usize = 0xFFFF_8000_0000_0000;
 
     fn raw(&self) -> Self::RawAddress;
     unsafe fn new_unchecked(address: Self::RawAddress) -> Self;
@@ -53,8 +53,10 @@ pub trait Address: Clone + Display {
         let ret = unsafe { Self::new_unchecked(address) };
         assert!(
             ret.is_valid(),
-            "Invalid address {}. Sign extension not set correctly.",
-            ret
+            "Invalid address {}. Address is in noncanonical range 0x{:x}-0x{:x}.",
+            ret,
+            Self::NONCANONICAL_START,
+            Self::NONCANONICAL_END
         );
 
         ret
