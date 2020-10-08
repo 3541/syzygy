@@ -23,10 +23,30 @@ impl LLNode {
         }
     }
 
+    #[inline]
+    fn validate(&self) {
+        #[cfg(any(test, feature = "heap_validation"))]
+        {
+            unsafe {
+                assert!(
+                    VirtualAddress::new_unchecked(self as *const _ as usize).is_valid(),
+                    "Pointer must be a canonical address."
+                )
+            };
+            if let Some(ref next) = self.next {
+                assert_ne!(
+                    self as *const _, *next as *const _,
+                    "Next cannot point to self."
+                );
+            }
+        }
+    }
+
     unsafe fn from_address(mut address: VirtualAddress, size: usize) -> &'static mut LLNode {
         let ret = &mut *address.as_mut_ptr::<LLNode>();
         ret.size = size;
         ret.next = None;
+        ret.validate();
 
         ret
     }
@@ -37,13 +57,16 @@ impl LLNode {
             other.next = self.next.take();
         }
         self.next = Some(other);
+        self.validate();
     }
 
     fn start(&self) -> VirtualAddress {
+        self.validate();
         VirtualAddress::from_ptr(self)
     }
 
     fn end(&self) -> VirtualAddress {
+        self.validate();
         self.start() + self.size
     }
 
@@ -68,6 +91,7 @@ impl LLNode {
             // enough space left over for another node to keep track of the new
             // free space.
             if end == self.end() {
+                self.validate();
                 Some((
                     unsafe { LLNode::from_address(self.start(), self.size) },
                     None,
@@ -76,10 +100,17 @@ impl LLNode {
                 None
             }
         } else {
+            let (_, o) = self.end().raw().overflowing_sub(end.raw());
+            if o {
+                panic!("OVERFLOW");
+            }
             let other = unsafe { LLNode::from_address(other_start, self.end() - end) };
+            other.validate();
             // Careful: This actually overwrites self, so any self methods and
             // fields hereafter are actually coming from ret.
             let ret = unsafe { LLNode::from_address(self.start(), end - self.start()) };
+            ret.validate();
+            other.validate();
             Some((ret, Some(other)))
         }
     }
@@ -112,20 +143,25 @@ impl LLAlloc {
 
         // TODO: Coalesce.
 
-        let new_node = LLNode::from_address(start, size);
         let mut lock = self.head.lock();
-        let mut prev = &mut *lock;
+        let new_node = LLNode::from_address(start, size);
+        let mut current = &mut *lock;
 
         // Find the first node after the appropriate insertion point, and then
         // insert after the previous.
-        while let Some(ref mut current) = prev.next {
+        //        while let Some(ref mut current) = prev.next {
+        loop {
             if (current.next.is_some() && current.next.as_mut().unwrap().start() > new_node.start())
                 || current.next.is_none()
             {
                 current.insert_after(new_node);
                 break;
             }
-            prev = current;
+            if let Some(ref mut node) = current.next {
+                current = node;
+            } else {
+                break;
+            }
         }
     }
 
@@ -140,6 +176,8 @@ impl LLAlloc {
                 Some((node, None)) => {
                     if node.next.is_some() {
                         prev.insert_after(node.next.take().unwrap());
+                    } else {
+                        prev.next = None;
                     }
                     return Some(node);
                 }
@@ -152,6 +190,7 @@ impl LLAlloc {
                 }
                 None => {}
             }
+
             prev = prev.next.as_mut().unwrap();
         }
 
@@ -172,6 +211,7 @@ unsafe impl GlobalAlloc for LLAlloc {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        ptr.write_bytes(0, size_of::<LLNode>());
         self.push(
             VirtualAddress::from_ptr(ptr),
             max(size_of::<LLNode>(), layout.size()),

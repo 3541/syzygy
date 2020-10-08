@@ -16,3 +16,4 @@ bitflags = "*"
 [features]
 log_vga = []
 log_e9 = []
+heap_validation = []
