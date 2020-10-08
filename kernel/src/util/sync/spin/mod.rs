@@ -1,6 +1,8 @@
 mod arch;
 mod once_cell;
 mod spinlock;
+#[cfg(test)]
+mod test;
 mod transform;
 
 pub use arch::*;
