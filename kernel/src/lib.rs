@@ -11,6 +11,7 @@
 #![feature(const_panic)]
 #![feature(const_fn_transmute)]
 #![feature(const_in_array_repeat_expressions)]
+#![cfg_attr(test, allow(unused))]
 
 extern crate alloc;
 

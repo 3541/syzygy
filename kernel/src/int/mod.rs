@@ -28,16 +28,28 @@ pub trait InterruptTable: Sized {
 
 static IDT: OnceCell<Spinlock<Idt>> = OnceCell::new();
 
+#[cfg(not(test))]
 pub fn disable() -> bool {
     let ret = interrupts_enabled();
     cli();
     ret
 }
 
+#[cfg(test)]
+pub fn disable() -> bool {
+    false
+}
+
+#[cfg(not(test))]
 pub fn enable() -> bool {
     let ret = interrupts_enabled();
     sti();
     ret
+}
+
+#[cfg(test)]
+pub fn enable() -> bool {
+    false
 }
 
 pub fn init() {

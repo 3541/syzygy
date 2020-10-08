@@ -16,7 +16,7 @@ static mut INIT_HEAP: [LLNode; size::units_of::<LLNode>(INIT_HEAP_SIZE)] =
 // efficiency and defragmentation a higher priority than performance.
 static mut INIT_ALLOCATOR: LLAlloc = unsafe { LLAlloc::from_slice(&mut INIT_HEAP) };
 
-#[global_allocator]
+#[cfg_attr(not(test), global_allocator)]
 static ALLOCATOR: Transform<&'static LLAlloc, &'static LLAlloc> =
     unsafe { Transform::new(&INIT_ALLOCATOR) };
 
@@ -30,6 +30,7 @@ unsafe impl<T: GlobalAlloc> GlobalAlloc for Transform<T, T> {
     }
 }
 
+#[cfg(not(test))]
 #[alloc_error_handler]
 fn alloc_err(layout: Layout) -> ! {
     panic!("Heap allocation error.\n  {:?}", layout);
