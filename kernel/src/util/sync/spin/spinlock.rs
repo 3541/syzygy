@@ -5,6 +5,11 @@ use core::sync::atomic::{AtomicBool, Ordering};
 use super::arch::pause;
 use crate::int;
 
+// In the interest of preventing reoccurrences of
+// fe835cf48959fa762962f3ab7518cddf35cf9e39, the meaning of the bool is as
+// follows:
+//     * false => UNLOCKED
+//     * true  => LOCKED
 pub struct RawSpinlock(AtomicBool);
 
 impl RawSpinlock {
@@ -13,8 +18,8 @@ impl RawSpinlock {
     }
 
     pub fn lock(&self) {
-        while !self.0.compare_and_swap(false, true, Ordering::AcqRel) {
-            while !self.0.load(Ordering::Relaxed) {
+        while self.0.compare_and_swap(false, true, Ordering::AcqRel) {
+            while self.0.load(Ordering::Relaxed) {
                 pause();
             }
         }
