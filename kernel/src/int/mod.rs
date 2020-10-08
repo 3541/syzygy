@@ -5,7 +5,8 @@ pub mod arch;
 mod exception;
 mod isr;
 
-use crate::util::sync::spin::{OnceCell, Spinlock, SpinlockGuard};
+use crate::util::sync::spin::{Spinlock, SpinlockGuard};
+use crate::util::sync::OnceCell;
 use crate::util::PrivilegeLevel;
 use arch::{cli, interrupts_enabled, sti};
 pub use arch::{Idt, InterruptVector};

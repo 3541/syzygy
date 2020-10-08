@@ -1,7 +1,8 @@
 use core::fmt::{self, Write};
 use core::ptr;
 
-use crate::util::sync::spin::{OnceCell, Spinlock, SpinlockGuard};
+use crate::util::sync::spin::{Spinlock, SpinlockGuard};
+use crate::util::sync::OnceCell;
 
 #[allow(dead_code)]
 #[repr(u8)]
