@@ -1,8 +1,6 @@
 use core::mem::transmute;
 use core::{slice, str};
 
-use log_crate::debug;
-
 use crate::mem::map::{Mmap, MmapEntry, MmapType};
 use crate::mem::{Address, PhysicalAddress};
 
@@ -88,13 +86,41 @@ struct MmapTag {
 
 impl MmapTag {
     // To avoid DST annoyances.
-    pub fn map(&self) -> &[MmapTagEntry] {
+    fn items(&self) -> &'static [MmapTagEntry] {
         unsafe {
             slice::from_raw_parts(
                 (self as *const MmapTag).offset(1) as *const MmapTagEntry,
                 self.entries as usize,
             )
         }
+    }
+
+    fn mmap(&self) -> StivaleMmap<'static> {
+        StivaleMmap::new(self.items())
+    }
+}
+
+pub struct StivaleMmap<'a> {
+    entries: &'a [MmapTagEntry],
+    current: usize,
+}
+
+impl StivaleMmap<'_> {
+    fn new(entries: &[MmapTagEntry]) -> StivaleMmap {
+        StivaleMmap {
+            entries,
+            current: 0,
+        }
+    }
+}
+
+impl Iterator for StivaleMmap<'_> {
+    type Item = MmapEntry;
+
+    fn next(&mut self) -> Option<MmapEntry> {
+        let ret = self.entries[self.current].parse();
+        self.current += 1;
+        Some(ret)
     }
 }
 
@@ -155,34 +181,12 @@ impl StivaleInfo {
         None
     }
 
-    pub fn mmap(&self) -> Mmap {
-        // Hope that memory maps are not large, since dynamic allocation is not
-        // yet possible. The mutability is safe here since this is only mutated
-        // inside this function, and only immutable references are returned.
-        static mut MMAP: [MmapEntry; 20] = [MmapEntry {
-            entry_type: MmapType::Reserved,
-            start: unsafe { PhysicalAddress::new_unchecked(0) },
-            size: 0,
-        }; 20];
-
-        debug!("Memory map:");
-
-        let stivale_mmap = self
-            .get_tag::<MmapTag>()
-            .expect("No memory map tag found.")
-            .inner
-            .map();
-
-        for (i, entry) in stivale_mmap.iter().enumerate() {
-            if i >= unsafe { MMAP.len() } {
-                panic!("Too many memory map entries.");
-            }
-
-            let entry = entry.parse();
-            debug!("  {:x?}", entry);
-            unsafe { MMAP[i] = entry };
-        }
-
-        unsafe { Mmap(&MMAP) }
+    pub fn mmap(&self) -> Mmap<StivaleMmap> {
+        Mmap(
+            self.get_tag::<MmapTag>()
+                .expect("Couldn't find mmap tag.")
+                .inner
+                .mmap(),
+        )
     }
 }

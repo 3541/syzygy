@@ -5,10 +5,10 @@ mod arch;
 
 use log_crate::info;
 
-use crate::mem::map::Mmap;
+use crate::mem::map::{Mmap, MmapEntry};
 use crate::{consts, int, util};
 
-fn kmain(mmap: Mmap) {
+fn kmain(mmap: Mmap<impl Iterator<Item = MmapEntry>>) {
     info!("kmain.");
 
     info!("This is {}, version {}.", consts::NAME, consts::VERSION);

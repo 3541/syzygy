@@ -15,4 +15,12 @@ pub struct MmapEntry {
     pub size: usize,
 }
 
-pub struct Mmap<'a>(pub &'a [MmapEntry]);
+pub struct Mmap<T: Iterator<Item = MmapEntry>>(pub T);
+
+impl<T: Iterator<Item = MmapEntry>> Iterator for Mmap<T> {
+    type Item = MmapEntry;
+
+    fn next(&mut self) -> Option<MmapEntry> {
+        self.0.next()
+    }
+}
