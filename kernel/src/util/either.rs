@@ -13,6 +13,13 @@ impl<L, R> Either<L, R> {
             Right(ref r) => Right(r),
         }
     }
+
+    pub fn right(self) -> Option<R> {
+        match self {
+            Left(_) => None,
+            Right(r) => Some(r),
+        }
+    }
 }
 
 impl<T> Either<T, T> {
