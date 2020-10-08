@@ -38,3 +38,8 @@ buildKernel kernelDir buildDir = do
     cargo kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust $ rustFeatures)
       ["-Zbuild-std=core,alloc,compiler_builtins", "-Zpackage-features"]
     liftIO $ copyFile (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
+
+  phony "kernelTest" $ do
+    need [kernelLib]
+
+    cargoTest kernelBuildDir "syzygy_kernel" []

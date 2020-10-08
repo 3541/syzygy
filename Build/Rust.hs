@@ -30,3 +30,8 @@ cargo buildDir targetSpec targetProj features args = do
         else []
   command_ (concat [cargoEnv buildDir, [AddEnv "RUST_TARGET_PATH" targetPath]])
     "cargo" $ concat [["build", "--target", targetSpec, "-p", targetProj], featureArgs, args]
+
+cargoTest :: Partial => String -> String -> [String] -> Action ()
+cargoTest buildDir targetProj args = do
+  need [buildDir </> "rustc.version"]
+  command_ (cargoEnv buildDir) "cargo" $ concat [["test", "-p", targetProj], args]
