@@ -1,16 +1,38 @@
 use core::fmt::{self, Display, Formatter};
-use core::ops::Add;
+use core::ops::{Add, Sub};
+use core::mem::transmute;
 
 pub mod size {
+    use core::mem::size_of;
+
     pub const KB: usize = 1024;
-    pub const MB: usize = 1024 * KB;
+
+    // The number of T-sized things which can fit in a given number of bytes.
+    pub const fn units_of<T>(bytes: usize) -> usize {
+        bytes / size_of::<T>()
+    }
 }
 
 pub type RawPhysicalAddress = usize;
 pub type RawVirtualAddress = usize;
 
+#[inline]
+pub const fn align_down(n: usize, align: usize) -> usize {
+    n & !(align - 1)
+}
+
+#[inline]
+pub const fn align_up(n: usize, align: usize) -> usize {
+    align_down(n + align - 1, align)
+}
+
+#[inline]
+const fn address_is_valid(address: usize) -> bool {
+    address < VirtualAddress::SIGN_EX_INVALID_START || address >= VirtualAddress::SIGN_EX_INVALID_END
+}
+
 pub trait Address: Clone + Display {
-    type RawAddress: PartialOrd<usize>;
+    type RawAddress: PartialOrd<usize> + Into<usize> + From<usize>;
 
     const SIGN_EX_INVALID_START: usize = 0x0000_8000_0000_0000;
     const SIGN_EX_INVALID_END: usize = 0xFFFF_8000_0000_0000;
@@ -20,7 +42,11 @@ pub trait Address: Clone + Display {
 
     #[inline]
     fn is_valid(&self) -> bool {
-        self.raw() < Self::SIGN_EX_INVALID_START || self.raw() >= Self::SIGN_EX_INVALID_END
+        address_is_valid(self.raw().into())
+    }
+
+    fn is_aligned(&self, align: usize) -> bool {
+        self.raw().into() % align == 0
     }
 
     fn new(address: Self::RawAddress) -> Self {
@@ -56,16 +82,32 @@ impl Display for PhysicalAddress {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {
+    pub const unsafe fn from_ptr_unchecked<T>(ptr: *const T) -> VirtualAddress {
+        let ret = VirtualAddress::new_unchecked(transmute(ptr));
+        ret
+    }
+
     pub fn from_ptr<T>(ptr: *const T) -> VirtualAddress {
-        VirtualAddress::new(ptr as usize)
+        let ret = unsafe { VirtualAddress::from_ptr_unchecked(ptr) };
+        assert!(ret.is_valid());
+        ret
     }
 
     pub fn as_mut_ptr<T>(&mut self) -> *mut T {
         self.raw() as *mut _
+    }
+
+    pub const fn next_aligned(&self, align: usize) -> Self {
+        let ret = unsafe {
+            Self::new_unchecked(align_up(self.raw(), align))
+        };
+        assert!(address_is_valid(ret.raw()));
+
+        ret
     }
 }
 
@@ -96,5 +138,16 @@ impl Add<usize> for VirtualAddress {
                 .checked_add(rhs)
                 .expect("Virtual address addition overflowed."),
         )
+    }
+}
+
+impl const Sub<VirtualAddress> for VirtualAddress {
+    type Output = RawVirtualAddress;
+
+    fn sub(self, rhs: VirtualAddress) -> RawVirtualAddress {
+        match self.0.overflowing_sub(rhs.0) {
+            (v, false) => v,
+            (_, true) => panic!("Virtual address subtraction overflowed.")
+        }
     }
 }

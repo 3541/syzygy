@@ -6,6 +6,13 @@
 #![feature(min_const_generics)]
 #![allow(incomplete_features)]
 #![feature(const_trait_impl)]
+#![feature(alloc_error_handler)]
+#![feature(const_mut_refs)]
+#![feature(const_panic)]
+#![feature(const_fn_transmute)]
+#![feature(const_in_array_repeat_expressions)]
+
+extern crate alloc;
 
 /*
    Modules should:

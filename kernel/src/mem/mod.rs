@@ -1,4 +1,5 @@
 pub mod arch;
+pub mod heap;
 pub mod map;
 mod region;
 mod types;
