@@ -114,17 +114,18 @@ impl LLAlloc {
 
         let new_node = LLNode::from_address(start, size);
         let mut lock = self.head.lock();
-        let prev = &mut *lock;
+        let mut prev = &mut *lock;
 
         // Find the first node after the appropriate insertion point, and then
         // insert after the previous.
-        while let Some(ref mut prev) = prev.next {
-            if (prev.next.is_some() && prev.next.as_mut().unwrap().start() > new_node.start())
-                || prev.next.is_none()
+        while let Some(ref mut current) = prev.next {
+            if (current.next.is_some() && current.next.as_mut().unwrap().start() > new_node.start())
+                || current.next.is_none()
             {
-                prev.insert_after(new_node);
+                current.insert_after(new_node);
                 break;
             }
+            prev = current;
         }
     }
 
