@@ -1,6 +1,6 @@
 [package]
 name = "syzygy_kernel"
-version = "0.2.0"
+version = "0.1.0-alpha.2"
 authors = ["Alex O'Brien <alex@emobrien.com>"]
 edition = "2018"
 license = "GPL-3.0-only"
