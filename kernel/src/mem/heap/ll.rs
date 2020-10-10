@@ -51,6 +51,26 @@ impl LLNode {
         ret
     }
 
+    // Merge this node with an adjacent following node.
+    fn merge(&mut self) {
+        assert!(self.next.is_some());
+        assert_eq!(
+            self.end().next_aligned(align_of::<LLNode>()),
+            VirtualAddress::from_ptr(*self.next.as_ref().unwrap())
+        );
+
+        let next = self.next.take().unwrap();
+
+        self.size = next.end() - self.start();
+        self.next = None;
+
+        // Fixup next pointers and potentially call recursively if appropriate.
+        if let Some(ref mut new_next) = next.next {
+            self.insert_after(new_next);
+        }
+        self.validate();
+    }
+
     fn insert_after(&mut self, other: &'static mut LLNode) {
         assert!(self.next.is_none() || other.next.is_none());
         if other.next.is_none() {
@@ -58,6 +78,12 @@ impl LLNode {
         }
         self.next = Some(other);
         self.validate();
+
+        if self.end().next_aligned(align_of::<LLNode>())
+            == VirtualAddress::from_ptr(*self.next.as_ref().unwrap())
+        {
+            self.merge();
+        }
     }
 
     fn start(&self) -> VirtualAddress {
@@ -71,7 +97,8 @@ impl LLNode {
     }
 
     // Split a node into two pieces, one of which is of at least the desired
-    // size. Note that this does not modify the actual list.
+    // size. The list is modified such that the right node (if one is created)
+    // points to the original node's child.
     fn split(
         &mut self,
         size: usize,
@@ -92,19 +119,16 @@ impl LLNode {
             // free space.
             if end == self.end() {
                 self.validate();
-                Some((
-                    unsafe { LLNode::from_address(self.start(), self.size) },
-                    None,
-                ))
+                let next = self.next.take();
+                let ret = unsafe { LLNode::from_address(self.start(), self.size) };
+                ret.next = next;
+                Some((ret, None))
             } else {
                 None
             }
         } else {
-            let (_, o) = self.end().raw().overflowing_sub(end.raw());
-            if o {
-                panic!("OVERFLOW");
-            }
             let other = unsafe { LLNode::from_address(other_start, self.end() - end) };
+            other.next = self.next.take();
             other.validate();
             // Careful: This actually overwrites self, so any self methods and
             // fields hereafter are actually coming from ret.
@@ -141,8 +165,6 @@ impl LLAlloc {
         assert!(size >= size_of::<LLNode>());
         assert!(start.is_aligned(align_of::<LLNode>()));
 
-        // TODO: Coalesce.
-
         let mut lock = self.head.lock();
         let new_node = LLNode::from_address(start, size);
         let mut current = &mut *lock;
@@ -174,17 +196,14 @@ impl LLAlloc {
         while let Some(ref mut current) = prev.next {
             match current.split(size, align) {
                 Some((node, None)) => {
+                    prev.next = None;
                     if node.next.is_some() {
                         prev.insert_after(node.next.take().unwrap());
-                    } else {
-                        prev.next = None;
                     }
                     return Some(node);
                 }
                 Some((node, Some(leftover))) => {
-                    if node.next.is_some() {
-                        leftover.insert_after(node.next.take().unwrap());
-                    }
+                    prev.next = None;
                     prev.insert_after(leftover);
                     return Some(node);
                 }
