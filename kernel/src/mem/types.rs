@@ -1,4 +1,4 @@
-use core::fmt::{self, Display, Formatter};
+use core::fmt::{self, Display, Formatter, Debug};
 use core::ops::{Add, Sub};
 use core::mem::transmute;
 
@@ -84,7 +84,7 @@ impl Display for PhysicalAddress {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
+#[derive(Copy, Clone, PartialOrd, PartialEq)]
 pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {
@@ -128,6 +128,12 @@ impl const Address for VirtualAddress {
 impl Display for VirtualAddress {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "VirtualAddress(0x{:x})", self.raw())
+    }
+}
+
+impl Debug for VirtualAddress {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        <VirtualAddress as Display>::fmt(self, f)
     }
 }
 
