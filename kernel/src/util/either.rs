@@ -14,6 +14,20 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    pub fn unwrap_left(self) -> L {
+        match self {
+            Left(l) => l,
+            Right(_) => panic!("unwrap_left on Either::Right."),
+        }
+    }
+
+    pub fn unwrap_right(self) -> R {
+        match self {
+            Left(_) => panic!("unwrap_right on Either::Left."),
+            Right(r) => r,
+        }
+    }
+
     pub fn right(self) -> Option<R> {
         match self {
             Left(_) => None,

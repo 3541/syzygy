@@ -6,6 +6,8 @@ use core::ptr;
 use crate::mem::{Address, VirtualAddress};
 use crate::util::sync::Spinlock;
 
+// TODO: De-uglify.
+
 pub struct LLNode {
     size: usize,
     next: Option<&'static mut LLNode>,
