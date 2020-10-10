@@ -26,6 +26,7 @@ fn dealloc<T>(ptr: *mut T) {
 #[test]
 fn alloc() {
     let ptr = make::<usize>();
+    dealloc(ptr);
 }
 
 #[test]
@@ -36,6 +37,7 @@ fn writable() {
         ptr.write(v);
         assert_eq!(ptr.read(), v);
     }
+    dealloc(ptr);
 }
 
 #[test]
@@ -79,4 +81,13 @@ fn alloc_all() {
     // Now it should be possible to allocate another u8.
     let ptr = make::<u8>();
     dealloc(ptr);
+}
+
+#[test]
+fn coalesce() {
+    // Cause fragmentation.
+    alloc_all();
+
+    // Make a big allocation.
+    big_alloc();
 }
