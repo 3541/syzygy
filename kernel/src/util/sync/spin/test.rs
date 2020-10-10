@@ -26,8 +26,8 @@ fn update_counter(counter: &Spinlock<usize>) {
 fn exclusion() {
     static COUNTER: Spinlock<usize> = Spinlock::new(0);
 
-    static MAX: usize = 400000;
-    static THREADS: usize = 12;
+    static MAX: usize = 100000;
+    static THREADS: usize = 8;
 
     let mut threads = Vec::with_capacity(THREADS);
 
