@@ -41,7 +41,8 @@ pub struct SpinlockGuard<'a, T: 'a> {
     interrupts: bool,
 }
 
-unsafe impl<T> Sync for Spinlock<T> {}
+unsafe impl<T: Send> Send for Spinlock<T> {}
+unsafe impl<T: Send> Sync for Spinlock<T> {}
 
 impl<T> Spinlock<T> {
     pub const fn new(data: T) -> Spinlock<T> {

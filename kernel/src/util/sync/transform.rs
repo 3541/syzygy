@@ -27,7 +27,8 @@ pub struct Transform<I, F> {
     state: AtomicU8,
 }
 
-unsafe impl<I: Sync, F: Sync> Sync for Transform<I, F> {}
+unsafe impl<I: Send, F: Send> Send for Transform<I, F> {}
+unsafe impl<I: Send + Sync, F: Send + Sync> Sync for Transform<I, F> {}
 
 impl<I, F> Transform<I, F> {
     pub const fn new(initial: I) -> Transform<I, F> {
