@@ -2,7 +2,6 @@
 .tup/*
 build
 build/*
-build*
 /target
 **/*.rs.bk
 target

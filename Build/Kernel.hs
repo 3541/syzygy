@@ -26,7 +26,7 @@ buildKernel kernelDir buildDir = do
       "-T" linkScript "-o" [out] [kernelLib]
 
   kernelLib %> \out -> do
-    need [kernelDir </> "Cargo.toml"]
+    need [kernelDir </> "Cargo.toml", kernelDir </> "build.rs"]
     arch <- getConfig "ARCH"
     rustFeatures <- getConfig "KERNEL_FEATURES"
     
