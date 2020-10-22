@@ -43,6 +43,8 @@ buildKernel kernelDir buildDir = do
     need [kernelLib]
     cargoTest kernelBuildDir "syzygy_kernel" []
 
+  -- Warning: Very slow!
   phony "kernelMiriTest" $ do
     need [kernelLib]
-    cargoMiriTest kernelBuildDir "syzygy_kernel" []
+    -- spin::exclusion is way too slow for Miri threads.
+    cargoMiriTest kernelBuildDir "syzygy_kernel" ["--", "--skip", "exclusion"]
