@@ -20,18 +20,28 @@ rustVersion buildDir = do
     Stdout stdout <- cmd "rustc --version"
     writeFileChanged out stdout
 
-cargo :: Partial => String -> String -> String -> [String] -> [String] -> Action ()
-cargo buildDir targetSpec targetProj features args = do
+cargo :: Partial => String -> [CmdOption] -> String -> String -> [String] -> Action ()
+cargo buildDir options operation proj args = do
   need [buildDir </> "rustc.version"]
+  command_ (concat [cargoEnv buildDir, options])
+    "cargo" $ concat [[operation, "-p", proj], args]
+
+cargoBuild :: Partial => String -> String -> String -> [String] -> [String] -> Action ()
+cargoBuild buildDir targetSpec proj features args = do
   currentDir <- liftIO getCurrentDirectory
   let targetPath = currentDir </> "targets"
   let featureArgs = if length features > 0
         then ["--features", intercalate "," features]
         else []
-  command_ (concat [cargoEnv buildDir, [AddEnv "RUST_TARGET_PATH" targetPath]])
-    "cargo" $ concat [["build", "--target", targetSpec, "-p", targetProj], featureArgs, args]
+  cargo buildDir [AddEnv "RUST_TARGET_PATH" targetPath]
+    "build" proj $ concat [["build", "--target", targetSpec], featureArgs, args]
 
 cargoTest :: Partial => String -> String -> [String] -> Action ()
-cargoTest buildDir targetProj args = do
-  need [buildDir </> "rustc.version"]
-  command_ (cargoEnv buildDir) "cargo" $ concat [["test", "-p", targetProj], args]
+cargoTest buildDir proj args = do
+  cargo buildDir [] "test" proj args
+
+cargoMiriTest :: Partial => String -> String -> [String] -> Action ()
+cargoMiriTest buildDir proj args = do
+  cargo buildDir [] "clean" proj []
+  command_ (cargoEnv buildDir) "cargo" $
+    concat [["miri", "test", "-p", proj], args]
