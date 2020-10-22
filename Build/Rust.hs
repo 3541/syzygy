@@ -34,14 +34,15 @@ cargoBuild buildDir targetSpec proj features args = do
         then ["--features", intercalate "," features]
         else []
   cargo buildDir [AddEnv "RUST_TARGET_PATH" targetPath]
-    "build" proj $ concat [["build", "--target", targetSpec], featureArgs, args]
+    "build" proj $ concat [["--target", targetSpec], featureArgs, args]
 
 cargoTest :: Partial => String -> String -> [String] -> Action ()
 cargoTest buildDir proj args = do
   cargo buildDir [] "test" proj args
 
+-- Warning: Slow!
 cargoMiriTest :: Partial => String -> String -> [String] -> Action ()
 cargoMiriTest buildDir proj args = do
   cargo buildDir [] "clean" proj []
-  command_ (cargoEnv buildDir) "cargo" $
-    concat [["miri", "test", "-p", proj], args]
+  command_ (concat [cargoEnv buildDir, [AddEnv "MIRIFLAGS" "-Zmiri-disable-stacked-borrows"]])
+    "cargo" $ concat [["miri", "test", "-p", proj], args]
