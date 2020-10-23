@@ -142,21 +142,21 @@ impl LLNode {
     }
 }
 
-pub struct LLAlloc {
+pub struct LLAllocator {
     // head is a dummy node which has size: 0.
     head: Spinlock<LLNode>,
 }
 
-impl LLAlloc {
+impl LLAllocator {
     // NOTE: This does not set the first node's size correctly, so this must be
     // ensured by the caller. The easiest way to do this is probably to just
     // prefill the slice nodes.
-    pub const unsafe fn from_slice(backing: &'static mut [LLNode]) -> LLAlloc {
+    pub const unsafe fn from_slice(backing: &'static mut [LLNode]) -> LLAllocator {
         assert!(
             backing.len() >= size_of::<LLNode>(),
-            "LLAlloc backing must fit at least one LLNode."
+            "LLAllocator backing must fit at least one LLNode."
         );
-        LLAlloc {
+        LLAllocator {
             head: Spinlock::new(LLNode::fake(&mut backing[0])),
         }
     }
@@ -219,7 +219,7 @@ impl LLAlloc {
     }
 }
 
-unsafe impl GlobalAlloc for LLAlloc {
+unsafe impl GlobalAlloc for LLAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if let Some(node) = self.get_node(layout.size(), layout.align()) {
             let ret: *mut u8 = node.start().next_aligned(layout.align()).as_mut_ptr();
@@ -241,7 +241,7 @@ unsafe impl GlobalAlloc for LLAlloc {
 }
 
 // So that super::ALLOCATOR works.
-unsafe impl GlobalAlloc for &LLAlloc {
+unsafe impl GlobalAlloc for &LLAllocator {
     // Just forward everything to the actual implementation.
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         (*self).alloc(layout)
