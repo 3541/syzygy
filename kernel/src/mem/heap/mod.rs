@@ -10,8 +10,9 @@ use ll::{LLAllocator, LLNode};
 
 // Statically allocated initial heap to allow for dynamic allocation before the
 // actual VM system is up. *const () is used here to enforce pointer-size
-// alignment.
-const INIT_HEAP_SIZE: usize = 32 * size::KB;
+// alignment. This is somewhat large because it needs to fit the bitmaps for the
+// page allocator.
+const INIT_HEAP_SIZE: usize = 192 * size::KB;
 static mut INIT_HEAP: [LLNode; size::units_of::<LLNode>(INIT_HEAP_SIZE)] =
     [LLNode::new(INIT_HEAP_SIZE); size::units_of::<LLNode>(INIT_HEAP_SIZE)];
 // The initial heap uses LLAllocator because it is small, making space

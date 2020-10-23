@@ -1,8 +1,11 @@
+use alloc::vec::Vec;
+use core::fmt::{self, Display};
+
 use super::PhysicalAddress;
 
 // Memory map used for initializing memory management.
-#[derive(Debug, Copy, Clone)]
-pub enum MmapType {
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum MmapEntryType {
     Usable,
     Reserved,
     Kernel,
@@ -10,17 +13,21 @@ pub enum MmapType {
 
 #[derive(Debug, Copy, Clone)]
 pub struct MmapEntry {
-    pub entry_type: MmapType,
+    pub entry_type: MmapEntryType,
     pub start: PhysicalAddress,
     pub size: usize,
 }
 
-pub struct Mmap<T: Iterator<Item = MmapEntry>>(pub T);
-
-impl<T: Iterator<Item = MmapEntry>> Iterator for Mmap<T> {
-    type Item = MmapEntry;
-
-    fn next(&mut self) -> Option<MmapEntry> {
-        self.0.next()
+impl Display for MmapEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} - {}: {:?}",
+            self.start,
+            self.start + self.size,
+            self.entry_type
+        )
     }
 }
+
+pub type Mmap = Vec<MmapEntry>;
