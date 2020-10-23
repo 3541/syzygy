@@ -1,8 +1,8 @@
 use crate::mem::phys::PageType;
 use crate::mem::{size, Address, PageAllocator, PhysicalAddress};
 
-// The bottom bit signifies the page's type. Allocated pages came from the page
-// allocator and are freed on drop.
+// Bit 9 signifies the page's type. Allocated pages came from the page allocator
+// and are freed on drop.
 pub struct Page(usize);
 
 impl Page {

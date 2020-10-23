@@ -6,10 +6,10 @@ pub use arch::Page;
 
 use super::map::Mmap;
 
-#[repr(u8)]
+#[repr(u16)]
 pub enum PageType {
     Unallocated = 0,
-    Allocated = 1,
+    Allocated = 1 << 9,
 }
 
 pub fn init(mmap: &Mmap) {
