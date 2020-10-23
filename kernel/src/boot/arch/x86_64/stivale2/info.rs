@@ -118,9 +118,13 @@ impl Iterator for StivaleMmap<'_> {
     type Item = MmapEntry;
 
     fn next(&mut self) -> Option<MmapEntry> {
-        let ret = self.entries[self.current].parse();
-        self.current += 1;
-        Some(ret)
+        if self.current >= self.entries.len() {
+            None
+        } else {
+            let ret = self.entries[self.current].parse();
+            self.current += 1;
+            Some(ret)
+        }
     }
 }
 
