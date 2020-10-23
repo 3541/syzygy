@@ -20,6 +20,7 @@ prefixedMakefileDeps prefix makefile =
 
 buildBootloader :: String -> Rules ()
 buildBootloader limineDir = do
+  -- Use gcc as a proxy dependency for the whole toolchain.
   let limineCC = limineDir </> "toolchain" </> "bin" </> "i386-elf-gcc"
   options <- getShakeOptionsRules
   let threads = shakeThreads options

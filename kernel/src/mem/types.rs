@@ -1,6 +1,6 @@
-use core::fmt::{self, Display, Formatter, Debug};
-use core::ops::{Add, Sub};
+use core::fmt::{self, Debug, Display, Formatter};
 use core::mem::transmute;
+use core::ops::{Add, Sub};
 
 pub mod size {
     use core::mem::size_of;
@@ -63,7 +63,7 @@ pub trait Address: Clone + Display {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct PhysicalAddress(RawPhysicalAddress);
 
 impl const Address for PhysicalAddress {
@@ -75,6 +75,29 @@ impl const Address for PhysicalAddress {
 
     fn raw(&self) -> RawPhysicalAddress {
         self.0
+    }
+}
+
+impl Add<usize> for PhysicalAddress {
+    type Output = PhysicalAddress;
+
+    fn add(self, rhs: usize) -> PhysicalAddress {
+        PhysicalAddress::new(
+            self.0
+                .checked_add(rhs)
+                .expect("Physical address addition overflowed."),
+        )
+    }
+}
+
+impl const Sub<PhysicalAddress> for PhysicalAddress {
+    type Output = RawPhysicalAddress;
+
+    fn sub(self, rhs: PhysicalAddress) -> RawPhysicalAddress {
+        match self.0.overflowing_sub(rhs.0) {
+            (v, false) => v,
+            (_, true) => panic!("Physical address subtraction overflowed."),
+        }
     }
 }
 
@@ -155,7 +178,7 @@ impl const Sub<VirtualAddress> for VirtualAddress {
     fn sub(self, rhs: VirtualAddress) -> RawVirtualAddress {
         match self.0.overflowing_sub(rhs.0) {
             (v, false) => v,
-            (_, true) => panic!("Virtual address subtraction overflowed.")
+            (_, true) => panic!("Virtual address subtraction overflowed."),
         }
     }
 }

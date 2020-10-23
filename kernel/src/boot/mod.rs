@@ -5,16 +5,19 @@ mod arch;
 
 use log_crate::info;
 
-use crate::mem::map::{Mmap, MmapEntry};
-use crate::{consts, int, util};
+use crate::mem::map::Mmap;
+use crate::{consts, int, mem, util};
 
-fn kmain(mmap: Mmap<impl Iterator<Item = MmapEntry>>) {
+fn kmain(mmap: Mmap) {
     info!("kmain.");
 
     info!("This is {}, version {}.", consts::NAME, consts::VERSION);
 
     int::init();
     info!("INITIALIZED interrupts.");
+
+    mem::phys::init(&mmap);
+    info!("INITIALIZED physical memory management.");
 
     util::halt_loop();
 }

@@ -1,16 +1,16 @@
 use core::mem::transmute;
 use core::{slice, str};
 
-use crate::mem::map::{Mmap, MmapEntry, MmapType};
+use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
 use crate::mem::{Address, PhysicalAddress};
 
 // Despite the #[repr(packed)], these structures are actually safe to access,
-// since they are set up to be correctly-aligned regardless (thanks Stivale).
+// since they are set up to be correctly-aligned regardless (thanks ).
 
 #[allow(unused)]
 #[derive(PartialEq)]
 #[repr(u64)]
-pub enum StivaleTagIdentifier {
+pub enum TagIdentifier {
     Invalid = 0,
     CommandLine = 0xE5E76A1B4597A781,
     Mmap = 0x2187F79E8612DE07,
@@ -24,14 +24,14 @@ pub enum StivaleTagIdentifier {
     Dtb = 0xABB29BD49A2833FA,
 }
 
-pub trait StivaleTagInner {
-    const IDENTIFIER: StivaleTagIdentifier;
+pub trait TagInner {
+    const IDENTIFIER: TagIdentifier;
 }
 
 struct NullTag {}
 
-impl StivaleTagInner for NullTag {
-    const IDENTIFIER: StivaleTagIdentifier = StivaleTagIdentifier::Invalid;
+impl TagInner for NullTag {
+    const IDENTIFIER: TagIdentifier = TagIdentifier::Invalid;
 }
 
 #[allow(unused)]
@@ -47,15 +47,15 @@ enum MmapTagEntryType {
 }
 
 impl MmapTagEntryType {
-    fn parse(&self) -> MmapType {
+    fn parse(&self) -> MmapEntryType {
         match self {
-            Self::Usable => MmapType::Usable,
+            Self::Usable => MmapEntryType::Usable,
             Self::Reserved
             | Self::AcpiReclaimable
             | Self::AcpiNvs
             | Self::Bad
-            | Self::BootloaderReclaimable => MmapType::Reserved,
-            Self::KernelAndModules => MmapType::Kernel,
+            | Self::BootloaderReclaimable => MmapEntryType::Reserved,
+            Self::KernelAndModules => MmapEntryType::Kernel,
         }
     }
 }
@@ -95,26 +95,26 @@ impl MmapTag {
         }
     }
 
-    fn mmap(&self) -> StivaleMmap<'static> {
-        StivaleMmap::new(self.items())
+    fn mmap(&self) -> MmapIterator<'static> {
+        MmapIterator::new(self.items())
     }
 }
 
-pub struct StivaleMmap<'a> {
+pub struct MmapIterator<'a> {
     entries: &'a [MmapTagEntry],
     current: usize,
 }
 
-impl StivaleMmap<'_> {
-    fn new(entries: &[MmapTagEntry]) -> StivaleMmap {
-        StivaleMmap {
+impl MmapIterator<'_> {
+    fn new(entries: &[MmapTagEntry]) -> MmapIterator {
+        MmapIterator {
             entries,
             current: 0,
         }
     }
 }
 
-impl Iterator for StivaleMmap<'_> {
+impl Iterator for MmapIterator<'_> {
     type Item = MmapEntry;
 
     fn next(&mut self) -> Option<MmapEntry> {
@@ -128,14 +128,14 @@ impl Iterator for StivaleMmap<'_> {
     }
 }
 
-impl StivaleTagInner for MmapTag {
-    const IDENTIFIER: StivaleTagIdentifier = StivaleTagIdentifier::Mmap;
+impl TagInner for MmapTag {
+    const IDENTIFIER: TagIdentifier = TagIdentifier::Mmap;
 }
 
 #[repr(packed)]
-pub struct StivaleTag<T: StivaleTagInner> {
-    identifier: StivaleTagIdentifier,
-    next: Option<&'static StivaleTag<NullTag>>,
+pub struct Tag<T: TagInner> {
+    identifier: TagIdentifier,
+    next: Option<&'static Tag<NullTag>>,
     inner: T,
 }
 
@@ -144,7 +144,7 @@ pub struct StivaleTag<T: StivaleTagInner> {
 pub struct StivaleInfo {
     brand: [u8; 64],
     version: [u8; 64],
-    tags: &'static StivaleTag<NullTag>,
+    tags: &'static Tag<NullTag>,
 }
 
 fn from_null_terminated(str: &[u8]) -> &[u8] {
@@ -167,7 +167,7 @@ impl StivaleInfo {
         unsafe { str::from_utf8_unchecked(from_null_terminated(&self.version)) }
     }
 
-    fn get_tag<T: StivaleTagInner>(&self) -> Option<&StivaleTag<T>> {
+    fn get_tag<T: TagInner>(&self) -> Option<&Tag<T>> {
         let mut current = self.tags;
 
         loop {
@@ -185,12 +185,11 @@ impl StivaleInfo {
         None
     }
 
-    pub fn mmap(&self) -> Mmap<StivaleMmap> {
-        Mmap(
-            self.get_tag::<MmapTag>()
-                .expect("Couldn't find mmap tag.")
-                .inner
-                .mmap(),
-        )
+    pub fn mmap(&self) -> Mmap {
+        self.get_tag::<MmapTag>()
+            .expect("Couldn't find mmap tag.")
+            .inner
+            .mmap()
+            .collect()
     }
 }
