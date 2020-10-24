@@ -2,6 +2,8 @@ pub mod arch;
 pub mod either;
 pub mod sync;
 
+pub use arch::register;
+
 pub fn halt_loop() -> ! {
     loop {
         unsafe { asm!("hlt") };
