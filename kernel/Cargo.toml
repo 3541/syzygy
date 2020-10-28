@@ -1,6 +1,6 @@
 [package]
-name = "syzygy"
-version = "0.1.0-alpha.1"
+name = "syzygy_kernel"
+version = "0.1.0-alpha.2"
 authors = ["Alex O'Brien <alex@emobrien.com>"]
 edition = "2018"
 license = "GPL-3.0-only"
@@ -9,19 +9,11 @@ license = "GPL-3.0-only"
 crate-type = ["staticlib"]
 
 [dependencies]
-volatile = "*"
-spin = "*"
-lazy_static = { version = "*", features = ["spin_no_std"] }
+log_crate = { package = "log", version = "*" }
 bitflags = "*"
-multiboot2 = "*"
-logc = { package = "log", version = "*", features = [] }
-ansi_rgb = "*"
-rgb = "*"
-initramfs = { version = "*", path = "../initramfs" }
-hashbrown = "*"
 
-[dev-dependencies]
-array-init = "*"
-
+# All features should have corresponding Meson options.
 [features]
-vga_log = []
+log_vga = []
+log_e9 = []
+heap_validation = []

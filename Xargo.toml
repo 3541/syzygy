@@ -1,3 +1,0 @@
-[dependencies]
-alloc = {}
-compiler_builtins = { features = ["mem"] }
