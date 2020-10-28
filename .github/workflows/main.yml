@@ -17,7 +17,7 @@ jobs:
         with:
           toolchain: nightly
           override: true
-          components: rust-src
+          components: rust-src, miri
 
       - name: deps
         run: stack install shake
