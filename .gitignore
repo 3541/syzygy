@@ -2,12 +2,10 @@
 .tup/*
 build
 build/*
+build*
 /target
 **/*.rs.bk
 target
 target/*
 **/.#*
 Cargo.lock
-_build
-_shake
-.shake

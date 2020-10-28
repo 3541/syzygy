@@ -30,17 +30,16 @@ cleanup() {
 
 trap cleanup EXIT
 
-limine_dir="$1"
-files="$2"
-image="$3"
+files="$1"
+image="$2"
 
-image_size=200
+image_size=$(($(du -sh "$files" | cut -d'.' -f1) + 20))
 
 if [ -e "$image" ]; then
     rm "$image"
 fi
 
-dd if=/dev/zero of="$image" bs=1M count=0 seek=$image_size
+dd if=/dev/zero of="$image" bs=1M count=$image_size
 echo "Created image."
 
 mount_params=""
@@ -67,11 +66,11 @@ case $(uname) in
         
         loop=$(losetup --find --show "$image")
 
-        parted -s "$loop" mklabel msdos mkpart primary fat32 32768B 100% set 1 boot on
+        parted -s "$loop" mklabel msdos mkpart primary fat32 32k 100% set 1 boot on
         echo "Created partition table."
 
         loop_partition="${loop}p1"
-        mkfs.fat -F 32 "$loop_partition"
+        mkfs.vfat "$loop_partition"
         ;;
 esac
 echo "Formatted partition."
@@ -83,8 +82,8 @@ echo "Mounted ${image} (${loop_partition})."
 cp -r "$files"/* mnt/
 echo "Copied ${files} to image."
 
-"${limine_dir}/limine-install" "${limine_dir}/limine.bin" "$loop"
-echo "Installed limine."
+grub-install --target=i386-pc --boot-directory=mnt/boot --install-modules="normal multiboot2 part_msdos all_video" "$loop"
+echo "Installed grub."
 
 if [ $(uname) == "FreeBSD" ]; then
     chown 1001:1001 "$image"

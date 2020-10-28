@@ -1,0 +1,3 @@
+option('vga_log', type : 'boolean', value : false)
+option('display', type : 'boolean', value : false)
+option('kvm', type : 'boolean', value : true)
