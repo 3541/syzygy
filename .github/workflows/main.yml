@@ -4,22 +4,29 @@ name: build
 
 on:
   push:
-    branches: [ scratch ]
+    branches: [ trunk ]
   pull_request:
-    branches: [ scratch ]
+    branches: [ trunk ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - uses: actions/setup-haskell@v1.1
+        with:
+          enable-stack: true
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
           components: rust-src
+
+      - name: deps
+        run: stack install shake
+#        run: sudo apt-get install -y libghc-shake-dev
         
       - name: build
-        run: runhaskell Shakefile.hs build
+        run: stack exec -- shake build
+#        run: runhaskell Shakefile.hs build
