@@ -25,8 +25,11 @@ jobs:
 
       - name: deps
         run: stack install shake
-#        run: sudo apt-get install -y libghc-shake-dev
         
       - name: build
         run: stack exec -- shake build
-#        run: runhaskell Shakefile.hs build
+
+      - name: test
+        run: |
+          stack exec -- shake kernelTest
+          stack exec -- shake kernelMiriTest
