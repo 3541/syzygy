@@ -46,6 +46,9 @@ main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True,
   phony "test" $ do
     need ["kernelTest", "kernelMiriTest"]
 
+  phony "lint" $ do
+    need ["kernelClippy"]
+
   phony "run" $ do
     -- TODO: Intelligently handle not having qemu (run Bochs instead)
     need [buildDir </> "syzygy.img"]
