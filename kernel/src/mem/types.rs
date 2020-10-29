@@ -1,5 +1,4 @@
 use core::fmt::{self, Debug, Display, Formatter};
-use core::mem::transmute;
 use core::ops::{Add, Sub};
 
 pub mod size {
@@ -112,8 +111,7 @@ pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {
     pub const unsafe fn from_ptr_unchecked<T>(ptr: *const T) -> VirtualAddress {
-        let ret = VirtualAddress::new_unchecked(transmute(ptr));
-        ret
+        VirtualAddress::new_unchecked(ptr as usize)
     }
 
     pub fn from_ptr<T>(ptr: *const T) -> VirtualAddress {

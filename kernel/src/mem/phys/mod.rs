@@ -4,7 +4,7 @@ mod arch;
 pub use self::alloc::PageAllocator;
 pub use arch::Page;
 
-use super::map::Mmap;
+use super::map::MmapEntry;
 
 #[repr(u16)]
 pub enum PageType {
@@ -12,6 +12,6 @@ pub enum PageType {
     Allocated = 1 << 9,
 }
 
-pub fn init(mmap: &Mmap) {
+pub fn init(mmap: &[MmapEntry]) {
     alloc::init(mmap);
 }

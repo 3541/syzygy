@@ -24,6 +24,7 @@ impl IdtEntry {
         handler: <Idt as InterruptTable>::Handler,
         privilege_level: PrivilegeLevel,
     ) -> IdtEntry {
+        #[allow(clippy::fn_to_numeric_cast)]
         let handler = handler as u64;
         IdtEntry {
             offset_low: handler as u16,

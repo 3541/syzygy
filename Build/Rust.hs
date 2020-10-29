@@ -58,4 +58,4 @@ cargoClippy :: Partial => String -> String -> String -> [String] -> Action ()
 cargoClippy buildDir targetSpec proj args = do
   currentDir <- liftIO getCurrentDirectory
   cargo buildDir [rustTargetPath $ currentDir </> "targets"]
-    "clippy" proj (concat [["--target", targetSpec], args])
+    "clippy" proj (concat [["--target", targetSpec, "--all-features"], args])

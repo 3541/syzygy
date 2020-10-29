@@ -1,4 +1,3 @@
-use core::mem::transmute;
 use core::{slice, str};
 
 use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
@@ -172,7 +171,7 @@ impl StivaleInfo {
 
         loop {
             if unsafe { current.identifier == T::IDENTIFIER } {
-                return Some(unsafe { transmute(current) });
+                return Some(unsafe { &*(current as *const Tag<NullTag> as *const Tag<T>) });
             }
 
             if let Some(tag) = current.next {

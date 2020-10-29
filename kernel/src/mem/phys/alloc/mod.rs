@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use log_crate::debug;
 
 use super::Page;
-use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
+use crate::mem::map::{MmapEntry, MmapEntryType};
 use crate::util::sync::OnceCell;
 use bitmap::BitmapAllocator;
 
@@ -30,7 +30,7 @@ impl PageAllocator<BitmapAllocator> {
 }
 
 impl<A: RegionPageAllocator> PageAllocator<A> {
-    pub fn new(mmap: &Mmap) -> Self {
+    pub fn new(mmap: &[MmapEntry]) -> Self {
         Self(
             mmap.iter()
                 .filter(|entry| entry.entry_type == MmapEntryType::Usable)
@@ -60,7 +60,7 @@ impl<A: RegionPageAllocator> PageAllocator<A> {
     }
 }
 
-pub fn init(mmap: &Mmap) {
+pub fn init(mmap: &[MmapEntry]) {
     PAGE_ALLOCATOR.init(PageAllocator::new(mmap));
     debug!("INITIALIZED PageAllocator.");
 }
