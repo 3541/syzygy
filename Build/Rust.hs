@@ -13,6 +13,9 @@ cargoEnv buildDir = [
   AddEnv "RUSTFLAGS" "-Cforce-frame-pointers=yes -Zsymbol-mangling-version=v0"
   ]
 
+rustTargetPath :: String -> CmdOption
+rustTargetPath targetPath = AddEnv "RUST_TARGET_PATH" targetPath
+
 rustVersion :: String -> Rules ()
 rustVersion buildDir = do
   buildDir </> "rustc.version" %> \out -> do
@@ -33,8 +36,8 @@ cargoBuild buildDir targetSpec proj features args = do
   let featureArgs = if length features > 0
         then ["--features", intercalate "," features]
         else []
-  cargo buildDir [AddEnv "RUST_TARGET_PATH" targetPath]
-    "build" proj $ concat [["--target", targetSpec], featureArgs, args]
+  cargo buildDir [rustTargetPath targetPath] "build" proj $
+    concat [["--target", targetSpec], featureArgs, args]
 
 cargoTest :: Partial => String -> String -> [String] -> Action ()
 cargoTest buildDir proj args = do

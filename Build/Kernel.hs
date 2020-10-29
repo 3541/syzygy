@@ -27,14 +27,14 @@ buildKernel kernelDir buildDir = do
 
   kernelLib %> \out -> do
     need [kernelDir </> "Cargo.toml", kernelDir </> "build.rs"]
-    arch <- getConfig "ARCH"
+    target <- getConfig "TARGET"
     rustFeatures <- getConfig "KERNEL_FEATURES"
     
     rustSrc <- getDirectoryFiles kernelSrcDir ["//*.rs"]
     let rustSrcPath = [kernelSrcDir </> f | f <- rustSrc]
     need rustSrcPath
 
-    let targetSpec = fromJust arch ++ "-pc-elf-none"
+    let targetSpec = fromJust target
     cargoBuild kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust $ rustFeatures)
       ["-Zbuild-std=core,alloc,compiler_builtins", "-Zpackage-features"]
     liftIO $ copyFile (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
