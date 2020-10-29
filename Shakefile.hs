@@ -43,6 +43,9 @@ main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True,
     -- Useful for making sure changes build without the overhead of making an image.
     need $ elems imageFiles
 
+  phony "test" $ do
+    need ["kernelTest", "kernelMiriTest"]
+
   phony "run" $ do
     -- TODO: Intelligently handle not having qemu (run Bochs instead)
     need [buildDir </> "syzygy.img"]

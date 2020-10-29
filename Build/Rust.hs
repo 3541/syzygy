@@ -49,3 +49,13 @@ cargoMiriTest buildDir proj args = do
   cargo buildDir [] "clean" proj []
   command_ (concat [cargoEnv buildDir, [AddEnv "MIRIFLAGS" "-Zmiri-disable-stacked-borrows"]])
     "cargo" $ concat [["miri", "test", "-p", proj], args]
+
+cargoDoc :: Partial => String -> String -> [String] -> Action ()
+cargoDoc buildDir proj args = do
+  cargo buildDir [] "doc" proj (concat [["--open"], args])
+
+cargoClippy :: Partial => String -> String -> String -> [String] -> Action ()
+cargoClippy buildDir targetSpec proj args = do
+  currentDir <- liftIO getCurrentDirectory
+  cargo buildDir [rustTargetPath $ currentDir </> "targets"]
+    "clippy" proj (concat [["--target", targetSpec], args])

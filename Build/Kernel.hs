@@ -48,3 +48,14 @@ buildKernel kernelDir buildDir = do
     need [kernelLib]
     -- spin::exclusion is way too slow for Miri threads.
     cargoMiriTest kernelBuildDir "syzygy_kernel" ["--", "--skip", "exclusion"]
+
+  phony "kernelDoc" $ do
+    need [kernelLib]
+    cargoDoc kernelBuildDir "syzygy_kernel" []
+
+  phony "kernelClippy" $ do
+    need [kernelLib]
+
+    target <- getConfig "TARGET"
+    cargoClippy kernelBuildDir (fromJust target) "syzygy_kernel"
+      ["-Zbuild-std=core,alloc,compiler_builtins"]
