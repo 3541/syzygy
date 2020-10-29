@@ -59,7 +59,6 @@ impl<const DESCRIPTORS: usize> Gdt<DESCRIPTORS> {
             address: VirtualAddress::from_ptr(&self.0[0]),
         };
 
-        // This depends on KernelCode being the second element of the GDT.
         asm!(
             "lgdt [{0}]",
             "mov ss, {1:x}",
@@ -67,6 +66,17 @@ impl<const DESCRIPTORS: usize> Gdt<DESCRIPTORS> {
             "mov es, {1:x}",
             in(reg) &r,
             in(reg) GdtIndex::KernelData.selector()
+        );
+
+        // This depends on KernelCode being the second element of the GDT.
+        asm!(
+            "push {0:r}",
+            "lea {1}, [rip + 1f]",
+            "push {1}",
+            "retfq",
+            "1:",
+            in(reg) GdtIndex::KernelCode.selector(),
+            lateout(reg) _
         );
     }
 }
