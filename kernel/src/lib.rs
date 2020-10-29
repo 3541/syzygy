@@ -23,6 +23,8 @@ extern crate alloc;
          needed to initialize all submodules.
 */
 #[macro_use]
+mod arch;
+#[macro_use]
 mod io;
 
 mod boot;

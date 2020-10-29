@@ -11,6 +11,7 @@ crate-type = ["staticlib"]
 [dependencies]
 log_crate = { package = "log", version = "*" }
 bitflags = "*"
+cfg-if = "*"
 
 # All features should have corresponding Meson options.
 [features]
