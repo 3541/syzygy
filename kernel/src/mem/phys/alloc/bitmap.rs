@@ -33,8 +33,9 @@ impl BitmapAllocator {
         1 << (page.address().raw() / Page::SIZE % (size_of::<usize>() * 8))
     }
 
-    fn allocated(&self, bitmap: &mut [usize], page: &Page) -> bool {
-        bitmap[self.index_of(page)] & Self::mask(page) != 0
+    #[inline(always)]
+    fn allocated(&self, page: &Page) -> bool {
+        self.bitmap.lock()[self.index_of(page)] & Self::mask(page) != 0
     }
 }
 
@@ -62,7 +63,8 @@ impl RegionPageAllocator for BitmapAllocator {
         }
 
         let mut bitmap_lock = self.bitmap.lock();
-        let bitmap_search = &mut bitmap_lock[self.search_index.load(Ordering::Relaxed)..];
+        let start_index = self.search_index.load(Ordering::Relaxed);
+        let bitmap_search = &mut bitmap_lock[start_index..];
 
         for (index, field) in bitmap_search.iter_mut().enumerate() {
             let first_unset = if *field == 0 {
@@ -74,9 +76,10 @@ impl RegionPageAllocator for BitmapAllocator {
             };
 
             *field |= 1 << first_unset;
-            self.search_index.store(index, Ordering::Relaxed);
+            self.search_index
+                .store(start_index + index, Ordering::Relaxed);
             return Some(Page::new(
-                self.address(index, first_unset),
+                self.address(start_index + index, first_unset),
                 PageType::Allocated,
             ));
         }
@@ -85,13 +88,55 @@ impl RegionPageAllocator for BitmapAllocator {
     }
 
     fn dealloc(&self, page: Page) {
+        assert!(self.allocated(&page), "Double free.");
         let mut bitmap_lock = self.bitmap.lock();
-        assert!(self.allocated(&mut bitmap_lock, &page), "Double free.");
 
         let index = self.index_of(&page);
         self.search_index.store(index, Ordering::Relaxed);
 
         bitmap_lock[index] ^= Self::mask(&page);
         forget(page);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{BitmapAllocator, Page, RegionPageAllocator};
+
+    use crate::mem::map::{MmapEntry, MmapEntryType};
+    use crate::mem::{size, Address, PhysicalAddress};
+
+    const N_PAGES: usize = 2 * 64;
+
+    fn make_allocator() -> BitmapAllocator {
+        BitmapAllocator::new(&MmapEntry {
+            entry_type: MmapEntryType::Usable,
+            start: PhysicalAddress::new(1024 * size::KB),
+            size: N_PAGES * Page::SIZE,
+        })
+    }
+
+    #[test]
+    fn alloc() {
+        let allocator = make_allocator();
+        let page = allocator.alloc().expect("Failed to allocate page.");
+        assert!(allocator.allocated(&page));
+        allocator.dealloc(page);
+    }
+
+    #[test]
+    fn alloc_all() {
+        let allocator = make_allocator();
+        let mut pages = Vec::new();
+
+        while let Some(page) = allocator.alloc() {
+            pages.push(page);
+        }
+
+        assert!(allocator.alloc().is_none());
+        assert_eq!(pages.len(), N_PAGES);
+
+        pages.into_iter().for_each(|p| allocator.dealloc(p));
+        allocator.dealloc(allocator.alloc().unwrap());
     }
 }

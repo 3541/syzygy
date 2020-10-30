@@ -9,6 +9,7 @@ impl Page {
     pub const SIZE: usize = 4 * size::KB;
 
     pub fn new(address: PhysicalAddress, ty: PageType) -> Page {
+        assert!(address.is_aligned(Self::SIZE));
         Page(address.raw() | ty as usize)
     }
 
