@@ -47,7 +47,8 @@ buildKernel kernelDir buildDir = do
   phony "kernelMiriTest" $ do
     need [kernelLib]
     -- spin::exclusion is way too slow for Miri threads.
-    cargoMiriTest kernelBuildDir "syzygy_kernel" ["--", "--skip", "exclusion"]
+    -- bitmap uses inline assembly, which Miri does not support.
+    cargoMiriTest kernelBuildDir "syzygy_kernel" ["--", "--skip", "exclusion", "--skip", "bitmap"]
 
   phony "kernelDoc" $ do
     need [kernelLib]
