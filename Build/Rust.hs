@@ -25,7 +25,8 @@ rustVersion buildDir = do
 
 cargo :: Partial => String -> [CmdOption] -> String -> String -> [String] -> Action ()
 cargo buildDir options operation proj args = do
-  need [buildDir </> "rustc.version"]
+  currentDir <- liftIO getCurrentDirectory
+  need [buildDir </> "rustc.version", currentDir </> "Cargo.lock"]
   command_ (concat [cargoEnv buildDir, options])
     "cargo" $ concat [[operation, "-p", proj], args]
 
