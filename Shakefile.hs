@@ -44,7 +44,10 @@ main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True,
     need $ elems imageFiles
 
   phony "test" $ do
-    need ["kernelTest", "kernelMiriTest"]
+    need ["kernelTest"]
+
+  phony "testHeavy" $ do
+    need ["test", "kernelMiriTest"]
 
   phony "lint" $ do
     need ["kernelClippy"]
