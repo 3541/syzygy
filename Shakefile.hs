@@ -73,15 +73,15 @@ main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True,
 
   buildDir </> "syzygy.img" %> \out -> do
     need (concat ([Map.keys imageFiles,
-                 ["limine" </> "limine-install", "limine" </> "limine.bin",
+                 ["boot" </> "limine" </> "limine-install", "boot" </> "limine" </> "limine.bin",
                   "scripts" </> "make_fs.sh"]
                 ]))
     cmd_ NoProcessGroup InheritStdin scriptPath Shell
-      "sudo env \"PATH=$PATH\" make_fs.sh limine" [imageBuildDir] [out]
+      ("sudo env \"PATH=$PATH\" make_fs.sh " ++ "boot" </> "limine") [imageBuildDir] [out]
 
   keys imageFiles |%> \out -> do
     copyFileChanged (imageFiles ! out) out
 
   rustVersion $ buildDir </> "kernel"
   buildKernel "kernel" buildDir
-  buildBootloader "limine"
+  buildBootloader $ "boot" </> "limine"
