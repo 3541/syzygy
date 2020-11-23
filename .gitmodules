@@ -1,4 +1,4 @@
 [submodule "limine"]
-	path = limine
+	path = boot/limine
 	url = git@github.com:limine-bootloader/limine.git
 	ignore = dirty
