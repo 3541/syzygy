@@ -14,7 +14,7 @@ cargoEnv buildDir = [
   ]
 
 rustTargetPath :: String -> CmdOption
-rustTargetPath targetPath = AddEnv "RUST_TARGET_PATH" targetPath
+rustTargetPath = AddEnv "RUST_TARGET_PATH"
 
 rustVersion :: String -> Rules ()
 rustVersion buildDir = do
@@ -27,14 +27,14 @@ cargo :: Partial => String -> [CmdOption] -> String -> String -> [String] -> Act
 cargo buildDir options operation proj args = do
   currentDir <- liftIO getCurrentDirectory
   need [buildDir </> "rustc.version", currentDir </> "Cargo.lock"]
-  command_ (concat [cargoEnv buildDir, options])
-    "cargo" $ concat [[operation, "-p", proj], args]
+  command_ (cargoEnv buildDir ++ options)
+    "cargo" $ [operation, "-p", proj] ++ args
 
 cargoBuild :: Partial => String -> String -> String -> [String] -> [String] -> Action ()
 cargoBuild buildDir targetSpec proj features args = do
   currentDir <- liftIO getCurrentDirectory
   let targetPath = currentDir </> "targets"
-  let featureArgs = if length features > 0
+  let featureArgs = if not (null features)
         then ["--features", intercalate "," features]
         else []
   cargo buildDir [rustTargetPath targetPath] "build" proj $
@@ -48,15 +48,15 @@ cargoTest buildDir proj args = do
 cargoMiriTest :: Partial => String -> String -> [String] -> Action ()
 cargoMiriTest buildDir proj args = do
   cargo buildDir [] "clean" proj []
-  command_ (concat [cargoEnv buildDir, [AddEnv "MIRIFLAGS" "-Zmiri-disable-stacked-borrows"]])
-    "cargo" $ concat [["miri", "test", "-p", proj], args]
+  command_ (cargoEnv buildDir ++ [AddEnv "MIRIFLAGS" "-Zmiri-disable-stacked-borrows"])
+    "cargo" $ ["miri", "test", "-p", proj] ++ args
 
 cargoDoc :: Partial => String -> String -> [String] -> Action ()
 cargoDoc buildDir proj args = do
-  cargo buildDir [] "doc" proj (concat [["--open"], args])
+  cargo buildDir [] "doc" proj ("--open" : args)
 
 cargoClippy :: Partial => String -> String -> String -> [String] -> Action ()
 cargoClippy buildDir targetSpec proj args = do
   currentDir <- liftIO getCurrentDirectory
   cargo buildDir [rustTargetPath $ currentDir </> "targets"]
-    "clippy" proj (concat [["--target", targetSpec, "--all-features"], args])
+    "clippy" proj (["--target", targetSpec, "--all-features"] ++ args)

@@ -1,32 +1,30 @@
 module Main where
 
-import Data.Map.Strict as Map
-import Data.Maybe
-import System.Process
-
-import Development.Shake
-import Development.Shake.Command
-import Development.Shake.Config
-import Development.Shake.FilePath
-
 import Build.Boot
 import Build.Kernel
 import Build.Rust
+import Data.Map.Strict as Map
+import Data.Maybe
+import Development.Shake
+import Development.Shake.Config
+import Development.Shake.FilePath
 
 buildDir = "_build"
+
 imageBuildDir = buildDir </> "image"
 
 imageFiles :: Map.Map String String
-imageFiles = Map.fromList [
- -- (imageBuildDir </> "boot" </> "grub" </> "grub.cfg", "boot" </> "grub.cfg"),
-  (imageBuildDir </> "limine.cfg", "boot" </> "limine.cfg"),
-  (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
-  ]
+imageFiles =
+  Map.fromList
+    [ -- (imageBuildDir </> "boot" </> "grub" </> "grub.cfg", "boot" </> "grub.cfg"),
+      (imageBuildDir </> "limine.cfg", "boot" </> "limine.cfg"),
+      (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
+    ]
 
 scriptPath = AddPath [] ["./scripts"]
 
 main :: IO ()
-main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True, shakeThreads = 0} $ do
+main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True, shakeThreads = 0} $ do
   usingConfigFile $ "cfg" </> "shake.cfg"
   want [buildDir </> "syzygy.img"]
 
@@ -57,27 +55,44 @@ main = shakeArgs shakeOptions{shakeProgress = progressSimple, shakeColor = True,
     need [buildDir </> "syzygy.img"]
 
     arch <- getConfig "ARCH"
-    let qemuName = "qemu-system-" ++ (fromJust arch)
+    let qemuName = "qemu-system-" ++ fromJust arch
     qemuMemory <- getConfig "QEMU_MEMORY"
     qemuKvmConfig <- getConfig "QEMU_KVM"
-    let qemuKvm = if (fromJust qemuKvmConfig) == "yes"
-          then "-enable-kvm"
-          else ""
+    let qemuKvm =
+          if fromJust qemuKvmConfig == "yes"
+            then "-enable-kvm"
+            else ""
     qemuDisplayConfig <- getConfig "QEMU_DISPLAY"
-    let qemuDisplay = if (fromJust qemuDisplayConfig) == "yes"
-          then ""
-          else "-display none"
+    let qemuDisplay =
+          if fromJust qemuDisplayConfig == "yes"
+            then ""
+            else "-display none"
 
-    cmd_ qemuName qemuKvm qemuDisplay "-m" qemuMemory "-d cpu_reset -s -debugcon stdio"
+    cmd_
+      qemuName
+      qemuKvm
+      qemuDisplay
+      "-m"
+      qemuMemory
+      "-d cpu_reset -s -debugcon stdio"
       ("-drive format=raw,file=" ++ (buildDir </> "syzygy.img"))
 
   buildDir </> "syzygy.img" %> \out -> do
-    need (concat ([Map.keys imageFiles,
-                 ["boot" </> "limine" </> "limine-install", "boot" </> "limine" </> "limine.bin",
-                  "scripts" </> "make_fs.sh"]
-                ]))
-    cmd_ NoProcessGroup InheritStdin scriptPath Shell
-      ("sudo env \"PATH=$PATH\" make_fs.sh " ++ "boot" </> "limine") [imageBuildDir] [out]
+    need
+      ( Map.keys imageFiles
+          ++ [ "boot" </> "limine" </> "limine-install",
+               "boot" </> "limine" </> "limine.bin",
+               "scripts" </> "make_fs.sh"
+             ]
+      )
+    cmd_
+      NoProcessGroup
+      InheritStdin
+      scriptPath
+      Shell
+      ("sudo env \"PATH=$PATH\" make_fs.sh " ++ "boot" </> "limine")
+      [imageBuildDir]
+      [out]
 
   keys imageFiles |%> \out -> do
     copyFileChanged (imageFiles ! out) out

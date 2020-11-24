@@ -19,7 +19,7 @@ buildKernel kernelDir buildDir = do
 
   kernelBuildDir </> "sz_kernel.elf" %> \out -> do
     arch <- getConfig "ARCH"
-    let linkScript = kernelLinkScriptPath </> (fromJust arch) <.> "ld"
+    let linkScript = kernelLinkScriptPath </> fromJust arch <.> "ld"
     need [kernelLib, linkScript]
 
     cmd_ "ld -static -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
@@ -35,7 +35,7 @@ buildKernel kernelDir buildDir = do
     need rustSrcPath
 
     let targetSpec = fromJust target
-    cargoBuild kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust $ rustFeatures)
+    cargoBuild kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust rustFeatures)
       ["-Zbuild-std=core,alloc,compiler_builtins", "-Zpackage-features"]
     liftIO $ copyFile (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
 
