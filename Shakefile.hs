@@ -31,7 +31,7 @@ main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True
   phony "clean" $ do
     putInfo "Cleaning..."
     removeFilesAfter buildDir ["//*"]
-    cleanBoot "limine"
+    cleanBoot $ "boot" </> "limine"
 
   phony "cleanMeta" $ do
     putInfo "Cleaning Shake metadata..."
