@@ -33,17 +33,22 @@ buildBootloader limineDir = do
       limineDir </> "stage2" </> "Makefile"
       ]
 
-    cmd_ "make -j" (show threads) "-C" limineDir "all"
+    cmd_ "make -j" (show threads) "-C" limineDir "bootloader"
     decompressorDepFiles <- getDirectoryFiles limineDir ["decompressor//*.d"]
     stage2DepFiles <- getDirectoryFiles limineDir ["stage2//*.d"]
     forM_ (map (limineDir </>) decompressorDepFiles) (prefixedMakefileDeps $ limineDir </> "decompressor")
     forM_ (map (limineDir </>)  stage2DepFiles) (prefixedMakefileDeps $ limineDir </> "stage2")
 
+  limineDir </> "limine.o" %> \_out -> do
+    need [limineDir </> "limine.bin"]
+    cmd_ "make -C" limineDir "limine.o"
+
   limineDir </> "limine-install" %> \_out -> do
     need [limineDir </> "Makefile"]
     makefile <- liftIO (readFile $ limineDir </> "Makefile")
-    let makefileDeps = parseMakefile makefile
-    need $ Map.fromList makefileDeps Map.! "limine-install"
+    let makefileDeps = map (limineDir </>) $
+                       Map.fromListWith (++) (parseMakefile makefile) Map.! "limine-install"
+    need makefileDeps
 
     cmd_ "make -j" (show threads) "-C" limineDir "limine-install"
 
