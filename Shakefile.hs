@@ -16,7 +16,7 @@ imageBuildDir = buildDir </> "image"
 imageFiles :: Map.Map String String
 imageFiles =
   Map.fromList
-    [ -- (imageBuildDir </> "boot" </> "grub" </> "grub.cfg", "boot" </> "grub.cfg"),
+    [
       (imageBuildDir </> "limine.cfg", "boot" </> "limine.cfg"),
       (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
     ]
