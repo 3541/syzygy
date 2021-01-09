@@ -4,7 +4,7 @@ use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
 use crate::mem::{Address, PhysicalAddress};
 
 // Despite the #[repr(packed)], these structures are actually safe to access,
-// since they are set up to be correctly-aligned regardless (thanks ).
+// since they are set up to be correctly-aligned regardless.
 
 #[allow(unused)]
 #[derive(PartialEq)]
@@ -77,7 +77,7 @@ impl MmapTagEntry {
     }
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 struct MmapTag {
     entries: u64,
     // map: [MmapTagEntry; entries]
@@ -131,7 +131,7 @@ impl TagInner for MmapTag {
     const IDENTIFIER: TagIdentifier = TagIdentifier::Mmap;
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct Tag<T: TagInner> {
     identifier: TagIdentifier,
     next: Option<&'static Tag<NullTag>>,
@@ -139,7 +139,7 @@ pub struct Tag<T: TagInner> {
 }
 
 // The top-level structure returned by the bootloader.
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct StivaleInfo {
     brand: [u8; 64],
     version: [u8; 64],
