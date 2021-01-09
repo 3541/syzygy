@@ -18,7 +18,11 @@ impl RawSpinlock {
     }
 
     pub fn lock(&self) {
-        while self.0.compare_and_swap(false, true, Ordering::AcqRel) {
+        while self
+            .0
+            .compare_exchange_weak(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
             while self.0.load(Ordering::Relaxed) {
                 pause();
             }

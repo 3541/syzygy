@@ -41,11 +41,12 @@ impl<I, F> Transform<I, F> {
     pub fn transform(&self, fin: F) {
         let interrupts = int::disable();
 
-        if self.state.compare_and_swap(
+        if self.state.compare_exchange(
             TransformState::Initial as u8,
             TransformState::Transforming as u8,
             Ordering::Acquire,
-        ) != TransformState::Initial as u8
+            Ordering::Acquire,
+        ) != Ok(TransformState::Initial as u8)
         {
             panic!("Tried to double-transform Transform.");
         }
