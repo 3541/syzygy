@@ -3,7 +3,6 @@
 #![feature(llvm_asm)]
 #![feature(asm)]
 #![feature(abi_x86_interrupt)]
-#![feature(min_const_generics)]
 #![allow(incomplete_features)]
 #![feature(const_trait_impl)]
 #![feature(alloc_error_handler)]
