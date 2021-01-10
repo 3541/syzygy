@@ -8,6 +8,6 @@ fn main() {
             .unwrap()
             .stdout,
     )
-    .unwrap_or(String::from("UNKNOWN"));
+    .unwrap_or_default();
     println!("cargo:rustc-env=GIT_HASH={}", hash);
 }

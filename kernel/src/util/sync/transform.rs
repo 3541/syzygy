@@ -61,7 +61,7 @@ impl<I, F> Transform<I, F> {
         }
     }
 
-    pub fn borrow(&self) -> Either<&I, &F> {
+    pub fn as_ref(&self) -> Either<&I, &F> {
         match self.state.load(Ordering::Acquire).into() {
             TransformState::Initial | TransformState::Final => {
                 unsafe { &*self.inner.get() }.as_ref()
@@ -69,19 +69,11 @@ impl<I, F> Transform<I, F> {
             _ => panic!("Tried to borrow a mid-transformation Transform."),
         }
     }
-
-    pub fn borrow_initial(&self) -> &I {
-        self.borrow().unwrap_left()
-    }
-
-    pub fn borrow_final(&self) -> &F {
-        self.borrow().unwrap_right()
-    }
 }
 
 impl<T> Transform<T, T> {
     pub fn whichever(&self) -> &T {
-        self.borrow().whichever()
+        self.as_ref().whichever()
     }
 }
 
@@ -93,11 +85,11 @@ mod test {
     fn basic() {
         let t = Transform::new(true);
 
-        assert_eq!(*t.borrow().unwrap_left(), true);
+        assert_eq!(*t.as_ref().unwrap_left(), true);
 
         t.transform(123);
 
-        assert_eq!(*t.borrow().unwrap_right(), 123);
+        assert_eq!(*t.as_ref().unwrap_right(), 123);
     }
 
     #[test]
@@ -112,7 +104,7 @@ mod test {
     #[should_panic(expected = "unwrap_right on Either::Left.")]
     fn untransformed() {
         let t = Transform::<bool, bool>::new(true);
-        let out = t.borrow_final();
+        let out = t.as_ref().unwrap_right();
     }
 
     #[test]
@@ -120,6 +112,6 @@ mod test {
     fn transformed() {
         let t = Transform::new(true);
         t.transform(true);
-        let out = t.borrow_initial();
+        let out = t.as_ref().unwrap_left();
     }
 }

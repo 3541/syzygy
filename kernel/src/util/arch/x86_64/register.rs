@@ -51,7 +51,7 @@ pub mod write {
 
     pub unsafe fn msr(address: u32, val: u64) {
         let val_low = val as u32;
-        let val_high = val >> 32 as u32;
+        let val_high = (val >> 32) as u32;
         asm!("wrmsr", in("ecx") address, in("edx") val_high, in("eax") val_low);
     }
 

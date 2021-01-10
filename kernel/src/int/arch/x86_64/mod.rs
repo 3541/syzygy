@@ -21,9 +21,9 @@ pub enum InterruptVector {
     Other(u8),
 }
 
-impl Into<u8> for InterruptVector {
-    fn into(self) -> u8 {
-        match self {
+impl From<InterruptVector> for u8 {
+    fn from(v: InterruptVector) -> Self {
+        match v {
             InterruptVector::DivideByZero => 0,
             InterruptVector::Overflow => 4,
             InterruptVector::BoundsRange => 5,

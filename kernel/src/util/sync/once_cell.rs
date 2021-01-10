@@ -15,7 +15,7 @@ impl<T> OnceCell<T> {
     }
 
     pub fn borrow(&self) -> Option<&T> {
-        self.0.borrow().right()
+        self.0.as_ref().right()
     }
 }
 
