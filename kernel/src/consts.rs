@@ -4,12 +4,12 @@ use crate::mem::{Address, VirtualAddress};
 
 #[allow(dead_code)]
 extern "C" {
-    static SZ_KERNEL_START: u8;
+    static SZ_KERNEL_BASE: u8;
 }
 
-// Kernel is loaded here.
-pub static KERNEL_START: VirtualAddress =
-    unsafe { VirtualAddress::new_unchecked(0xFFFF_FFFF_8000_0000) };
+pub fn kernel_base() -> VirtualAddress {
+    unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BASE) }
+}
 
 // 4G of physical memory is mapped here.
 pub static PHYS_BASE: VirtualAddress =

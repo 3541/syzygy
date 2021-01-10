@@ -3,6 +3,7 @@ pub mod stivale2;
 use log_crate::info;
 
 use crate::boot;
+use crate::consts::kernel_base;
 use crate::int::arch as int;
 use crate::io::log;
 use crate::mem::arch::gdt;
@@ -35,6 +36,7 @@ pub extern "C" fn kinit(info: &'static StivaleInfo) {
 
     info!("kinit.");
     info!("Booted by {}, version {}.", info.brand(), info.version());
+    info!("Kernel loaded at {}.", kernel_base());
 
     gdt::init();
     int::init_idt();

@@ -22,7 +22,7 @@ buildKernel kernelDir buildDir = do
     let linkScript = kernelLinkScriptPath </> fromJust arch <.> "ld"
     need [kernelLib, linkScript]
 
-    cmd_ "ld -static -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
+    cmd_ "ld -static -pie -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
       "-T" linkScript "-o" [out] [kernelLib]
 
   kernelLib %> \out -> do
