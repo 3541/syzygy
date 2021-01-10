@@ -6,6 +6,8 @@ mod idt;
 
 pub use idt::Idt;
 
+use log_crate::warn;
+
 use crate::mem::VirtualAddress;
 
 #[derive(Copy, Clone)]
@@ -67,7 +69,9 @@ pub fn interrupts_enabled() -> bool {
     flags & (1 << 9) != 0
 }
 
-pub fn init() {}
+pub fn init() {
+    warn!("TODO: Second-stage interrupt initialization.");
+}
 
 pub fn init_idt() {
     idt::init();

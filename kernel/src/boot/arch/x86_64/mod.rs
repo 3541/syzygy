@@ -39,5 +39,7 @@ pub extern "C" fn kinit(info: &'static StivaleInfo) {
     gdt::init();
     int::init_idt();
 
+    info!("INITIALIZED IDT and GDT.");
+
     boot::kmain(info.mmap());
 }
