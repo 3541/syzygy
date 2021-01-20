@@ -52,7 +52,7 @@ buildKernel kernelDir buildDir = do
 
   phony "kernelDoc" $ do
     need [kernelLib]
-    cargoDoc kernelBuildDir "syzygy_kernel" []
+    cargoDoc kernelBuildDir "syzygy_kernel" ["--document-private-items"]
 
   phony "kernelClippy" $ do
     need [kernelLib]

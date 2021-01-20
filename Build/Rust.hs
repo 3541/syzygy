@@ -53,7 +53,7 @@ cargoMiriTest buildDir proj args = do
 
 cargoDoc :: Partial => String -> String -> [String] -> Action ()
 cargoDoc buildDir proj args = do
-  cargo buildDir [] "doc" proj ("--open" : args)
+  cargo buildDir [] "doc" proj (["--open", "--all-features"] ++ args)
 
 cargoClippy :: Partial => String -> String -> String -> [String] -> Action ()
 cargoClippy buildDir targetSpec proj args = do
