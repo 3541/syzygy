@@ -1,3 +1,5 @@
+//! The x86_64 interrupt table.
+
 use core::mem::{size_of, transmute};
 
 use super::{Handler, HandlerCode, InterruptVector};
@@ -6,15 +8,23 @@ use crate::util::arch::register;
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
 use crate::util::PrivilegeLevel;
 
+/// An entry in the IDT.
 #[derive(Copy, Clone)]
 #[repr(C, packed)]
 struct IdtEntry {
+    /// Bits 0 to 15 of the pointer.
     offset_low: u16,
+    /// Selector for a code segment in the [GDT](crate::mem::arch::gdt).
     selector: u16,
+    /// Offset in the IST.
     ist_offset: u8,
+    /// Present, DPL, and gate type.
     attr: u8,
+    /// Bits 16 to 31 of the pointer.
     offset_mid: u16,
+    /// Bits 32 to 63 of the pointer.
     offset_high: u32,
+    /// Reserved.
     _zero: u32,
 }
 
@@ -37,6 +47,7 @@ impl IdtEntry {
         }
     }
 
+    /// A non-present interrupt gate with no target.
     const fn null() -> IdtEntry {
         IdtEntry {
             offset_low: 0,
@@ -50,20 +61,27 @@ impl IdtEntry {
     }
 }
 
+/// The IDT register.
 #[repr(C, packed)]
 struct Idtr {
+    /// Length of the [IDT](Idt).
     limit: u16,
+    /// Pointer to the [IDT](Idt).
     base: u64,
 }
 
+/// The interrupt descriptor table.
 pub struct Idt([IdtEntry; 256]);
 
 impl Idt {
+    /// An entirely empty table.
     fn null() -> Idt {
         Idt([IdtEntry::null(); 256])
     }
 
-    // Convenience wrapper for setting an exception handler with an error code.
+    /// Convenience wrapper for setting an exception handler with an error code.
+    /// # Safety
+    /// The given handler must be a safe interrupt handler, and must perform any required functions of the given vector.
     unsafe fn set_vector_code(
         &mut self,
         vector: InterruptVector,
@@ -78,6 +96,7 @@ impl InterruptTable for Idt {
     type Handler = Handler;
     type InterruptVector = InterruptVector;
 
+    /// Create a default IDT.
     fn new() -> Self {
         let mut ret = Idt::null();
 
@@ -131,6 +150,9 @@ impl InterruptTable for Idt {
         IDT.lock()
     }
 
+    /// Set an interrupt vector handler.
+    /// # Safety
+    /// The given handler must be a safe interrupt handler, and must perform any required functions of the given vector.
     unsafe fn set_vector(
         &mut self,
         vector: InterruptVector,
@@ -141,6 +163,9 @@ impl InterruptTable for Idt {
         self.0[vector as usize] = IdtEntry::new(register::read::cs(), handler, privilege);
     }
 
+    /// Enable this IDT.
+    /// # Safety
+    /// All previously set handlers must be safe, and the table must not be missing any required handlers.
     unsafe fn load(&self) {
         let p = Idtr {
             limit: (size_of::<Idt>() - 1) as u16,
@@ -151,6 +176,7 @@ impl InterruptTable for Idt {
     }
 }
 
+/// Create and load a default [IDT](Idt).
 pub fn init() {
     IDT.init(Spinlock::new(Idt::new()));
     unsafe { IDT.lock().load() };

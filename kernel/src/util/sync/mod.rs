@@ -1,3 +1,5 @@
+//! Synchronization utilities.
+
 pub mod once_cell;
 pub mod spin;
 pub mod transform;

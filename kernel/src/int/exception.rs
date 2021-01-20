@@ -1,14 +1,14 @@
-use super::arch::InterruptStackFrame;
-use crate::util::halt_loop;
-use log_crate::error;
+//! Exception handling.
 
+use super::arch::InterruptStackFrame;
+
+/// A fatal exception. Print diagnostics and halt.
 fn fatal(name: &str, stack: &InterruptStackFrame, code: Option<usize>) -> ! {
     if let Some(code) = code {
-        error!("FATAL EXCEPTION: {} - {}\n {:#x?}", name, code, stack);
+        panic!("FATAL EXCEPTION: {} - {}\n {:#x?}", name, code, stack);
     } else {
-        error!("FATAL EXCEPTION: {}\n {:#x?}", name, stack);
+        panic!("FATAL EXCEPTION: {}\n {:#x?}", name, stack);
     }
-    halt_loop();
 }
 
 macro_rules! fatal_exception {

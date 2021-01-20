@@ -1,3 +1,5 @@
+//! Utility macro for creating interrupt handlers.
+
 macro_rules! handler_fn {
     ($vec:path => fn $name:ident($stack_frame:ident) $inner:block) => {
         handler_fn!($vec => fn $name($stack_frame, ) {

@@ -1,8 +1,13 @@
+//! Log formatting.
+
 use log_crate::{Level, LevelFilter, Log, Metadata, Record};
 
+/// Per-module log level overrides.
 const LOG_LEVELS: [(&str, LevelFilter); 0] = [];
 
+/// The global logger.
 struct Logger {
+    /// The current global level filter.
     level: LevelFilter,
 }
 
@@ -61,6 +66,7 @@ impl Logger {
     }
 }
 
+/// Initialize the logger.
 pub fn init() {
     log_crate::set_logger(Logger::the()).expect("Failed to initialize logging.");
     log_crate::set_max_level(LevelFilter::Trace);

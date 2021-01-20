@@ -1,3 +1,5 @@
+//! Linked list heap allocator.
+
 use alloc::alloc::{GlobalAlloc, Layout};
 use core::cmp::max;
 use core::mem::{align_of, size_of};
@@ -8,16 +10,22 @@ use crate::util::sync::Spinlock;
 
 // TODO: De-uglify.
 
+/// A linked list node representing a free block.
 pub struct LLNode {
+    /// The block's size.
     size: usize,
+    /// The following block.
     next: Option<&'static mut LLNode>,
 }
 
 impl LLNode {
+    /// Create a detached node of the given size.
     pub const fn new(size: usize) -> LLNode {
         LLNode { size, next: None }
     }
 
+    /// Create a zero-size node pointing to the given actual node. Used for the
+    /// head of the list.
     pub const fn fake(next: &'static mut LLNode) -> LLNode {
         LLNode {
             size: 0,
@@ -25,6 +33,7 @@ impl LLNode {
         }
     }
 
+    /// Check for common corruption. Enabled with the feature `heap_validation`.
     #[inline]
     fn validate(&self) {
         #[cfg(any(test, feature = "heap_validation"))]
@@ -44,6 +53,9 @@ impl LLNode {
         }
     }
 
+    /// Create a node from the block specified by the given address and size.
+    /// # Safety
+    /// The given region must genuinely be unused and mapped writable.
     unsafe fn from_address(mut address: VirtualAddress, size: usize) -> &'static mut LLNode {
         let ret = &mut *address.as_mut_ptr::<LLNode>();
         ret.size = size;
@@ -53,7 +65,7 @@ impl LLNode {
         ret
     }
 
-    // Merge this node with an adjacent following node.
+    /// Merge this node with an adjacent following node.
     fn merge(&mut self) {
         assert!(self.next.is_some());
         assert_eq!(
@@ -66,13 +78,14 @@ impl LLNode {
         self.size = next.end() - self.start();
         self.next = None;
 
-        // Fixup next pointers and potentially call recursively if appropriate.
+        // Fix up next pointers and potentially call recursively if appropriate.
         if let Some(ref mut new_next) = next.next {
             self.insert_after(new_next);
         }
         self.validate();
     }
 
+    /// Insert a given node after this one.
     fn insert_after(&mut self, other: &'static mut LLNode) {
         assert!(self.next.is_none() || other.next.is_none());
         if other.next.is_none() {
@@ -88,19 +101,21 @@ impl LLNode {
         }
     }
 
+    /// Get the start address.
     fn start(&self) -> VirtualAddress {
         self.validate();
         VirtualAddress::from_ptr(self)
     }
 
+    /// Get the end address.
     fn end(&self) -> VirtualAddress {
         self.validate();
         self.start() + self.size
     }
 
-    // Split a node into two pieces, one of which is of at least the desired
-    // size. The list is modified such that the right node (if one is created)
-    // points to the original node's child.
+    /// Split a node into two pieces, one of which is of at least the desired
+    /// size. The list is modified such that the right node (if one is created)
+    /// points to the original node's child.
     fn split(
         &mut self,
         size: usize,
@@ -142,15 +157,18 @@ impl LLNode {
     }
 }
 
+/// The linked list allocator.
 pub struct LLAllocator {
-    // head is a dummy node which has size: 0.
+    /// A dummy node with zero size.
     head: Spinlock<LLNode>,
 }
 
 impl LLAllocator {
-    // NOTE: This does not set the first node's size correctly, so this must be
-    // ensured by the caller. The easiest way to do this is probably to just
-    // prefill the slice nodes.
+    /// Create an allocator backed by the given slice. The first element of the
+    /// slice is used to initialize the (single) initial block.
+    /// # Safety
+    /// - The first element of the slice must correctly describe the given region.
+    /// - This takes ownership of the given region.
     pub const unsafe fn from_slice(backing: &'static mut [LLNode]) -> LLAllocator {
         assert!(
             backing.len() >= size_of::<LLNode>(),
@@ -161,8 +179,10 @@ impl LLAllocator {
         }
     }
 
-    // This should only be used in such a way that it genuinely takes ownership
-    // of the region described by (start, size).
+    /// Add a free region to the list.
+    /// # Safety
+    /// This should only be used in such a way that it genuinely takes ownership
+    /// of the region described by (start, size).
     unsafe fn push(&self, start: VirtualAddress, size: usize) {
         assert!(size >= size_of::<LLNode>());
         assert!(start.is_aligned(align_of::<LLNode>()));
@@ -189,8 +209,8 @@ impl LLAllocator {
         }
     }
 
-    // Get a node for allocation of the specified size and alignment,
-    // reinserting any free space into the list.
+    /// Get a node for allocation of the specified size and alignment,
+    /// reinserting any free space into the list.
     fn get_node(&self, size: usize, align: usize) -> Option<&'static mut LLNode> {
         let mut lock = self.head.lock();
         let mut prev = &mut *lock;

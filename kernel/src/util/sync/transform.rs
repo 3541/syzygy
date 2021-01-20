@@ -1,3 +1,5 @@
+//! A type which starts out as one thing, and becomes another.
+
 use core::cell::UnsafeCell;
 use core::mem::transmute;
 use core::sync::atomic::{AtomicU8, Ordering};
@@ -5,6 +7,7 @@ use core::sync::atomic::{AtomicU8, Ordering};
 use crate::int;
 use crate::util::either::*;
 
+/// The state of the transformation.
 #[repr(u8)]
 enum TransformState {
     Initial = 0,
@@ -22,8 +25,12 @@ impl From<u8> for TransformState {
     }
 }
 
+/// A wrapper type which begins as type `I` and may at some point be transformed
+/// into `F`.
 pub struct Transform<I, F> {
+    /// The actual contents.
     inner: UnsafeCell<Either<I, F>>,
+    /// The [transformation state](TransformState).
     state: AtomicU8,
 }
 
@@ -31,6 +38,7 @@ unsafe impl<I: Send, F: Send> Send for Transform<I, F> {}
 unsafe impl<I: Send + Sync, F: Send + Sync> Sync for Transform<I, F> {}
 
 impl<I, F> Transform<I, F> {
+    /// Create a Transform containing the given data.
     pub const fn new(initial: I) -> Transform<I, F> {
         Transform {
             inner: UnsafeCell::new(Left(initial)),
@@ -38,6 +46,7 @@ impl<I, F> Transform<I, F> {
         }
     }
 
+    /// Replace with the given data of the second type.
     pub fn transform(&self, fin: F) {
         let interrupts = int::disable();
 
@@ -61,6 +70,7 @@ impl<I, F> Transform<I, F> {
         }
     }
 
+    /// Get a reference to the contents.
     pub fn as_ref(&self) -> Either<&I, &F> {
         match self.state.load(Ordering::Acquire).into() {
             TransformState::Initial | TransformState::Final => {
@@ -72,6 +82,7 @@ impl<I, F> Transform<I, F> {
 }
 
 impl<T> Transform<T, T> {
+    /// Get a reference to the contents.
     pub fn whichever(&self) -> &T {
         self.as_ref().whichever()
     }

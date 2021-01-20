@@ -1,3 +1,5 @@
+//! Bitmap page allocator.
+
 use alloc::vec;
 use alloc::vec::Vec;
 use core::mem::{forget, size_of};
@@ -9,30 +11,39 @@ use crate::mem::phys::{Page, PageType};
 use crate::mem::{Address, PhysicalAddress};
 use crate::util::sync::Spinlock;
 
+/// Bitmap page allocator.
 pub struct BitmapAllocator {
+    /// The actual bitmap.
     bitmap: Spinlock<Vec<usize>>,
+    /// A candidate search index.
     search_index: AtomicUsize,
+    /// The base of the allocator's region.
     base: PhysicalAddress,
+    /// The allocator's region's size.
     size: usize,
 }
 
 impl BitmapAllocator {
-    // The number of address space bytes covered by a single usize field of the
-    // bitmap.
+    /// The number of address space bytes covered by a single usize field of the
+    /// bitmap.
     const BYTES_PER_FIELD: usize = size_of::<usize>() * 8 * Page::SIZE;
 
+    /// The address corresponding to a given bit in the bitmap.
     fn address(&self, index: usize, bit_index: usize) -> PhysicalAddress {
         self.base + (index * Self::BYTES_PER_FIELD + bit_index * Page::SIZE)
     }
 
+    /// The field index in the bitmap of the given page.
     fn index_of(&self, page: &Page) -> usize {
         (page.address() - self.base) / Self::BYTES_PER_FIELD
     }
 
+    /// The bit mask for the given page.
     fn mask(page: &Page) -> usize {
         1 << (page.address().raw() / Page::SIZE % (size_of::<usize>() * 8))
     }
 
+    /// Check whether a given page has been allocated from the bitmap.
     #[inline(always)]
     fn allocated(&self, page: &Page) -> bool {
         self.bitmap.lock()[self.index_of(page)] & Self::mask(page) != 0
@@ -40,6 +51,7 @@ impl BitmapAllocator {
 }
 
 impl RegionPageAllocator for BitmapAllocator {
+    /// Create a new bitmap allocator from the given memory region.
     fn new(area: &MmapEntry) -> Self {
         Self {
             bitmap: Spinlock::new(vec![0; area.size / Self::BYTES_PER_FIELD]),
@@ -49,10 +61,12 @@ impl RegionPageAllocator for BitmapAllocator {
         }
     }
 
+    /// Check whether the given page falls into the allocator's region.
     fn owns(&self, page: &Page) -> bool {
         self.base <= page.address() && page.address() < self.base + self.size
     }
 
+    /// Allocate a page.
     fn alloc(&self) -> Option<Page> {
         fn first_unset_bit(field: usize) -> usize {
             let ret: usize;
@@ -78,15 +92,18 @@ impl RegionPageAllocator for BitmapAllocator {
             *field |= 1 << first_unset;
             self.search_index
                 .store(start_index + index, Ordering::Relaxed);
-            return Some(Page::new(
-                self.address(start_index + index, first_unset),
-                PageType::Allocated,
-            ));
+            unsafe {
+                return Some(Page::new(
+                    self.address(start_index + index, first_unset),
+                    PageType::Allocated,
+                ));
+            };
         }
 
         None
     }
 
+    /// Free a page.
     fn dealloc(&self, page: Page) {
         assert!(self.allocated(&page), "Double free.");
         let mut bitmap_lock = self.bitmap.lock();

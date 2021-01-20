@@ -1,5 +1,9 @@
+//! A type-safe union.
+
 pub use Either::{Left, Right};
 
+/// A type-safe union. Holds either `Left(L)` or `Right(R)`. Akin to
+/// `std::variant` in C++.
 #[derive(Copy, Clone)]
 pub enum Either<L, R> {
     Left(L),
@@ -7,6 +11,7 @@ pub enum Either<L, R> {
 }
 
 impl<L, R> Either<L, R> {
+    /// Take variants by reference.
     pub fn as_ref(&self) -> Either<&L, &R> {
         match self {
             Left(ref l) => Left(l),
@@ -14,6 +19,7 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// Assert that the contained value is the left one and return it.
     pub fn unwrap_left(self) -> L {
         match self {
             Left(l) => l,
@@ -21,6 +27,7 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// Assert that the contained value is the right one and return it.
     pub fn unwrap_right(self) -> R {
         match self {
             Left(_) => panic!("unwrap_right on Either::Left."),
@@ -28,6 +35,7 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// Get the right value if it is present.
     pub fn right(self) -> Option<R> {
         match self {
             Left(_) => None,
@@ -37,8 +45,9 @@ impl<L, R> Either<L, R> {
 }
 
 impl<T> Either<T, T> {
-    pub fn whichever(&self) -> &T {
-        match self.as_ref() {
+    /// Return whichever variant is present.
+    pub fn whichever(self) -> T {
+        match self {
             Left(l) => l,
             Right(r) => r,
         }

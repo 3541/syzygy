@@ -1,3 +1,5 @@
+//! Spinlocks.
+
 mod arch;
 mod spinlock;
 #[cfg(test)]

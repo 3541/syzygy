@@ -13,14 +13,18 @@
 #![feature(const_raw_ptr_to_usize_cast)]
 #![cfg_attr(test, allow(unused))]
 
+/*!
+
+The Syzygy kernel.
+
+Modules should:
+- Be architecture-independent.
+- Export a single top-level function `init`, which should be the only thing needed to initialize all submodules.
+
+!*/
+
 extern crate alloc;
 
-/*
-   Modules should:
-       - Be architecture-independent.
-       - Export a single top-level function init, which should be the only thing
-         needed to initialize all submodules.
-*/
 #[macro_use]
 mod arch;
 #[macro_use]

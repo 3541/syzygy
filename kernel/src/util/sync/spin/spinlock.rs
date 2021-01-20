@@ -1,3 +1,5 @@
+//! Spinlocks.
+
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -10,6 +12,7 @@ use crate::int;
 // follows:
 //     * false => UNLOCKED
 //     * true  => LOCKED
+/// A simple spinlock.
 pub struct RawSpinlock(AtomicBool);
 
 impl RawSpinlock {
@@ -17,6 +20,7 @@ impl RawSpinlock {
         RawSpinlock(AtomicBool::new(false))
     }
 
+    /// Spin until the lock can be acquired.
     pub fn lock(&self) {
         while self
             .0
@@ -29,16 +33,22 @@ impl RawSpinlock {
         }
     }
 
+    /// Release the lock.
+    /// # Safety
+    /// Should only be called when the lock was previously held.
     pub unsafe fn unlock(&self) {
         self.0.store(false, Ordering::Release);
     }
 }
 
+/// An RAII container guarded by a spinlock.
 pub struct Spinlock<T> {
     lock: RawSpinlock,
+    /// The actual contents.
     inner: UnsafeCell<T>,
 }
 
+/// A reference to the contents of a spinlock.
 pub struct SpinlockGuard<'a, T: 'a> {
     lock: &'a RawSpinlock,
     inner: &'a mut T,
@@ -49,6 +59,7 @@ unsafe impl<T: Send> Send for Spinlock<T> {}
 unsafe impl<T: Send> Sync for Spinlock<T> {}
 
 impl<T> Spinlock<T> {
+    /// Create a new spinlock containing the given data.
     pub const fn new(data: T) -> Spinlock<T> {
         Spinlock {
             lock: RawSpinlock::new(),
@@ -56,6 +67,7 @@ impl<T> Spinlock<T> {
         }
     }
 
+    /// Acquire the lock and a reference to the contents.
     pub fn lock(&self) -> SpinlockGuard<T> {
         let interrupts = int::disable();
         self.lock.lock();
@@ -69,6 +81,7 @@ impl<T> Spinlock<T> {
 }
 
 impl<T> Drop for SpinlockGuard<'_, T> {
+    /// Release the lock.
     fn drop(&mut self) {
         unsafe { self.lock.unlock() };
         if self.interrupts {

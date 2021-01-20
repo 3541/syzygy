@@ -1,3 +1,5 @@
+//! The global descriptor table.
+
 use core::mem::size_of;
 
 use bitflags::bitflags;
@@ -5,19 +7,20 @@ use bitflags::bitflags;
 use crate::mem::VirtualAddress;
 use crate::util::PrivilegeLevel;
 
-// Most of the segment descriptor is ignored in long mode. All that needs to be
-// set are the access permissions and segment types.
+/// A segment descriptor. Most of this is ignored in long mode.
 #[allow(unused)]
 #[repr(packed)]
 struct SegmentDescriptor {
     _limit_low: u16,
     _base_low: u16,
     _base_mid: u8,
+    /// Access permissions and segment type.
     flags: u16,
     _base_high: u8,
 }
 
 bitflags! {
+    /// Segment types and permissions.
     struct SegmentFlags: u16 {
         const WRITABLE = 1 << 1; // Only applicable to data segments.
         const EXECUTABLE = 1 << 3;
@@ -43,16 +46,23 @@ impl SegmentDescriptor {
     }
 }
 
+/// The global descriptor table.
 struct Gdt<const DESCRIPTORS: usize>([SegmentDescriptor; DESCRIPTORS]);
 
+/// The GDT register.
 #[allow(unused)]
 #[repr(packed)]
 struct Gdtr {
+    /// The length of the GDT.
     size: u16,
+    /// A pointer to the GDT.
     address: VirtualAddress,
 }
 
 impl<const DESCRIPTORS: usize> Gdt<DESCRIPTORS> {
+    /// Load the GDT and reload segment selectors.
+    /// # Safety
+    /// The loaded GDT must be valid, complete, and have the kernel code segment as the second element.
     unsafe fn load(&self) {
         let r = Gdtr {
             size: (size_of::<Self>() - 1) as u16,
@@ -81,8 +91,7 @@ impl<const DESCRIPTORS: usize> Gdt<DESCRIPTORS> {
     }
 }
 
-// Note: This enum is for convenience and is specific to the particular GDT
-// instantiated below.
+/// Index into the default GDT layout.
 #[allow(unused)]
 #[repr(u8)]
 #[derive(Copy, Clone)]
@@ -101,6 +110,7 @@ impl GdtIndex {
 
 // This is ugly because BitOr isn't currently const. It seems this is waiting on
 // https://github.com/bitflags/bitflags/pull/217 to merge.
+/// The one and only GDT.
 static GDT: Gdt<3> = Gdt([
     SegmentDescriptor::null(),
     // Kernel code.
@@ -124,6 +134,7 @@ static GDT: Gdt<3> = Gdt([
     ),
 ]);
 
+/// Load the new GDT.
 pub fn init() {
     unsafe { GDT.load() };
 }

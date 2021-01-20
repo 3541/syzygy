@@ -1,3 +1,5 @@
+//! Physical memory allocation.
+
 mod bitmap;
 
 use alloc::vec::Vec;
@@ -9,27 +11,34 @@ use crate::mem::map::{MmapEntry, MmapEntryType};
 use crate::util::sync::OnceCell;
 use bitmap::BitmapAllocator;
 
+/// A page allocator over a memory region.
 pub trait RegionPageAllocator {
+    /// Construct the allocator over the given region.
     fn new(area: &MmapEntry) -> Self;
+    /// Check whether the given page falls inside the allocator's region.
     fn owns(&self, page: &Page) -> bool;
+    /// Allocate a page.
     fn alloc(&self) -> Option<Page>;
+    /// Free a page.
     fn dealloc(&self, page: Page);
 }
 
-// A RegionPageAllocator only owns a specific interval of memory. Since physical
-// memory is composed of disjoint regions, the global physical allocator must
-// deal with multiple region allocators.
+/// A global page allocator composed of multiple region allocators.
 pub struct PageAllocator<A: RegionPageAllocator>(Vec<A>);
 
+/// The global page allocator.
 static PAGE_ALLOCATOR: OnceCell<PageAllocator<BitmapAllocator>> = OnceCell::new();
 
 impl PageAllocator<BitmapAllocator> {
+    /// Get the global allocator.
     pub fn the() -> &'static Self {
         &*PAGE_ALLOCATOR
     }
 }
 
 impl<A: RegionPageAllocator> PageAllocator<A> {
+    /// Initialize the page allocator from the memory map. Creates a region
+    /// allocator over each usable entry.
     pub fn new(mmap: &[MmapEntry]) -> Self {
         Self(
             mmap.iter()
@@ -40,6 +49,7 @@ impl<A: RegionPageAllocator> PageAllocator<A> {
         )
     }
 
+    /// Allocate a page from any of the regions.
     pub fn alloc(&self) -> Option<Page> {
         for area in &self.0 {
             if let s @ Some(_) = area.alloc() {
@@ -50,6 +60,7 @@ impl<A: RegionPageAllocator> PageAllocator<A> {
         None
     }
 
+    /// Free a page to the correct region.
     pub fn dealloc(&self, page: Page) {
         for area in &self.0 {
             if area.owns(&page) {
@@ -60,6 +71,7 @@ impl<A: RegionPageAllocator> PageAllocator<A> {
     }
 }
 
+/// Initialize the page allocator.
 pub fn init(mmap: &[MmapEntry]) {
     PAGE_ALLOCATOR.init(PageAllocator::new(mmap));
     debug!("INITIALIZED PageAllocator.");

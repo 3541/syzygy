@@ -1,16 +1,22 @@
+//! Parsing for Stivale2.
+
 mod info;
 
 pub use info::StivaleInfo;
 
 use crate::mem::{Address, VirtualAddress};
 
+/// The header used to identify the kernel to the bootloader. See [the spec](https://github.com/stivale/stivale/blob/master/STIVALE2.md#stivale2-header-stivale2hdr) for details.
 #[allow(unused)]
 #[repr(packed)]
 pub struct StivaleHeader {
-    // Entry point is to be determined by ELF.
+    /// Unused: entry point is set in the linker script.
     _entry_point: u64,
+    /// The address of the initial stack.
     stack: *const u8,
-    flags: u64,
+    /// Currently unused.
+    _flags: u64,
+    /// A linked list of tags.
     tags: VirtualAddress,
 }
 
@@ -20,11 +26,13 @@ unsafe impl Send for StivaleHeader {}
 unsafe impl Sync for StivaleHeader {}
 
 impl StivaleHeader {
-    pub const unsafe fn new(stack: *const u8, kaslr: bool) -> StivaleHeader {
+    /// # Safety
+    /// The given pointer must refer to a sufficiently large area of memory in the bss section.
+    pub const unsafe fn new(stack: *const u8) -> StivaleHeader {
         StivaleHeader {
             _entry_point: 0,
             stack,
-            flags: if kaslr { 1 } else { 0 },
+            _flags: 0,
             tags: VirtualAddress::new_unchecked(0),
         }
     }

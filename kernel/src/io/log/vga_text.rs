@@ -1,9 +1,12 @@
+//! Logging to the VGA text mode screen.
+
 use core::fmt::{self, Write};
 use core::ptr;
 
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
 use crate::util::sync::OnceCell;
 
+/// A VGA color code.
 #[allow(dead_code)]
 #[repr(u8)]
 enum Color {
@@ -25,6 +28,7 @@ enum Color {
     White = 15,
 }
 
+/// Character colors: foreground and background.
 #[derive(Copy, Clone)]
 struct CharColor(u8);
 
@@ -34,6 +38,7 @@ impl CharColor {
     }
 }
 
+/// A colored on-screen character.
 #[allow(dead_code)]
 #[derive(Copy, Clone)]
 #[repr(packed)]
@@ -42,16 +47,19 @@ struct ScreenChar {
     color: CharColor,
 }
 
+/// The VGA buffer.
 struct ScreenBuffer([[ScreenChar; ScreenBuffer::WIDTH]; ScreenBuffer::HEIGHT]);
 
 impl ScreenBuffer {
+    const PHYS_ADDRESS: usize = 0xB8000;
     const HEIGHT: usize = 25;
     const WIDTH: usize = 80;
 
     fn the() -> &'static mut ScreenBuffer {
-        unsafe { &mut *(crate::consts::PHYS_BASE + 0xB8000).as_mut_ptr() }
+        unsafe { &mut *(crate::consts::PHYS_BASE + ScreenBuffer::PHYS_ADDRESS).as_mut_ptr() }
     }
 
+    /// Write a character to the screen at the given position.
     fn write(&mut self, row: usize, col: usize, value: ScreenChar) {
         if row >= ScreenBuffer::HEIGHT || col >= ScreenBuffer::WIDTH {
             panic!("ScreenBuffer index ({}, {}) out of bounds", row, col);
@@ -65,6 +73,7 @@ impl ScreenBuffer {
     }
 }
 
+/// Utilities for writing to the VGA buffer.
 struct ScreenWriter {
     column: usize,
     color: CharColor,
@@ -150,6 +159,7 @@ pub fn _print(args: fmt::Arguments) {
     ScreenWriter::the().write_fmt(args).unwrap()
 }
 
+/// Initialize the VGA buffer.
 pub fn init() {
     SCREEN_WRITER.init(Spinlock::new(ScreenWriter::new(Color::White, Color::Black)));
     ScreenWriter::the().clear_screen();

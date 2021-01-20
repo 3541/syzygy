@@ -1,3 +1,5 @@
+//! # Memory management.
+
 pub mod arch;
 pub mod heap;
 pub mod map;

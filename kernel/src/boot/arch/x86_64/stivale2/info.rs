@@ -1,3 +1,5 @@
+//! Parsing of Stivale2 [info tags](https://github.com/stivale/stivale/blob/master/STIVALE2.md#stivale2-structure).
+
 use core::{slice, str};
 
 use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
@@ -6,6 +8,7 @@ use crate::mem::{Address, PhysicalAddress};
 // Despite the #[repr(packed)], these structures are actually safe to access,
 // since they are set up to be correctly-aligned regardless.
 
+/// Structure tag identifiers.
 #[allow(unused)]
 #[derive(PartialEq)]
 #[repr(u64)]
@@ -23,16 +26,19 @@ pub enum TagIdentifier {
     Dtb = 0xABB29BD49A2833FA,
 }
 
+/// Associates a tag type with its identifier.
 pub trait TagInner {
     const IDENTIFIER: TagIdentifier;
 }
 
+/// Used for a tag with as yet unknown type.
 struct NullTag {}
 
 impl TagInner for NullTag {
     const IDENTIFIER: TagIdentifier = TagIdentifier::Invalid;
 }
 
+/// Memory area types.
 #[allow(unused)]
 #[repr(u32)]
 enum MmapTagEntryType {
@@ -59,6 +65,7 @@ impl MmapTagEntryType {
     }
 }
 
+/// A memory area in the [MmapTag](MmapTag).
 #[repr(packed)]
 struct MmapTagEntry {
     base: u64,
@@ -77,6 +84,7 @@ impl MmapTagEntry {
     }
 }
 
+/// The memory map.
 #[repr(C, packed)]
 struct MmapTag {
     entries: u64,
@@ -94,22 +102,21 @@ impl MmapTag {
         }
     }
 
+    /// Get the memory map as an iterator.
     fn mmap(&self) -> MmapIterator<'static> {
         MmapIterator::new(self.items())
     }
 }
 
+/// An iterator over the entries of the memory map. Each entry is parsed into an [MmapEntry](MmapEntry) before being returned.
 pub struct MmapIterator<'a> {
     entries: &'a [MmapTagEntry],
-    current: usize,
+    index: usize,
 }
 
 impl MmapIterator<'_> {
     fn new(entries: &[MmapTagEntry]) -> MmapIterator {
-        MmapIterator {
-            entries,
-            current: 0,
-        }
+        MmapIterator { entries, index: 0 }
     }
 }
 
@@ -117,11 +124,11 @@ impl Iterator for MmapIterator<'_> {
     type Item = MmapEntry;
 
     fn next(&mut self) -> Option<MmapEntry> {
-        if self.current >= self.entries.len() {
+        if self.index >= self.entries.len() {
             None
         } else {
-            let ret = self.entries[self.current].parse();
-            self.current += 1;
+            let ret = self.entries[self.index].parse();
+            self.index += 1;
             Some(ret)
         }
     }
@@ -131,6 +138,7 @@ impl TagInner for MmapTag {
     const IDENTIFIER: TagIdentifier = TagIdentifier::Mmap;
 }
 
+/// A (potentially typed) info tag.
 #[repr(C, packed)]
 pub struct Tag<T: TagInner> {
     identifier: TagIdentifier,
@@ -138,14 +146,18 @@ pub struct Tag<T: TagInner> {
     inner: T,
 }
 
-// The top-level structure returned by the bootloader.
+/// The top-level structure returned by the bootloader.
 #[repr(C, packed)]
 pub struct StivaleInfo {
+    /// The name of the bootloader.
     brand: [u8; 64],
+    /// The version of the bootloader.
     version: [u8; 64],
+    /// A linked list of info tags.
     tags: &'static Tag<NullTag>,
 }
 
+/// Utility function to turn a null-terminated byte string into a correctly-sized slice.
 fn from_null_terminated(str: &[u8]) -> &[u8] {
     let mut len = 0;
     for b in str {
@@ -166,6 +178,7 @@ impl StivaleInfo {
         unsafe { str::from_utf8_unchecked(from_null_terminated(&self.version)) }
     }
 
+    /// Get the first tag of type `T`.
     fn get_tag<T: TagInner>(&self) -> Option<&Tag<T>> {
         let mut current = self.tags;
 
@@ -184,6 +197,7 @@ impl StivaleInfo {
         None
     }
 
+    /// Get the memory map.
     pub fn mmap(&self) -> Mmap {
         self.get_tag::<MmapTag>()
             .expect("Couldn't find mmap tag.")

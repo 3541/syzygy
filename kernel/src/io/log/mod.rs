@@ -1,4 +1,4 @@
-// Logging facilities. All log output is printed to all enabled logging sinks.
+//! Logging facilities.
 
 use core::fmt;
 
@@ -16,17 +16,20 @@ pub fn _print(args: fmt::Arguments) {
     e9::_print(args);
 }
 
+/// Print to all log sinks.
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::io::log::_print(format_args!($($arg)*)));
 }
 
+/// Print to all log sinks.
 #[macro_export]
 macro_rules! println {
     () => ($crate::print!('\n'));
     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
 }
 
+/// Initialize logging and all available log sinks.
 pub fn init() {
     vga_text::init();
     logger::init();

@@ -1,10 +1,14 @@
+//! Logging to the `e9` debug port.
+
 use core::fmt::{self, Write};
 
 use crate::io::port::Port;
 
+/// The `e9` debug port.
 pub struct DebugPort(Port<u8>);
 
 impl DebugPort {
+    /// The address: `0xE9`.
     const ADDRESS: u16 = 0xE9;
 
     const fn new() -> DebugPort {
