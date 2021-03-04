@@ -13,8 +13,9 @@ use ll::{LLAllocator, LLNode};
 /// Statically allocated initial heap to allow for dynamic allocation before the
 /// actual VM system is up. This is somewhat large because it needs to fit the
 /// bitmaps for the page allocator.
+const INIT_NODE: LLNode = LLNode::new(INIT_HEAP_SIZE);
 static mut INIT_HEAP: [LLNode; size::units_of::<LLNode>(INIT_HEAP_SIZE)] =
-    [LLNode::new(INIT_HEAP_SIZE); size::units_of::<LLNode>(INIT_HEAP_SIZE)];
+    [INIT_NODE; size::units_of::<LLNode>(INIT_HEAP_SIZE)];
 /// The size of the initial heap.
 const INIT_HEAP_SIZE: usize = 192 * size::KB;
 /// The allocator over the [initial heap](INIT_HEAP). Uses

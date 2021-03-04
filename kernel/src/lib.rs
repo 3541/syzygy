@@ -9,7 +9,6 @@
 #![feature(const_mut_refs)]
 #![feature(const_panic)]
 #![feature(const_fn_transmute)]
-#![feature(const_in_array_repeat_expressions)]
 #![feature(const_raw_ptr_to_usize_cast)]
 #![cfg_attr(test, allow(unused))]
 

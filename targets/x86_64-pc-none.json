@@ -14,5 +14,8 @@
     "disable-redzone": true,
     "features": "-mmx,-sse,+soft-float",
     "panic-strategy": "abort",
-    "stack-probes": true
+    "stack-probes": {
+        "kind": "inline-or-call",
+        "min-llvm-version-for-inline": [11, 0, 1]
+    }
 }
