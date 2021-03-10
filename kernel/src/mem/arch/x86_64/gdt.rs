@@ -47,7 +47,7 @@ impl SegmentDescriptor {
 }
 
 /// The global descriptor table.
-struct Gdt<const DESCRIPTORS: usize>([SegmentDescriptor; DESCRIPTORS]);
+struct Gdt<const D: usize>([SegmentDescriptor; D]);
 
 /// The GDT register.
 #[allow(unused)]
@@ -59,7 +59,7 @@ struct Gdtr {
     address: VirtualAddress,
 }
 
-impl<const DESCRIPTORS: usize> Gdt<DESCRIPTORS> {
+impl<const D: usize> Gdt<D> {
     /// Load the GDT and reload segment selectors.
     /// # Safety
     /// The loaded GDT must be valid, complete, and have the kernel code segment as the second element.
