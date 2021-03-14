@@ -152,9 +152,7 @@ impl VirtualAddress {
 
     /// Get the next address of the given alignment.
     pub const fn next_aligned(&self, align: usize) -> Self {
-        let ret = unsafe {
-            Self::new_unchecked(align_up(self.raw(), align))
-        };
+        let ret = unsafe { Self::new_unchecked(align_up(self.raw(), align)) };
         assert!(address_is_valid(ret.raw()));
 
         ret
