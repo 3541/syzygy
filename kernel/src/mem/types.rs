@@ -146,7 +146,7 @@ impl VirtualAddress {
     }
 
     /// Create a mutable pointer to `T` from the address.
-    pub fn as_mut_ptr<T>(&mut self) -> *mut T {
+    pub fn as_mut_ptr<T>(&self) -> *mut T {
         self.raw() as *mut _
     }
 
