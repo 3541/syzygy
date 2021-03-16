@@ -5,17 +5,86 @@ Mostly pulled from the linker script.
 
 !*/
 
-use crate::mem::{Address, VirtualAddress};
+use crate::mem::{Address, VirtualAddress, VirtualRegion};
+use crate::mem::virt::{ActivePrimaryTable, TActivePrimaryTable};
 
-#[allow(dead_code)]
-extern "C" {
-    /// Linker script symbol for the start of the kernel image.
-    static SZ_KERNEL_BASE: u8;
-}
+pub mod image {
+    use super::VirtualAddress;
 
-/// The virtual address at which the kernel image begins.
-pub fn kernel_base() -> VirtualAddress {
-    unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BASE) }
+    #[allow(dead_code)]
+    extern "C" {
+        /// Linker script symbol for the start of the kernel image.
+        static SZ_KERNEL_BASE: u8;
+        static SZ_KERNEL_TEXT_BASE: u8;
+        static SZ_KERNEL_TEXT_END: u8;
+        static SZ_KERNEL_DATA_BASE: u8;
+        static SZ_KERNEL_DATA_END: u8;
+        static SZ_KERNEL_BSS_BASE: u8;
+        static SZ_KERNEL_BSS_END: u8;
+        static SZ_KERNEL_RODATA_BASE: u8;
+        static SZ_KERNEL_RODATA_END: u8;
+        static SZ_KERNEL_TDATA_BASE: u8;
+        static SZ_KERNEL_TDATA_END: u8;
+        static SZ_KERNEL_TBSS_BASE: u8;
+        static SZ_KERNEL_TBSS_END: u8;
+    }
+
+    /// The virtual address at which the kernel image begins.
+    pub fn base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BASE) }
+    }
+
+    pub fn text_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TEXT_BASE) }
+    }
+
+    pub fn text_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TEXT_END) }
+    }
+
+    pub unsafe fn text_region(table: &ActivePrimaryTable) {
+        todo!()
+    }
+
+    pub fn data_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_DATA_BASE) }
+    }
+
+    pub fn data_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_DATA_END) }
+    }
+
+    pub fn bss_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BSS_BASE) }
+    }
+
+    pub fn bss_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BSS_END) }
+    }
+
+    pub fn rodata_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_RODATA_BASE) }
+    }
+
+    pub fn rodata_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_RODATA_END) }
+    }
+
+    pub fn tdata_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TDATA_BASE) }
+    }
+
+    pub fn tdata_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TDATA_END) }
+    }
+
+    pub fn tbss_base() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TBSS_BASE) }
+    }
+
+    pub fn tbss_end() -> VirtualAddress {
+        unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TBSS_END) }
+    }
 }
 
 /// 4G of physical memory is mapped here. See
