@@ -56,7 +56,7 @@ impl LLNode {
     /// Create a node from the block specified by the given address and size.
     /// # Safety
     /// The given region must genuinely be unused and mapped writable.
-    unsafe fn from_address(mut address: VirtualAddress, size: usize) -> &'static mut LLNode {
+    unsafe fn from_address(address: VirtualAddress, size: usize) -> &'static mut LLNode {
         let ret = &mut *address.as_mut_ptr::<LLNode>();
         ret.size = size;
         ret.next = None;
