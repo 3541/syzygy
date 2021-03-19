@@ -1,3 +1,9 @@
+//! x86_64 paging and virtual memory.
+
+mod table;
+
+pub use table::{ActivePrimaryTable, InactivePrimaryTable};
+
 use crate::mem::{Address, VirtualAddress};
 
 /// Flush the TLB entry for a single page.

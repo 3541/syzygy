@@ -5,11 +5,10 @@ Mostly pulled from the linker script.
 
 !*/
 
-use crate::mem::{Address, VirtualAddress, VirtualRegion};
-use crate::mem::virt::{ActivePrimaryTable, TActivePrimaryTable};
+use crate::mem::{Address, VirtualAddress};
 
 pub mod image {
-    use super::VirtualAddress;
+    use crate::mem::{VirtualAddress, VirtualRange};
 
     #[allow(dead_code)]
     extern "C" {
@@ -42,8 +41,8 @@ pub mod image {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TEXT_END) }
     }
 
-    pub unsafe fn text_region(table: &ActivePrimaryTable) {
-        todo!()
+    pub fn text_range() -> VirtualRange {
+        VirtualRange::new(text_base(), text_end() - text_base())
     }
 
     pub fn data_base() -> VirtualAddress {
@@ -54,12 +53,20 @@ pub mod image {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_DATA_END) }
     }
 
+    pub fn data_range() -> VirtualRange {
+        VirtualRange::new(data_base(), data_end() - data_base())
+    }
+
     pub fn bss_base() -> VirtualAddress {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BSS_BASE) }
     }
 
     pub fn bss_end() -> VirtualAddress {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_BSS_END) }
+    }
+
+    pub fn bss_range() -> VirtualRange {
+        VirtualRange::new(bss_base(), bss_end() - bss_base())
     }
 
     pub fn rodata_base() -> VirtualAddress {
@@ -70,6 +77,10 @@ pub mod image {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_RODATA_END) }
     }
 
+    pub fn rodata_range() -> VirtualRange {
+        VirtualRange::new(rodata_base(), rodata_end() - rodata_base())
+    }
+
     pub fn tdata_base() -> VirtualAddress {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TDATA_BASE) }
     }
@@ -78,12 +89,20 @@ pub mod image {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TDATA_END) }
     }
 
+    pub fn tdata_range() -> VirtualRange {
+        VirtualRange::new(tdata_base(), tdata_end() - tdata_base())
+    }
+
     pub fn tbss_base() -> VirtualAddress {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TBSS_BASE) }
     }
 
     pub fn tbss_end() -> VirtualAddress {
         unsafe { VirtualAddress::from_ptr_unchecked(&SZ_KERNEL_TBSS_END) }
+    }
+
+    pub fn tbss_range() -> VirtualRange {
+        VirtualRange::new(tbss_base(), tbss_end() - tbss_base())
     }
 }
 

@@ -10,6 +10,10 @@
 #![feature(const_panic)]
 #![feature(const_fn_transmute)]
 #![feature(const_raw_ptr_to_usize_cast)]
+#![feature(const_generics)]
+#![feature(const_evaluatable_checked)]
+#![feature(inherent_associated_types)]
+#![feature(thread_local)]
 #![cfg_attr(test, allow(unused))]
 
 /*!

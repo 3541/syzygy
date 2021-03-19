@@ -33,10 +33,9 @@ SECTIONS {
               SZ_KERNEL_RODATA_END = .;
          }
 
-/*         .tdata ALIGN(4K) : {
+         .tdata ALIGN(4K) : {
               SZ_KERNEL_TDATA_BASE = .;
               *(.tdata .tdata.*)
-              . += 8;
               SZ_KERNEL_TDATA_END = .;
          }
 
@@ -44,5 +43,5 @@ SECTIONS {
              SZ_KERNEL_TBSS_BASE = .;
              *(.tbss .tbss.*)
              SZ_KERNEL_TBSS_END = .;
-         }*/
+         }
 }

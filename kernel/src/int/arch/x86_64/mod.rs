@@ -82,6 +82,6 @@ pub fn init() {
 }
 
 /// Initialize the [IDT](Idt).
-pub fn init_idt() {
+pub fn init_early() {
     idt::init();
 }

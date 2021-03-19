@@ -1,7 +1,7 @@
 //! Basic types and utilities for dealing with memory.
 
 use core::fmt::{self, Debug, Display, Formatter};
-use core::ops::{Add, Sub};
+use core::ops::{Add, AddAssign, Sub};
 
 /// Convenience constants and functions for dealing with memory sizes.
 pub mod size {
@@ -192,6 +192,12 @@ impl Add<usize> for VirtualAddress {
                 .checked_add(rhs)
                 .expect("Virtual address addition overflowed."),
         )
+    }
+}
+
+impl AddAssign<usize> for VirtualAddress {
+    fn add_assign(&mut self, rhs: usize) {
+        *self = Self::new(self.0 + rhs);
     }
 }
 

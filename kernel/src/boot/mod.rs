@@ -27,5 +27,8 @@ fn kmain(mmap: Mmap) {
     mem::phys::init(&mmap);
     info!("INITIALIZED physical memory management.");
 
+    mem::virt::init();
+    info!("INITIALIZED virtual memory management.");
+
     util::halt_loop();
 }

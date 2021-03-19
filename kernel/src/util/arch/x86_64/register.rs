@@ -38,6 +38,7 @@ pub mod read {
     use super::msr;
 
     impl_reg_access!(cs, u16, r);
+    impl_reg_access!(cr3, u64, r);
 
     /// Read from an MSR.
     pub fn msr(address: u32) -> u64 {
@@ -57,6 +58,8 @@ pub mod read {
 /// Write to registers.
 pub mod write {
     use super::msr;
+
+    impl_reg_access!(cr3, u64, w);
 
     /// Write to an MSR.
     /// # Safety

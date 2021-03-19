@@ -4,7 +4,7 @@ mod alloc;
 mod arch;
 
 pub use self::alloc::PageAllocator;
-pub use arch::Page;
+pub use arch::{Page, PageRef};
 
 use super::map::MmapEntry;
 
