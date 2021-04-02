@@ -27,6 +27,35 @@ imageFiles =
 
 scriptPath = AddPath [] ["./scripts"]
 
+qemuRun :: Partial => [String] -> FilePath -> Action ()
+qemuRun options image = do
+  need [image]
+
+  arch <- getConfig "ARCH"
+  let qemuName = "qemu-system-" ++ fromJust arch
+  qemuMemory <- getConfig "QEMU_MEMORY"
+  qemuKvmConfig <- getConfig "QEMU_KVM"
+  let qemuKvm =
+        if fromJust qemuKvmConfig == "yes"
+          then "-enable-kvm"
+          else ""
+  qemuDisplayConfig <- getConfig "QEMU_DISPLAY"
+  let qemuDisplay =
+        if fromJust qemuDisplayConfig == "yes"
+          then ""
+          else "-display none"
+
+  cmd_
+    qemuName
+    qemuKvm
+    qemuDisplay
+    "-m"
+    qemuMemory
+    "-d cpu_reset -s -debugcon stdio"
+    ("-drive format=raw,file=" ++ (image))
+    options
+
+
 main :: IO ()
 main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True, shakeThreads = 0} $ do
   usingConfigFile $ "cfg" </> "shake.cfg"
@@ -56,30 +85,10 @@ main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True
 
   phony "run" $ do
     -- TODO: Intelligently handle not having qemu (run Bochs instead)
-    need [buildDir </> "syzygy.img"]
+    qemuRun [] $ buildDir </> "syzygy.img"
 
-    arch <- getConfig "ARCH"
-    let qemuName = "qemu-system-" ++ fromJust arch
-    qemuMemory <- getConfig "QEMU_MEMORY"
-    qemuKvmConfig <- getConfig "QEMU_KVM"
-    let qemuKvm =
-          if fromJust qemuKvmConfig == "yes"
-            then "-enable-kvm"
-            else ""
-    qemuDisplayConfig <- getConfig "QEMU_DISPLAY"
-    let qemuDisplay =
-          if fromJust qemuDisplayConfig == "yes"
-            then ""
-            else "-display none"
-
-    cmd_
-      qemuName
-      qemuKvm
-      qemuDisplay
-      "-m"
-      qemuMemory
-      "-d cpu_reset -s -debugcon stdio"
-      ("-drive format=raw,file=" ++ (buildDir </> "syzygy.img"))
+  phony "debug" $ do
+    qemuRun ["-S"] $ buildDir </> "syzygy.img"
 
   buildDir </> "syzygy.img" %> \out -> do
     need
