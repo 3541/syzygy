@@ -12,7 +12,7 @@ import Development.Shake.Util
 cleanBoot :: Partial => FilePath -> Action ()
 cleanBoot limineDir = do
   cmd_ "make -C" limineDir "clean"
-  removeFilesAfter limineDir ["limine.bin", "limine-install"]
+  removeFilesAfter limineDir ["limine.bin", "bin" </> "limine-install"]
 
 prefixedMakefileDeps :: FilePath -> FilePath -> Action ()
 prefixedMakefileDeps prefix makefile =
@@ -25,33 +25,43 @@ buildBootloader limineDir = do
   options <- getShakeOptionsRules
   let threads = shakeThreads options
 
-  limineDir </> "limine.bin" %> \_out -> do
+  limineDir </> "bin" </> "limine-hdd.bin" %> \_out -> do
     need [
       limineCC,
       limineDir </> "Makefile",
       limineDir </> "decompressor" </> "Makefile",
-      limineDir </> "stage2" </> "Makefile"
+      limineDir </> "stage23" </> "Makefile",
+      limineDir </> "stivale" </> "stivale2.h"
       ]
 
-    cmd_ "make -j" (show threads) "-C" limineDir "bootloader"
+    cmd_ "make -j" (show threads) "-C" limineDir "limine-bios"
     decompressorDepFiles <- getDirectoryFiles limineDir ["decompressor//*.d"]
-    stage2DepFiles <- getDirectoryFiles limineDir ["stage2//*.d"]
+    stage2DepFiles <- getDirectoryFiles limineDir ["stage23//*.d"]
     forM_ (map (limineDir </>) decompressorDepFiles) (prefixedMakefileDeps $ limineDir </> "decompressor")
-    forM_ (map (limineDir </>)  stage2DepFiles) (prefixedMakefileDeps $ limineDir </> "stage2")
+    forM_ (map (limineDir </>)  stage2DepFiles) (prefixedMakefileDeps $ limineDir </> "stage23")
 
-  limineDir </> "limine.o" %> \_out -> do
-    need [limineDir </> "limine.bin"]
-    cmd_ "make -C" limineDir "limine.o"
+  limineDir </> "bin" </> "limine.sys" %> \_out -> do
+    need [limineDir </> "bin" </> "limine-hdd.bin"]
 
-  limineDir </> "limine-install" %> \_out -> do
+  limineDir </> "stivale" </> "stivale2.h" %> \_out -> do
     need [limineDir </> "Makefile"]
-    makefile <- liftIO (readFile $ limineDir </> "Makefile")
-    let makefileDeps = map (limineDir </>) $
+    cmd_ "rmdir" "--ignore-fail-on-non-empty" (limineDir </> "stivale")
+    cmd_ "make" "-C" limineDir "stivale"
+
+  limineDir </> "limine-install" </> "limine-hdd.o" %> \_out -> do
+    need [limineDir </> "bin" </> "limine-hdd.bin"]
+    cmd_ "make" "-C" (limineDir </> "limine-install")
+      ("LIMINE_HDD_BIN=" ++ (".." </> "bin" </> "limine-hdd.bin")) "limine-hdd.o"
+
+  limineDir </> "bin" </> "limine-install" %> \_out -> do
+    need [limineDir </> "limine-install" </> "Makefile"]
+    makefile <- liftIO (readFile $ limineDir </> "limine-install" </> "Makefile")
+    let makefileDeps = map ((limineDir </> "limine-install") </>) $
                        Map.fromListWith (++) (parseMakefile makefile) Map.! "limine-install"
     need makefileDeps
 
-    cmd_ "make -j" (show threads) "-C" limineDir "limine-install"
+    cmd_ "make -j" (show threads) "-C" limineDir ("bin" </> "limine-install")
 
   limineCC %> \_out -> do
-    need [limineDir </> "toolchain" </> "make_toolchain.sh"]
-    cmd_ (Cwd $ limineDir </> "toolchain") "./make_toolchain.sh" ("-j" ++ show threads)
+    need [limineDir </> "scripts" </> "make_toolchain_bios.sh"]
+    cmd_ (Cwd $ limineDir) ("scripts" </> "make_toolchain_bios.sh") "toolchain" ("-j" ++ show threads)

@@ -1,13 +1,16 @@
 module Main where
 
-import Build.Boot
-import Build.Kernel
-import Build.Rust
+import Control.Exception.Extra
 import Data.Map.Strict as Map
 import Data.Maybe
+
 import Development.Shake
 import Development.Shake.Config
 import Development.Shake.FilePath
+
+import Build.Boot
+import Build.Kernel
+import Build.Rust
 
 buildDir = "_build"
 
@@ -18,7 +21,8 @@ imageFiles =
   Map.fromList
     [
       (imageBuildDir </> "limine.cfg", "boot" </> "limine.cfg"),
-      (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf")
+      (imageBuildDir </> "sz_kernel.elf", buildDir </> "kernel" </> "sz_kernel.elf"),
+      (imageBuildDir </> "limine.sys", "boot" </> "limine" </> "bin" </> "limine.sys")
     ]
 
 scriptPath = AddPath [] ["./scripts"]
@@ -80,8 +84,8 @@ main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True
   buildDir </> "syzygy.img" %> \out -> do
     need
       ( Map.keys imageFiles
-          ++ [ "boot" </> "limine" </> "limine-install",
-               "boot" </> "limine" </> "limine.bin",
+          ++ [ "boot" </> "limine" </> "bin" </> "limine-install",
+               "boot" </> "limine" </> "bin" </> "limine-hdd.bin",
                "scripts" </> "make_fs.sh"
              ]
       )

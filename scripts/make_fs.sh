@@ -55,7 +55,7 @@ case $(uname) in
 
         loop_partition="${loop}s1"
         newfs_msdos "$loop_partition"
-        
+
         mount_params="-t msdosfs"
         ;;
     *)
@@ -64,7 +64,7 @@ case $(uname) in
         else
             echo "System is Linux."
         fi
-        
+
         loop=$(losetup --find --show "$image")
 
         parted -s "$loop" mklabel msdos mkpart primary fat32 32768B 100% set 1 boot on
@@ -75,7 +75,7 @@ case $(uname) in
         ;;
 esac
 echo "Formatted partition."
-    
+
 mkdir -p mnt
 mount $mount_params "$loop_partition" mnt
 echo "Mounted ${image} (${loop_partition})."
@@ -83,7 +83,7 @@ echo "Mounted ${image} (${loop_partition})."
 cp -r "$files"/* mnt/
 echo "Copied ${files} to image."
 
-"${limine_dir}/limine-install" "${limine_dir}/limine.bin" "$loop"
+"${limine_dir}/bin/limine-install" "$loop"
 echo "Installed limine."
 
 if [ $(uname) == "FreeBSD" ]; then
