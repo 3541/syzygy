@@ -72,7 +72,7 @@ main = shakeArgs shakeOptions {shakeProgress = progressSimple, shakeColor = True
 
   phony "build" $ do
     -- Useful for making sure changes build without the overhead of making an image.
-    need $ elems imageFiles
+    need [buildDir </> "kernel" </> "sz_kernel.elf"]
 
   phony "test" $ do
     need ["kernelTest"]
