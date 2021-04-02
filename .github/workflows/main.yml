@@ -21,7 +21,10 @@ jobs:
           override: true
           components: rust-src, miri
 
-      - name: deps
+      - name: deps-nasm
+        run: sudo apt install -y nasm
+
+      - name: deps-shake
         run: stack install shake
 
       - name: build
