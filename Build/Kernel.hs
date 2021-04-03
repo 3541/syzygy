@@ -22,7 +22,12 @@ buildKernel kernelDir buildDir = do
     let linkScript = kernelLinkScriptPath </> fromJust arch <.> "ld"
     need [kernelLib, linkScript]
 
-    cmd_ "ld -static -pie -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
+    let ldDefaultArgs = "-static -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
+    kernelPieConfig <- getConfig "KERNEL_PIE"
+    let ldDyn = if fromJust kernelPieConfig == "yes"
+          then "-pie"
+          else ""
+    cmd_ "ld" ldDefaultArgs ldDyn
       "-T" linkScript "-o" [out] [kernelLib]
 
   kernelLib %> \out -> do
