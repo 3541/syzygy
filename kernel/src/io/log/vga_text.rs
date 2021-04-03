@@ -161,6 +161,6 @@ pub fn _print(args: fmt::Arguments) {
 
 /// Initialize the VGA buffer.
 pub fn init() {
-    SCREEN_WRITER.init(Spinlock::new(ScreenWriter::new(Color::White, Color::Black)));
+    SCREEN_WRITER.init(Spinlock::new(ScreenWriter::new(Color::Black, Color::White)));
     ScreenWriter::the().clear_screen();
 }
