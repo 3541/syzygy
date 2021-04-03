@@ -12,9 +12,11 @@ crate-type = ["staticlib"]
 log_crate = { package = "log", version = "*" }
 bitflags = "*"
 cfg-if = "*"
+ansi_rgb = { version = "*", optional = true }
+rgb = { version = "*", optional = true }
 
 # All features should have corresponding Meson options.
 [features]
 log_vga = []
-log_e9 = []
+log_e9 = ["ansi_rgb", "rgb"]
 heap_validation = []

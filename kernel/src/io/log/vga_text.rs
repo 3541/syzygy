@@ -1,15 +1,17 @@
 //! Logging to the VGA text mode screen.
 
 use core::fmt::{self, Write};
-use core::ptr;
+use core::{mem, ptr};
 
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
 use crate::util::sync::OnceCell;
 
+use super::Color as LogColor;
+
 /// A VGA color code.
 #[allow(dead_code)]
 #[repr(u8)]
-enum Color {
+pub(super) enum Color {
     Black = 0,
     Blue = 1,
     Green = 2,
@@ -28,6 +30,26 @@ enum Color {
     White = 15,
 }
 
+impl const From<u8> for Color {
+    fn from(b: u8) -> Color {
+        assert!(b < 16);
+        unsafe { mem::transmute(b) }
+    }
+}
+
+impl const Into<Color> for LogColor {
+    fn into(self) -> Color {
+        match self {
+            Self::Gray => Color::LightGray,
+            Self::Cyan => Color::Cyan,
+            Self::Green => Color::Green,
+            Self::LightGreen => Color::LightGreen,
+            Self::Yellow => Color::Yellow,
+            Self::Red => Color::Red,
+        }
+    }
+}
+
 /// Character colors: foreground and background.
 #[derive(Copy, Clone)]
 struct CharColor(u8);
@@ -35,6 +57,10 @@ struct CharColor(u8);
 impl CharColor {
     const fn new(fg: Color, bg: Color) -> CharColor {
         CharColor((bg as u8) << 4 | (fg as u8))
+    }
+
+    const fn background(&self) -> Color {
+        Color::from(self.0 >> 4)
     }
 }
 
@@ -143,6 +169,10 @@ impl ScreenWriter {
             self.column += 1;
         }
     }
+
+    fn set_color(&mut self, c: Color) {
+        self.color = CharColor::new(c, self.color.background());
+    }
 }
 
 impl Write for ScreenWriter {
@@ -157,6 +187,16 @@ impl Write for ScreenWriter {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     ScreenWriter::the().write_fmt(args).unwrap()
+}
+
+#[doc(hidden)]
+pub fn _print_colored(c: LogColor, args: fmt::Arguments) {
+    let mut writer = ScreenWriter::the();
+    let old_color = writer.color;
+
+    writer.set_color(c.into());
+    writer.write_fmt(args).unwrap();
+    writer.color = old_color;
 }
 
 /// Initialize the VGA buffer.

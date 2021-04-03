@@ -2,6 +2,8 @@
 
 use log_crate::{Level, LevelFilter, Log, Metadata, Record};
 
+use super::Color;
+
 /// Per-module log level overrides.
 const LOG_LEVELS: [(&str, LevelFilter); 0] = [];
 
@@ -33,12 +35,12 @@ impl Log for Logger {
             return;
         }
 
-        let c = match record.level() {
-            Level::Error => 'e',
-            Level::Warn => 'w',
-            Level::Info => 'i',
-            Level::Debug => 'd',
-            Level::Trace => 't',
+        let (prefix, color) = match record.level() {
+            Level::Error => ('e', Color::Red),
+            Level::Warn => ('w', Color::Yellow),
+            Level::Info => ('i', Color::Green),
+            Level::Debug => ('d', Color::Cyan),
+            Level::Trace => ('t', Color::Gray),
         };
 
         static MAIN_LEN: usize = "syzygy_kernel ".len();
@@ -48,7 +50,8 @@ impl Log for Logger {
             "init"
         };
 
-        crate::println!("{} ({}) --> {}", c, target, record.args());
+        crate::print_colored!(color, "{} ", prefix);
+        crate::println!("({}) --> {}", target, record.args());
     }
 
     fn flush(&self) {

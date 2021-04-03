@@ -2,6 +2,10 @@
 
 use core::fmt::{self, Write};
 
+use ansi_rgb::Foreground;
+use rgb::RGB8;
+
+use crate::io::log::Color;
 use crate::io::port::Port;
 
 /// The `e9` debug port.
@@ -30,9 +34,27 @@ impl fmt::Write for DebugPort {
     }
 }
 
+impl Into<RGB8> for Color {
+    fn into(self) -> RGB8 {
+        match self {
+            Self::Gray => RGB8::new(98, 98, 98),
+            Self::Cyan => ansi_rgb::cyan(),
+            Self::Green => ansi_rgb::green(),
+            Self::LightGreen => ansi_rgb::yellow_green(),
+            Self::Yellow => ansi_rgb::yellow(),
+            Self::Red => ansi_rgb::red(),
+        }
+    }
+}
+
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     DebugPort::the()
         .write_fmt(args)
         .expect("Failed to print to port e9.");
+}
+
+#[doc(hidden)]
+pub fn _print_colored(c: Color, args: fmt::Arguments) {
+    write!(DebugPort::the(), "{}", args.fg(c.into()));
 }
