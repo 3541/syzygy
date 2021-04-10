@@ -10,3 +10,4 @@ target/*
 _build
 _shake
 .shake
+**/__pycache__
