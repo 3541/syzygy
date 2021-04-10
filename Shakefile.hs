@@ -44,11 +44,17 @@ qemuRun options image = do
         if fromJust qemuDisplayConfig == "yes"
           then ""
           else "-display none"
+  qemuMonitorConfig <- getConfig "QEMU_MONITOR"
+  let qemuMonitor =
+        if fromJust qemuMonitorConfig == "yes"
+           then "-monitor telnet:127.0.0.1:7777,server,nowait"
+           else ""
 
   cmd_
     qemuName
     qemuKvm
     qemuDisplay
+    qemuMonitor
     "-m"
     qemuMemory
     "-d cpu_reset -s -debugcon stdio"
