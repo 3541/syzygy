@@ -10,6 +10,7 @@ use super::map::MmapEntry;
 
 /// Whether a page came from a page allocator or not.
 #[repr(u16)]
+#[derive(Copy, Clone)]
 pub enum PageType {
     Unallocated = 0,
     Allocated = 1 << 9,
