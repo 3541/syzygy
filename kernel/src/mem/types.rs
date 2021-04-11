@@ -121,7 +121,7 @@ impl const Sub<PhysicalAddress> for PhysicalAddress {
 
 impl Display for PhysicalAddress {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "PhysicalAddress(0x{:x})", self.raw())
+        write!(f, "P:0x{:x}", self.raw())
     }
 }
 
@@ -173,7 +173,7 @@ impl const Address for VirtualAddress {
 
 impl Display for VirtualAddress {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "VirtualAddress(0x{:x})", self.raw())
+        write!(f, "V:0x{:x}", self.raw())
     }
 }
 
