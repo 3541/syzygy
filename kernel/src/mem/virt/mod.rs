@@ -124,7 +124,7 @@ pub trait TActivePrimaryTable {
     fn translate_range(&self, range: VirtualRange) -> Option<Vec<Option<PageRef>>>;
 }
 
-pub fn init() {
+pub fn init(slide: usize) -> ActivePrimaryTable {
     // SAFETY: This is the only reader of the bootstrap tables.
     let root = unsafe { ActivePrimaryTable::current_active() };
 

@@ -22,6 +22,7 @@ pub enum TagIdentifier {
     Firmware = 0x359D837855E3858C,
     Framebuffer = 0x506461D2950408FA,
     Smp = 0x34D1D96339647025,
+    Slide = 0xEE80847D01506C57,
     Uart = 0xB813F9B8DBC78797,
     Dtb = 0xABB29BD49A2833FA,
 }
@@ -138,6 +139,15 @@ impl TagInner for MmapTag {
     const IDENTIFIER: TagIdentifier = TagIdentifier::Mmap;
 }
 
+#[repr(C, packed)]
+struct SlideTag {
+    slide: u64,
+}
+
+impl TagInner for SlideTag {
+    const IDENTIFIER: TagIdentifier = TagIdentifier::Slide;
+}
+
 /// A (potentially typed) info tag.
 #[repr(C, packed)]
 pub struct Tag<T: TagInner> {
@@ -204,5 +214,13 @@ impl StivaleInfo {
             .inner
             .mmap()
             .collect()
+    }
+
+    /// Get the kernel slide.
+    pub fn slide(&self) -> u64 {
+        self.get_tag::<SlideTag>()
+            .expect("Couldn't find kernel slide tag.")
+            .inner
+            .slide
     }
 }
