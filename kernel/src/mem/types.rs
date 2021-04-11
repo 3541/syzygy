@@ -161,6 +161,14 @@ impl VirtualAddress {
 
         ret
     }
+
+    pub fn canonicalize(&self) -> Self {
+        // SAFETY: Constructing an address by sign extension this way guarantees that it is
+        // canonical.
+        unsafe {
+            VirtualAddress::new_unchecked((self.0 & ((1 << 48) - 1)) | !((self.0 & (1 << 47)) - 1))
+        }
+    }
 }
 
 impl const Address for VirtualAddress {
