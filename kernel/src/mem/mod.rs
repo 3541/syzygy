@@ -9,6 +9,6 @@ pub mod virt;
 
 pub use phys::{Page, PageAllocator, PageRef, PageType};
 pub use types::{
-    size, Address, PhysicalAddress, RawPhysicalAddress, RawVirtualAddress, VirtualAddress,
+    align_up, size, Address, PhysicalAddress, RawPhysicalAddress, RawVirtualAddress, VirtualAddress,
 };
 pub use virt::{VirtualRange, VirtualRegion};
