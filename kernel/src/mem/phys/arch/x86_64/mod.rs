@@ -1,6 +1,7 @@
 //! x86_64 physical memory management.
 
 use core::fmt;
+use core::mem::forget;
 
 use crate::mem::phys::PageType;
 use crate::mem::{size, Address, PageAllocator, PhysicalAddress};
@@ -30,6 +31,13 @@ impl Page {
     pub fn address(&self) -> PhysicalAddress {
         // Get rid of the allocated flag.
         PhysicalAddress::new(self.0 & !(PageType::Allocated as usize))
+    }
+
+    /// Leak the page, returning its address.
+    pub fn leak(self) -> PhysicalAddress {
+        let addr = self.address();
+        forget(self);
+        addr
     }
 }
 
