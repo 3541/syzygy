@@ -1,5 +1,7 @@
 //! x86_64 physical memory management.
 
+use core::fmt;
+
 use crate::mem::phys::PageType;
 use crate::mem::{size, Address, PageAllocator, PhysicalAddress};
 
@@ -40,6 +42,12 @@ impl Drop for Page {
 
         // A hack, because dealloc takes ownership while drop has a reference.
         PageAllocator::the().dealloc(Page(self.0));
+    }
+}
+
+impl fmt::Debug for Page {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Page({})", self.address())
     }
 }
 
