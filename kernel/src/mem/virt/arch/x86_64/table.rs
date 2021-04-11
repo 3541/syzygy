@@ -241,7 +241,7 @@ where
                 page,
                 self,
                 Self::index_of(addr),
-                EntryFlags::PRESENT | EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE,
+                EntryFlags::PRESENT | EntryFlags::WRITABLE,
             );
             child.flush()
         }
@@ -285,7 +285,7 @@ impl RootTable {
         pml4[TABLE_RMAP_INDEX].clear();
         pml4[TABLE_RMAP_INDEX].set(
             PhysicalAddress::new(pml4_addr as usize),
-            EntryFlags::WRITABLE | EntryFlags::PRESENT | EntryFlags::NO_EXECUTE,
+            EntryFlags::WRITABLE | EntryFlags::PRESENT,
         );
         flush_all_mappings();
         trace!("INITIALIZED bootstrap PML4 recursive mapping.");
@@ -300,10 +300,8 @@ impl InactivePrimaryTable {
             active.map_temp(&mut self.0, MappingFlags::WRITABLE).flush();
         // SAFETY: This will panic if it overwrites an existing mapping.
         unsafe {
-            table[TABLE_RMAP_INDEX].set(
-                self.0.address(),
-                EntryFlags::PRESENT | EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE,
-            );
+            table[TABLE_RMAP_INDEX]
+                .set(self.0.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
             table.unmap(active).flush();
         };
     }
@@ -377,7 +375,6 @@ impl ActivePrimaryTable {
     }
 
     unsafe fn map_unchecked(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush {
-        trace!("Mapping {} -> {}.", from, to.address());
         let mut t = self.0.lock();
         let table = t.ensure_leaf(from);
         table.set(
@@ -453,10 +450,8 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             current_table_remap[TABLE_RMAP_INDEX].clear();
             // Now there is only one mapping, and the recursive mapping in the current PML4 points
             // to the table we want to edit.
-            current_table_remap[TABLE_RMAP_INDEX].set(
-                t.phys_address(),
-                EntryFlags::PRESENT | EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE,
-            );
+            current_table_remap[TABLE_RMAP_INDEX]
+                .set(t.phys_address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
             current_table_remap
         };
@@ -469,7 +464,7 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             current_table_remap[TABLE_RMAP_INDEX].clear();
             current_table_remap[TABLE_RMAP_INDEX].set(
                 current_table_address,
-                EntryFlags::PRESENT | EntryFlags::WRITABLE | EntryFlags::NO_EXECUTE,
+                EntryFlags::PRESENT | EntryFlags::WRITABLE,
             );
             let mut flush = FlushAll::new();
             flush.consume(current_table_remap.unmap(self));

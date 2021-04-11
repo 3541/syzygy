@@ -144,11 +144,12 @@ pub trait TActivePrimaryTable {
     fn translate_range(&self, range: VirtualRange) -> Option<Vec<Option<PageRef>>>;
 }
 
-pub fn init(slide: usize) -> ActivePrimaryTable {
+pub fn init(_slide: usize) -> ActivePrimaryTable {
     let root_table = arch::init();
     trace!("Got current active table.");
 
-    let offset = slide + image::base().raw();
+    let phys_base = image::base() - image::LOAD_BASE;
+    let offset = image::base().raw();
 
     let kernel_image: Vec<_> = vec![
         (image::text_range(), MappingFlags::EXECUTABLE),
@@ -166,7 +167,7 @@ pub fn init(slide: usize) -> ActivePrimaryTable {
             // SAFETY: Kernel sections are guaranteed to exist and be otherwise un-owned.
             .map(|a| unsafe {
                 VirtualBacking::Present(Page::new(
-                    PhysicalAddress::new(a.raw() - offset),
+                    PhysicalAddress::new(phys_base + a.raw() - offset),
                     PageType::Unallocated,
                 ))
             })
@@ -187,14 +188,14 @@ pub fn init(slide: usize) -> ActivePrimaryTable {
         trace!("Mapping kernel regions.");
         let mut flush = FlushAll::new();
         for region in kernel_image {
-            trace!("Mapping {:?}.", region);
             flush.consume_all(region.map(root));
         }
         flush.flush();
     });
     trace!("Mapped kernel in new table.");
 
-    unsafe { root_table.swap(new_table) };
+    let old_table = unsafe { root_table.swap(new_table) };
+    forget(old_table);
     trace!("Swapped to new table.");
     // This is now actually the new table.
     root_table

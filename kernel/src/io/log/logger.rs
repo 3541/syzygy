@@ -62,7 +62,7 @@ impl Log for Logger {
 impl Logger {
     fn the() -> &'static Logger {
         static LOGGER: Logger = Logger {
-            level: LevelFilter::Trace,
+            level: LevelFilter::Debug,
         };
 
         &LOGGER
