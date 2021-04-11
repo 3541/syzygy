@@ -9,6 +9,10 @@ pub mod size {
 
     /// The number of bytes in 1 KiB.
     pub const KB: usize = 1024;
+    /// The number of bytes in 1 MiB.
+    pub const MB: usize = 1024 * KB;
+    /// The number of bytes in 1 GiB.
+    pub const GB: usize = 1024 * MB;
 
     /// The number of T-sized things which can fit in a given number of bytes.
     pub const fn units_of<T>(bytes: usize) -> usize {
