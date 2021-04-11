@@ -2,7 +2,7 @@
 
 mod table;
 
-pub use table::{ActivePrimaryTable, InactivePrimaryTable};
+pub use table::{init, ActivePrimaryTable, InactivePrimaryTable};
 
 use crate::mem::{Address, VirtualAddress};
 

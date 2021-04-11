@@ -5,6 +5,7 @@ pub mod either;
 pub mod sync;
 
 pub use arch::register;
+pub use either::Either;
 
 /// Halt forever.
 pub fn halt_loop() -> ! {
