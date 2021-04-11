@@ -1,6 +1,7 @@
 //! Exception handling.
 
 use super::arch::InterruptStackFrame;
+use crate::util::register;
 
 /// A fatal exception. Print diagnostics and halt.
 fn fatal(name: &str, stack: &InterruptStackFrame, code: Option<usize>) -> ! {
@@ -32,4 +33,7 @@ fatal_exception!(InterruptVector::InvalidOpcode => fn invalid_opcode);
 fatal_exception!(InterruptVector::DoubleFault => fn double_fault(code));
 fatal_exception!(InterruptVector::StackSegment => fn stack_segment(code));
 fatal_exception!(InterruptVector::GeneralProtectionFault => fn general_protection_fault(code));
-fatal_exception!(InterruptVector::PageFault => fn page_fault(code));
+
+handler_fn!(InterruptVector::PageFault => fn page_fault(stack, code: usize) {
+    panic!("FATAL EXCEPTION: page_fault on V:0x{:x} with error code {:#b}.", register::read::cr2(), code);
+});

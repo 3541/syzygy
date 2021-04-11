@@ -38,6 +38,7 @@ pub mod read {
     use super::msr;
 
     impl_reg_access!(cs, u16, r);
+    impl_reg_access!(cr2, u64, r);
     impl_reg_access!(cr3, u64, r);
 
     /// Read from an MSR.
