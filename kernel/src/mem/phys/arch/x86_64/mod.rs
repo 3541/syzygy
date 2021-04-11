@@ -73,7 +73,7 @@ impl PageRef {
 
     /// SAFETY: This should only be used to acquire owning Pages referring to genuinely un-owned
     /// memory.
-    unsafe fn to_owned(self, ty: PageType) -> Page {
+    pub(in crate::mem) unsafe fn to_owned(self, ty: PageType) -> Page {
         Page::new(self.0, ty)
     }
 }
