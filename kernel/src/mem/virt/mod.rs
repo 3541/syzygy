@@ -14,7 +14,7 @@ use core::ops::Drop;
 use bitflags::bitflags;
 use log_crate::{trace, warn};
 
-use crate::consts::image;
+use crate::consts::{image, vga_text_virt_address, VGA_TEXT_PHYS_ADDRESS};
 use crate::mem::{
     Address, Page, PageAllocator, PageRef, PageType, PhysicalAddress, VirtualAddress,
 };
@@ -190,6 +190,13 @@ pub fn init(_slide: usize) -> ActivePrimaryTable {
         for region in kernel_image {
             flush.consume_all(region.map(root));
         }
+
+        flush.consume(root.map(
+            vga_text_virt_address(),
+            unsafe { &Page::new(VGA_TEXT_PHYS_ADDRESS, PageType::Unallocated) },
+            MappingFlags::WRITABLE,
+        ));
+
         flush.flush();
     });
     trace!("Mapped kernel in new table.");

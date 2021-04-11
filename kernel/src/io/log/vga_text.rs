@@ -3,6 +3,7 @@
 use core::fmt::{self, Write};
 use core::{mem, ptr};
 
+use crate::consts::vga_text_virt_address;
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
 use crate::util::sync::OnceCell;
 
@@ -77,12 +78,12 @@ struct ScreenChar {
 struct ScreenBuffer([[ScreenChar; ScreenBuffer::WIDTH]; ScreenBuffer::HEIGHT]);
 
 impl ScreenBuffer {
-    const PHYS_ADDRESS: usize = 0xB8000;
+    pub const PHYS_ADDRESS: usize = 0xB8000;
     const HEIGHT: usize = 25;
     const WIDTH: usize = 80;
 
     fn the() -> &'static mut ScreenBuffer {
-        unsafe { &mut *(crate::consts::PHYS_BASE + ScreenBuffer::PHYS_ADDRESS).as_mut_ptr() }
+        unsafe { &mut *vga_text_virt_address().as_mut_ptr() }
     }
 
     /// Write a character to the screen at the given position.

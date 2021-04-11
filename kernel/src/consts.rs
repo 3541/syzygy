@@ -5,7 +5,7 @@ Mostly pulled from the linker script.
 
 !*/
 
-use crate::mem::{Address, VirtualAddress};
+use crate::mem::{Address, PhysicalAddress, VirtualAddress};
 
 pub mod image {
     use crate::mem::{Address, VirtualAddress, VirtualRange};
@@ -113,6 +113,12 @@ pub mod image {
 /// [the Stivale 2 documentation](https://github.com/stivale/stivale/blob/master/STIVALE2.md#64-bit-kernel).
 pub static PHYS_BASE: VirtualAddress =
     unsafe { VirtualAddress::new_unchecked(0xFFFF_8000_0000_0000) };
+
+pub const VGA_TEXT_PHYS_ADDRESS: PhysicalAddress =
+    unsafe { PhysicalAddress::new_unchecked(0xB8000) };
+pub fn vga_text_virt_address() -> VirtualAddress {
+    PHYS_BASE + VGA_TEXT_PHYS_ADDRESS.raw()
+}
 
 /// The package name. This is probably `syzygy_kernel`.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
