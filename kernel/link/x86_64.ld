@@ -1,9 +1,9 @@
 ENTRY(kinit)
 
-SZ_KERNEL_BASE = 0xFFFFFFFF80000000;
+SZ_KERNEL_BASE = 0xFFFFFFFF80100000;
 
 SECTIONS {
-         . = SZ_KERNEL_BASE + 0x100000;
+         . = SZ_KERNEL_BASE;
 
          .stivale2hdr ALIGN(4K) : {
               KEEP(*(.stivale2hdr))

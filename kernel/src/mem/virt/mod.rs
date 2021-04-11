@@ -3,19 +3,22 @@
 mod arch;
 mod region;
 
-pub use arch::ActivePrimaryTable;
+pub use arch::{ActivePrimaryTable, InactivePrimaryTable};
 pub use region::{VirtualRange, VirtualRegion};
 
+use alloc::vec;
 use alloc::vec::Vec;
-use core::marker::PhantomData;
 use core::mem::forget;
 use core::ops::Drop;
 
 use bitflags::bitflags;
-use log_crate::warn;
+use log_crate::{trace, warn};
 
 use crate::consts::image;
-use crate::mem::{Page, PageRef, PhysicalAddress, VirtualAddress};
+use crate::mem::{
+    Address, Page, PageAllocator, PageRef, PageType, PhysicalAddress, VirtualAddress,
+};
+use region::VirtualBacking;
 
 /// Returned from functions which change memory mappings. Causes a panic if not consumed by
 /// flushing.
@@ -35,34 +38,31 @@ impl Drop for Flush {
     }
 }
 
-struct Unflushed<'a, T> {
-    target: *mut T,
+struct Unflushed<T> {
+    inner: T,
     flush: Flush,
-    lt: PhantomData<&'a mut T>,
 }
 
-impl<'a, T> Unflushed<'a, T> {
-    /// SAFETY: Caller must guarantee the target refers to an object which will become a valid
-    /// reference once the mapping is flushed.
-    unsafe fn from(flush: Flush) -> Self {
-        Self {
-            target: flush.0.as_mut_ptr(),
-            flush,
-            lt: PhantomData,
-        }
+impl<T> Unflushed<T> {
+    /// SAFETY: Caller must guarantee the target refers to an object which will become valid once
+    /// the mapping is flushed.
+    unsafe fn new(inner: T, flush: Flush) -> Self {
+        Self { inner, flush }
     }
 
-    /// SAFETY: Caller must guarantee that `target` refers to an object which will become a valid
-    /// reference once the mapping is flushed.
-    unsafe fn new(target: VirtualAddress) -> Self {
-        Self::from(Flush(target))
-    }
-
-    fn flush(self) -> &'a mut T {
-        let Unflushed { target, flush, .. } = self;
+    fn flush(self) -> T {
+        let Unflushed { inner, flush } = self;
         flush.flush();
         // SAFETY: Persuant to the guarantees required in `new`, this is now safe.
-        unsafe { &mut *target }
+        inner
+    }
+}
+
+impl<T> Unflushed<&mut T> {
+    /// SAFETY: Caller must guarantee that `target` refers to an object which will become a valid
+    /// reference once the mapping is flushed.
+    unsafe fn from_address(target: VirtualAddress) -> Self {
+        Self::new(&mut *target.as_mut_ptr(), Flush(target))
     }
 }
 
@@ -78,6 +78,15 @@ impl FlushAll {
     fn consume(&mut self, f: Flush) {
         self.0 = true;
         forget(f);
+    }
+
+    fn consume_all(&mut self, mut f: Vec<Flush>) {
+        if f.len() == 0 {
+            return;
+        }
+
+        self.0 = true;
+        f.drain(0..).for_each(forget);
     }
 
     fn flush(self) {
@@ -105,43 +114,89 @@ bitflags! {
     pub struct MappingFlags: usize {
         const WRITABLE = 1 << 1;
         const USER = 1 << 2;
-        const NX = 1 << 63;
+        const EXECUTABLE = 1 << 63;
     }
+}
+
+/// Behavior of an inactive top-level page table.
+pub trait TInactivePrimaryTable {
+    fn new(p: Page) -> Self;
+    fn phys_address(&self) -> PhysicalAddress;
 }
 
 /// Behavior of the top-level page table.
 pub trait TActivePrimaryTable {
-    type Inactive;
+    type Inactive: TInactivePrimaryTable;
     /// This function probably doesn't enforce ownership constraints. It should be called /once/ in
     /// a thread's lifetime, and then stored somewhere reasonable.
     unsafe fn current_active() -> Self;
-    fn map(&self, from: VirtualAddress, to: &mut Page, flags: MappingFlags) -> Flush;
+    fn map(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush;
+    fn map_range(
+        &self,
+        from: VirtualRange,
+        to: Vec<Option<&Page>>,
+        flags: MappingFlags,
+    ) -> Vec<Flush>;
     unsafe fn unmap(&self, addr: VirtualAddress) -> Flush;
-    //    fn map_range(&self, from: VirtualRegion, to: Vec<Page>) -> Vec<Flush>;
     fn with(&self, t: &mut Self::Inactive, f: impl FnOnce(&Self));
     unsafe fn swap(&self, other: Self::Inactive) -> Self::Inactive;
     fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress>;
     fn translate_range(&self, range: VirtualRange) -> Option<Vec<Option<PageRef>>>;
 }
 
-pub fn init(slide: usize) -> ActivePrimaryTable {
-    // SAFETY: This is the only reader of the bootstrap tables.
-    let root = unsafe { ActivePrimaryTable::current_active() };
+pub fn init(_slide: usize) -> ActivePrimaryTable {
+    let root_table = arch::init();
+    trace!("Got current active table.");
 
-    let kernel_image = [
-        (image::text_range(), MappingFlags::empty()),
-        (
-            image::data_range(),
-            MappingFlags::NX | MappingFlags::WRITABLE,
-        ),
-        (
-            image::bss_range(),
-            MappingFlags::NX | MappingFlags::WRITABLE,
-        ),
-        (image::rodata_range(), MappingFlags::NX),
-        (image::tdata_range(), MappingFlags::NX),
-        (image::tbss_range(), MappingFlags::NX),
-    ];
+    let phys_base = image::base() - image::LOAD_BASE;
+    let offset = image::base().raw();
 
-    todo!()
+    let kernel_image: Vec<_> = vec![
+        (image::text_range(), MappingFlags::EXECUTABLE),
+        (image::data_range(), MappingFlags::WRITABLE),
+        (image::bss_range(), MappingFlags::WRITABLE),
+        (image::rodata_range(), MappingFlags::empty()),
+        (image::tdata_range(), MappingFlags::empty()),
+        (image::tbss_range(), MappingFlags::empty()),
+    ]
+    .drain(0..)
+    .filter(|(r, _)| r.size() > 0)
+    .map(|(r, f)| {
+        let backing = r
+            .into_iter()
+            // SAFETY: Kernel sections are guaranteed to exist and be otherwise un-owned.
+            .map(|a| unsafe {
+                VirtualBacking::Present(Page::new(
+                    PhysicalAddress::new(phys_base + a.raw() - offset),
+                    PageType::Unallocated,
+                ))
+            })
+            .collect();
+        unsafe { VirtualRegion::create(r, backing, f) }
+    })
+    .collect();
+    trace!("Translated kernel image sections.");
+
+    let mut new_table = InactivePrimaryTable::new(
+        PageAllocator::the()
+            .alloc()
+            .expect("Unable to allocate page for new page table."),
+    );
+    trace!("Created new root table.");
+
+    root_table.with(&mut new_table, |root| {
+        trace!("Mapping kernel regions.");
+        let mut flush = FlushAll::new();
+        for region in kernel_image {
+            flush.consume_all(region.map(root));
+        }
+        flush.flush();
+    });
+    trace!("Mapped kernel in new table.");
+
+    let old_table = unsafe { root_table.swap(new_table) };
+    forget(old_table);
+    trace!("Swapped to new table.");
+    // This is now actually the new table.
+    root_table
 }

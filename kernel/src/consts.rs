@@ -8,7 +8,7 @@ Mostly pulled from the linker script.
 use crate::mem::{Address, VirtualAddress};
 
 pub mod image {
-    use crate::mem::{VirtualAddress, VirtualRange};
+    use crate::mem::{Address, VirtualAddress, VirtualRange};
 
     #[allow(dead_code)]
     extern "C" {
@@ -27,6 +27,9 @@ pub mod image {
         static SZ_KERNEL_TBSS_BASE: u8;
         static SZ_KERNEL_TBSS_END: u8;
     }
+
+    pub const LOAD_BASE: VirtualAddress =
+        unsafe { VirtualAddress::new_unchecked(0xFFFFFFFF80000000) };
 
     /// The virtual address at which the kernel image begins.
     pub fn base() -> VirtualAddress {

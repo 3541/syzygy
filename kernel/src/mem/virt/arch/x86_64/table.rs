@@ -1,16 +1,22 @@
 //! x86_64 page tables.
 
 use alloc::vec::Vec;
+use core::fmt;
 use core::mem::forget;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::{read_volatile, write_volatile};
+use core::slice;
 
 use bitflags::bitflags;
+use log_crate::trace;
 
 use super::flush_all_mappings;
-use crate::mem::virt::{Flush, FlushAll, MappingFlags, TActivePrimaryTable, Unflushed};
+use crate::mem::virt::{
+    Flush, FlushAll, MappingFlags, TActivePrimaryTable, TInactivePrimaryTable, Unflushed,
+};
 use crate::mem::{
-    Address, Page, PageAllocator, PageRef, PageType, PhysicalAddress, VirtualAddress, VirtualRange,
+    align_up, size, Address, Page, PageAllocator, PageRef, PageType, PhysicalAddress,
+    VirtualAddress, VirtualRange,
 };
 use crate::util::register;
 use crate::util::sync::Spinlock;
@@ -34,12 +40,15 @@ bitflags! {
 
 impl From<MappingFlags> for EntryFlags {
     fn from(m: MappingFlags) -> Self {
-        Self::from_bits(m.bits()).expect("Unexpected mapping flag.")
+        let mut ret = Self::from_bits(m.bits()).expect("Unexpected mapping flag.");
+        // MappingFlags uses an EXECUTABLE bit instead of NX.
+        ret.toggle(EntryFlags::NO_EXECUTE);
+        ret
     }
 }
 
 #[repr(transparent)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Entry(usize);
 
 impl Entry {
@@ -63,7 +72,16 @@ impl Entry {
     }
 
     unsafe fn set(&mut self, addr: PhysicalAddress, flags: EntryFlags) {
-        assert_eq!(addr.raw() & Self::ADDRESS_MASK, 0);
+        assert_eq!(
+            self.0 & Self::ADDRESS_MASK,
+            0,
+            "Tried to overwrite an existing entry."
+        );
+        assert_eq!(
+            addr.raw() & !Self::ADDRESS_MASK,
+            0,
+            "The given address has invalid bits set."
+        );
         write_volatile(&mut self.0, addr.raw() | flags.bits());
     }
 
@@ -73,6 +91,7 @@ impl Entry {
 }
 
 const TABLE_ENTRIES: usize = 512;
+const TABLE_RMAP_INDEX: usize = TABLE_ENTRIES - 2;
 
 #[repr(transparent)]
 pub struct Table<const L: usize> {
@@ -86,17 +105,22 @@ impl<const L: usize> Table<L> {
     const RMAP_ADDRESS_SHIFT: usize = 9;
     const RMAP_INDEX_SHIFT: usize = 12;
     const RMAP_INDEX_MASK: usize = (1 << Self::RMAP_ADDRESS_SHIFT) - 1;
+    const OFFSET_MASK: usize = (1 << Self::RMAP_INDEX_SHIFT) - 1;
 
     const fn index_of(addr: VirtualAddress) -> usize {
         (addr.raw() >> (Self::RMAP_INDEX_SHIFT + Self::RMAP_ADDRESS_SHIFT * (L - 1)))
             & Self::RMAP_INDEX_MASK
     }
 
-    fn address_of(&self, i: usize) -> VirtualAddress {
-        VirtualAddress::new(
-            ((self as *const _ as usize) << Self::RMAP_ADDRESS_SHIFT)
-                | (i << Self::RMAP_INDEX_SHIFT),
-        )
+    fn address_of_table(&self, i: usize) -> VirtualAddress {
+        // SAFETY: This is fine because the address is immediately canonicalized.
+        unsafe {
+            VirtualAddress::new_unchecked(
+                ((self as *const _ as usize) << Self::RMAP_ADDRESS_SHIFT)
+                    | (i << Self::RMAP_INDEX_SHIFT),
+            )
+        }
+        .canonicalize()
     }
 
     fn new<const P: usize>(
@@ -104,7 +128,7 @@ impl<const L: usize> Table<L> {
         parent: &mut Table<P>,
         i: usize,
         flags: EntryFlags,
-    ) -> Unflushed<Self> {
+    ) -> Unflushed<&mut Self> {
         // Sadly, this one can't be checked at compile-time yet.
         debug_assert_eq!(P, L + 1);
         debug_assert!(L < 4);
@@ -113,11 +137,17 @@ impl<const L: usize> Table<L> {
             "Attempted to create a new table at an occupied index."
         );
         // SAFETY: This is safe, since it has been verified that no existing mapping is overridden.
-        unsafe { parent[i].set(page.address(), flags) };
+        unsafe { parent[i].set(page.leak(), flags) };
         // SAFETY: This is safe, since the address does actually refer to an object owned by the
         // parent (to which this function requires a mutable reference, which becomes valid once the
         // mapping is flushed.
-        unsafe { Unflushed::new(parent.address_of(i)) }
+        unsafe { Unflushed::from_address(parent.address_of_table(i)) }
+    }
+}
+
+impl<const L: usize> fmt::Display for Table<L> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Table<{}>({})", L, VirtualAddress::from_ptr(self))
     }
 }
 
@@ -136,7 +166,11 @@ impl LeafTable {
     }
 
     fn phys_address(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        self[Self::index_of(addr)].address()
+        let entry = &self[Self::index_of(addr)];
+        trace!("Got entry {:x?}.", entry);
+        entry
+            .address()
+            .map(|a| a + (addr.raw() & Self::OFFSET_MASK))
     }
 
     unsafe fn clear(&mut self, addr: VirtualAddress) {
@@ -174,7 +208,13 @@ where
     fn child_address(&self, addr: VirtualAddress) -> Option<VirtualAddress> {
         let i = Self::index_of(addr);
         if self[i].present() {
-            Some(self.address_of(i))
+            assert!(
+                !self[i].flags().contains(EntryFlags::LARGE),
+                "{}[{}] points to a large page.",
+                self,
+                i
+            );
+            Some(self.address_of_table(i))
         } else {
             None
         }
@@ -226,11 +266,52 @@ impl RootTable {
             .ensure_child(addr)
             .ensure_child(addr)
     }
+
+    /// Use the physmap to ensure recursive mapping of the PML4. This should only be called once,
+    /// while the bootloader's page tables are still in place.
+    unsafe fn early_ensure_recursive_mapping(&mut self) {
+        let pml4_addr = register::read::cr3();
+        // Stivale only guarantees 4 GB of identity-mapped physical memory.
+        assert!(
+            (pml4_addr as usize) < 4 * size::GB,
+            "PML4 unexpectedly high."
+        );
+        trace!("Bootstrap PML4 at P:0x{:x}.", pml4_addr);
+
+        let pml4: &mut [Entry] = slice::from_raw_parts_mut(
+            (crate::consts::PHYS_BASE + pml4_addr as usize).as_mut_ptr(),
+            TABLE_ENTRIES,
+        );
+        pml4[TABLE_RMAP_INDEX].clear();
+        pml4[TABLE_RMAP_INDEX].set(
+            PhysicalAddress::new(pml4_addr as usize),
+            EntryFlags::WRITABLE | EntryFlags::PRESENT,
+        );
+        flush_all_mappings();
+        trace!("INITIALIZED bootstrap PML4 recursive mapping.");
+    }
 }
 
 pub struct InactivePrimaryTable(Page);
 
 impl InactivePrimaryTable {
+    fn ensure_recursive_mapping(&mut self, active: &ActivePrimaryTable) {
+        let mut table: TempMap<RootTable> =
+            active.map_temp(&mut self.0, MappingFlags::WRITABLE).flush();
+        // SAFETY: This will panic if it overwrites an existing mapping.
+        unsafe {
+            table[TABLE_RMAP_INDEX]
+                .set(self.0.address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
+            table.unmap(active).flush();
+        };
+    }
+}
+
+impl TInactivePrimaryTable for InactivePrimaryTable {
+    fn new(p: Page) -> Self {
+        Self(p)
+    }
+
     fn phys_address(&self) -> PhysicalAddress {
         self.0.address()
     }
@@ -243,22 +324,23 @@ impl Drop for InactivePrimaryTable {
 }
 
 pub struct ActivePrimaryTable(Spinlock<&'static mut RootTable>);
-#[must_use = "Unused QuickMap"]
+#[must_use = "Unused TempMap"]
 struct TempMap<'a, T>(&'a mut T);
 
 impl<'a, T> TempMap<'a, T> {
     const ADDRESS: VirtualAddress = unsafe { VirtualAddress::new_unchecked(0xFFFF_DEAD_DEAD_0000) };
 
-    fn map<'p>(
-        t: &ActivePrimaryTable,
-        to: &'p mut Page,
-        flags: MappingFlags,
-    ) -> Unflushed<'p, Self> {
-        unsafe { Unflushed::from(t.map(Self::ADDRESS, to, flags)) }
+    fn map<'p>(t: &ActivePrimaryTable, to: &'p mut Page, flags: MappingFlags) -> Unflushed<Self> {
+        unsafe {
+            Unflushed::new(
+                Self(&mut *Self::ADDRESS.as_mut_ptr()),
+                t.map_unchecked(Self::ADDRESS, to, flags),
+            )
+        }
     }
 
     /// SAFETY: Caller must guarantee that unmapping does not destroy any needed references.
-    unsafe fn unmap(&mut self, t: &ActivePrimaryTable) -> Flush {
+    unsafe fn unmap(self, t: &ActivePrimaryTable) -> Flush {
         let ret = t.unmap(VirtualAddress::from_ptr(self.0));
         forget(self);
         ret
@@ -281,29 +363,18 @@ impl<T> DerefMut for TempMap<'_, T> {
 
 impl<T> Drop for TempMap<'_, T> {
     fn drop(&mut self) {
-        panic!("Dropped mapped QuickMap.");
+        panic!("Dropped mapped TempMap.");
     }
 }
 
 impl ActivePrimaryTable {
-    const ACTIVE_TABLE: *mut Table<4> = 0xFFFF_FFFF_FFFF_F000 as *mut _;
+    const ACTIVE_TABLE: *mut RootTable = 0xFFFF_FF7F_BFDF_E000 as *mut _;
 
-    fn map_temp<'p, T>(&self, to: &'p mut Page, flags: MappingFlags) -> Unflushed<'p, TempMap<T>> {
+    fn map_temp<T>(&self, to: &mut Page, flags: MappingFlags) -> Unflushed<TempMap<T>> {
         TempMap::map(self, to, flags)
     }
-}
 
-impl TActivePrimaryTable for ActivePrimaryTable {
-    type Inactive = InactivePrimaryTable;
-
-    unsafe fn current_active() -> Self {
-        Self(Spinlock::new(&mut *ActivePrimaryTable::ACTIVE_TABLE))
-    }
-
-    fn map(&self, from: VirtualAddress, to: &mut Page, flags: MappingFlags) -> Flush {
-        assert!(from.is_aligned(Page::SIZE));
-        assert!(from != TempMap::<usize>::ADDRESS);
-
+    unsafe fn map_unchecked(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush {
         let mut t = self.0.lock();
         let table = t.ensure_leaf(from);
         table.set(
@@ -312,6 +383,36 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             EntryFlags::from(flags) | EntryFlags::PRESENT,
         );
         Flush(from)
+    }
+}
+
+impl TActivePrimaryTable for ActivePrimaryTable {
+    type Inactive = InactivePrimaryTable;
+
+    unsafe fn current_active() -> Self {
+        let ret = Self(Spinlock::new(&mut *ActivePrimaryTable::ACTIVE_TABLE));
+        ret
+    }
+
+    fn map(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush {
+        assert!(from.is_aligned(Page::SIZE));
+        assert!(from != TempMap::<usize>::ADDRESS);
+        assert_ne!(RootTable::index_of(from), TABLE_RMAP_INDEX);
+        unsafe { self.map_unchecked(from, to, flags) }
+    }
+
+    fn map_range(
+        &self,
+        from: VirtualRange,
+        to: Vec<Option<&Page>>,
+        flags: MappingFlags,
+    ) -> Vec<Flush> {
+        assert_eq!(align_up(from.size(), Page::SIZE) / Page::SIZE, to.len());
+
+        from.into_iter()
+            .zip(to.into_iter())
+            .flat_map(|(addr, page)| Some(self.map(addr, page?, flags)))
+            .collect()
     }
 
     unsafe fn unmap(&self, addr: VirtualAddress) -> Flush {
@@ -331,22 +432,25 @@ impl TActivePrimaryTable for ActivePrimaryTable {
         // restored later on. The aliasing inside only lasts one line, and is not abused.
         let mut current_table_page = unsafe {
             Page::new(
-                self.0.lock()[TABLE_ENTRIES - 1].address().unwrap(),
+                self.0.lock()[TABLE_RMAP_INDEX].address().unwrap(),
                 PageType::Unallocated,
             )
         };
         let current_table_address = current_table_page.address();
 
-        let current_table_remap = unsafe {
-            let mut table = self.0.lock();
+        t.ensure_recursive_mapping(self);
 
+        let mut current_table_remap = unsafe {
             // At this point, there are two mappings to the current PML4.
-            let current_table_remap: &mut TempMap<RootTable> = self
+            let mut current_table_remap: TempMap<RootTable> = self
                 .map_temp(&mut current_table_page, MappingFlags::WRITABLE)
                 .flush();
 
-            // Now there is only one mapping.
-            table[TABLE_ENTRIES - 1]
+            let mut _table_lock = self.0.lock();
+            current_table_remap[TABLE_RMAP_INDEX].clear();
+            // Now there is only one mapping, and the recursive mapping in the current PML4 points
+            // to the table we want to edit.
+            current_table_remap[TABLE_RMAP_INDEX]
                 .set(t.phys_address(), EntryFlags::PRESENT | EntryFlags::WRITABLE);
 
             current_table_remap
@@ -357,7 +461,8 @@ impl TActivePrimaryTable for ActivePrimaryTable {
 
         // SAFETY: Again, this block creates and then undoes an aliased mapping.
         unsafe {
-            current_table_remap[TABLE_ENTRIES - 1].set(
+            current_table_remap[TABLE_RMAP_INDEX].clear();
+            current_table_remap[TABLE_RMAP_INDEX].set(
                 current_table_address,
                 EntryFlags::PRESENT | EntryFlags::WRITABLE,
             );
@@ -375,14 +480,19 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             PageType::Allocated,
         ));
 
+        trace!("About to swap PML4.");
         register::write::cr3(other.0.address().raw() as u64);
+        trace!("Swapped to new PML4.");
         forget(other);
 
         ret
     }
 
     fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress> {
-        self.0.lock().leaf(addr).and_then(|t| t.phys_address(addr))
+        self.0.lock().leaf(addr).and_then(|t| {
+            trace!("Got leaf table {} (0b{:b}).", t, t as *const _ as usize);
+            t.phys_address(addr)
+        })
     }
 
     fn translate_range(&self, range: VirtualRange) -> Option<Vec<Option<PageRef>>> {
@@ -392,7 +502,10 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             .map(|a| {
                 let r = self.translate(a).map(PageRef::new);
                 if r.is_some() {
-                    found_one = true
+                    found_one = true;
+                    trace!("Translated {} to {}.", a, r.as_ref().unwrap().address());
+                } else {
+                    trace!("Failed to translate {}.", a);
                 };
                 r
             })
@@ -404,4 +517,11 @@ impl TActivePrimaryTable for ActivePrimaryTable {
             None
         }
     }
+}
+
+pub fn init() -> ActivePrimaryTable {
+    // SAFETY: This is the only reader of the bootstrap tables.
+    let table = unsafe { ActivePrimaryTable::current_active() };
+    unsafe { table.0.lock().early_ensure_recursive_mapping() };
+    table
 }
