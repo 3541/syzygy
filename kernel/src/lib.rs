@@ -1,5 +1,4 @@
 #![cfg_attr(not(test), no_std)]
-#![feature(const_fn)]
 #![feature(llvm_asm)]
 #![feature(asm)]
 #![feature(abi_x86_interrupt)]
