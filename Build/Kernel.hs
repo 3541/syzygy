@@ -1,13 +1,11 @@
 module Build.Kernel where
 
+import Build.Rust
 import Data.Maybe
-import System.Directory
-
 import Development.Shake
 import Development.Shake.Config
 import Development.Shake.FilePath
-
-import Build.Rust
+import System.Directory
 
 buildKernel :: String -> String -> Rules ()
 buildKernel kernelDir buildDir = do
@@ -24,11 +22,19 @@ buildKernel kernelDir buildDir = do
 
     let ldDefaultArgs = "-static -nostdlib --as-needed --gc-sections -z max-page-size=0x1000"
     kernelPieConfig <- getConfig "KERNEL_PIE"
-    let ldDyn = if fromJust kernelPieConfig == "yes"
-          then "-pie"
-          else ""
-    cmd_ "ld" ldDefaultArgs ldDyn
-      "-T" linkScript "-o" [out] [kernelLib]
+    let ldDyn =
+          if fromJust kernelPieConfig == "yes"
+            then "-pie"
+            else ""
+    cmd_
+      "ld"
+      ldDefaultArgs
+      ldDyn
+      "-T"
+      linkScript
+      "-o"
+      [out]
+      [kernelLib]
 
   kernelLib %> \out -> do
     need [kernelDir </> "Cargo.toml", kernelDir </> "build.rs"]
@@ -40,7 +46,11 @@ buildKernel kernelDir buildDir = do
     need rustSrcPath
 
     let targetSpec = fromJust target
-    cargoBuild kernelBuildDir targetSpec "syzygy_kernel" (words $ fromJust rustFeatures)
+    cargoBuild
+      kernelBuildDir
+      targetSpec
+      "syzygy_kernel"
+      (words $ fromJust rustFeatures)
       ["-Zbuild-std=core,alloc,compiler_builtins"]
     liftIO $ copyFile (kernelBuildDir </> targetSpec </> "debug" </> "libsyzygy_kernel.a") out
 
@@ -63,5 +73,8 @@ buildKernel kernelDir buildDir = do
     need [kernelLib]
 
     target <- getConfig "TARGET"
-    cargoClippy kernelBuildDir (fromJust target) "syzygy_kernel"
+    cargoClippy
+      kernelBuildDir
+      (fromJust target)
+      "syzygy_kernel"
       ["-Zbuild-std=core,alloc,compiler_builtins"]
