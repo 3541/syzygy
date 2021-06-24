@@ -20,3 +20,7 @@ rgb = { version = "^0.8.27", optional = true }
 log_vga = []
 log_e9 = ["ansi_rgb", "rgb"]
 heap_validation = []
+
+[dev-dependencies]
+tokio = { version = "^1.7.1", features = ["rt-multi-thread", "macros"] }
+futures = { version = "^0.3.15", default-features = false }

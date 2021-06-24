@@ -1,5 +1,8 @@
 //! # Mutex
 
+#[cfg(test)]
+mod test;
+
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut, Drop};
 
