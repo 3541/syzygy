@@ -9,7 +9,8 @@ use core::task::{Context, Poll, Waker};
 use hashbrown::HashMap;
 
 use super::{Task, TaskId};
-use crate::util::sync::{OnceCell, Spinlock};
+use crate::int;
+use crate::util::sync::{self, OnceCell, Spinlock};
 
 type TaskQueue = Arc<Spinlock<VecDeque<TaskId>>>;
 
@@ -113,7 +114,14 @@ impl Scheduler {
 
     pub fn run(&self) -> ! {
         loop {
-            self.run_queue()
+            self.run_queue();
+
+            let interrupts = int::disable();
+            if interrupts && self.queue.lock().is_empty() {
+                int::enable_and_halt();
+            } else {
+                sync::pause();
+            }
         }
     }
 }

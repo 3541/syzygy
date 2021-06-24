@@ -5,11 +5,13 @@ pub mod arch;
 mod exception;
 mod isr;
 
+pub use arch::interrupts_enabled as enabled;
+pub use arch::{Idt, InterruptVector};
+
 use crate::util::sync::spin::{Spinlock, SpinlockGuard};
 use crate::util::sync::OnceCell;
 use crate::util::PrivilegeLevel;
-use arch::{cli, interrupts_enabled, sti};
-pub use arch::{Idt, InterruptVector};
+use arch::{cli, sti};
 
 /// An interrupt table. Architecture-specific implementations should conform to this trait.
 pub trait InterruptTable: Sized {
@@ -46,7 +48,7 @@ static IDT: OnceCell<Spinlock<Idt>> = OnceCell::new();
 /// Disable interrupts and return whether they were previously enabled.
 #[cfg(not(test))]
 pub fn disable() -> bool {
-    let ret = interrupts_enabled();
+    let ret = enabled();
     cli();
     ret
 }
@@ -59,9 +61,15 @@ pub fn disable() -> bool {
 /// Enable interrupts and return whether they were previously enabled.
 #[cfg(not(test))]
 pub fn enable() -> bool {
-    let ret = interrupts_enabled();
+    let ret = enabled();
     sti();
     ret
+}
+
+/// Enable interrupts and halt immediately.
+#[cfg(not(test))]
+pub fn enable_and_halt() {
+    unsafe { asm!("sti; hlt") }
 }
 
 #[cfg(test)]
@@ -69,7 +77,11 @@ pub fn enable() -> bool {
     false
 }
 
+#[cfg(test)]
+pub fn enable_and_halt() {}
+
 /// Initialize interrupt controllers and timers.
 pub fn init() {
-    arch::init()
+    arch::init();
+    enable();
 }
