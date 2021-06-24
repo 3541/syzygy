@@ -14,6 +14,7 @@ bitflags = "^1.2.1"
 cfg-if = "^1.0.0"
 ansi_rgb = { version = "^0.2.0", optional = true }
 rgb = { version = "^0.8.27", optional = true }
+hashbrown = "^0.11.2"
 
 # All features should have corresponding Meson options.
 [features]

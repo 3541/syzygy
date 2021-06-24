@@ -23,6 +23,12 @@ impl<T> OnceCell<T> {
     pub fn borrow(&self) -> Option<&T> {
         self.0.as_ref().right()
     }
+
+    /// Get a reference to the contents if initialization has not yet occurred, otherwise,
+    /// initialize with the given closure.
+    pub fn borrow_or_init_with(&self, f: impl FnOnce() -> T) -> &T {
+        self.0.get_final_or_transform_with(|_| f())
+    }
 }
 
 impl<T> Deref for OnceCell<T> {

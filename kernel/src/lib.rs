@@ -31,6 +31,8 @@ extern crate alloc;
 mod arch;
 #[macro_use]
 mod io;
+#[macro_use]
+mod util;
 
 mod boot;
 mod consts;
@@ -38,4 +40,3 @@ mod err;
 mod int;
 mod mem;
 mod task;
-mod util;

@@ -35,6 +35,14 @@ impl<L, R> Either<L, R> {
         }
     }
 
+    /// Get the left value if it is present.
+    pub fn left(self) -> Option<L> {
+        match self {
+            Left(l) => Some(l),
+            Right(_) => None,
+        }
+    }
+
     /// Get the right value if it is present.
     pub fn right(self) -> Option<R> {
         match self {

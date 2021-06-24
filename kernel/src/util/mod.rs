@@ -1,5 +1,8 @@
 //! # Utility types and functions.
 
+#[macro_use]
+pub mod id;
+
 pub mod arch;
 pub mod either;
 pub mod sync;

@@ -79,6 +79,27 @@ impl<I, F> Transform<I, F> {
             _ => panic!("Tried to borrow a mid-transformation Transform."),
         }
     }
+
+    /// Get a reference to the initial state.
+    pub fn get_initial(&self) -> Option<&I> {
+        self.as_ref().left()
+    }
+
+    /// Get a reference to the final state.
+    pub fn get_final(&self) -> Option<&F> {
+        self.as_ref().right()
+    }
+
+    /// Get a reference to the final state, or transform using the given closure.
+    pub fn get_final_or_transform_with(&self, f: impl FnOnce(&I) -> F) -> &F {
+        match self.state.load(Ordering::Acquire).into() {
+            TransformState::Final => self.get_final().unwrap(),
+            _ => {
+                self.transform(f(self.get_initial().unwrap()));
+                self.get_final().unwrap()
+            }
+        }
+    }
 }
 
 impl<T> Transform<T, T> {
