@@ -13,7 +13,7 @@ mod arch;
 use log_crate::info;
 
 use crate::mem::map::Mmap;
-use crate::{consts, int, mem, util};
+use crate::{consts, int, mem, task, util};
 
 /// Architecture-independent kernel entry point. This is called from [kinit](arch::kinit).
 fn kmain(slide: usize, mmap: Mmap) {
@@ -29,6 +29,9 @@ fn kmain(slide: usize, mmap: Mmap) {
 
     mem::virt::init(slide);
     info!("INITIALIZED virtual memory management.");
+
+    task::init();
+    info!("INITIALIZED early multitasking.");
 
     util::halt_loop();
 }
