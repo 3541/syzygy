@@ -34,6 +34,6 @@ fatal_exception!(InterruptVector::DoubleFault => fn double_fault(code));
 fatal_exception!(InterruptVector::StackSegment => fn stack_segment(code));
 fatal_exception!(InterruptVector::GeneralProtectionFault => fn general_protection_fault(code));
 
-handler_fn!(InterruptVector::PageFault => fn page_fault(stack, code: usize) {
+handler_fn!(InterruptVector::PageFault => fn page_fault(_stack, code: usize) {
     panic!("FATAL EXCEPTION: page_fault on V:0x{:x} with error code {:#b}.", register::read::cr2(), code);
 });

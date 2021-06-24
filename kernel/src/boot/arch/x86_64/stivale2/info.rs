@@ -1,6 +1,7 @@
 //! Parsing of Stivale2 [info tags](https://github.com/stivale/stivale/blob/master/STIVALE2.md#stivale2-structure).
 
-use core::{slice, str};
+use core::mem::transmute;
+use core::{ptr, slice, str};
 
 use crate::mem::map::{Mmap, MmapEntry, MmapEntryType};
 use crate::mem::{Address, PhysicalAddress};
@@ -67,7 +68,7 @@ impl MmapTagEntryType {
 }
 
 /// A memory area in the [MmapTag](MmapTag).
-#[repr(packed)]
+#[repr(C, packed)]
 struct MmapTagEntry {
     base: u64,
     length: u64,
@@ -76,9 +77,14 @@ struct MmapTagEntry {
 }
 
 impl MmapTagEntry {
+    fn entry_type(&self) -> MmapTagEntryType {
+        // SAFETY: entry_type is valid and initialized.
+        unsafe { ptr::read_unaligned(ptr::addr_of!(self.entry_type)) }
+    }
+
     fn parse(&self) -> MmapEntry {
         MmapEntry {
-            entry_type: unsafe { self.entry_type.parse() },
+            entry_type: self.entry_type().parse(),
             start: PhysicalAddress::new(self.base as usize),
             size: self.length as usize,
         }
@@ -156,6 +162,13 @@ pub struct Tag<T: TagInner> {
     inner: T,
 }
 
+impl<T: TagInner> Tag<T> {
+    fn identifier(&self) -> TagIdentifier {
+        // SAFETY: identifier is valid and initialized.
+        unsafe { ptr::read_unaligned(ptr::addr_of!(self.identifier)) }
+    }
+}
+
 /// The top-level structure returned by the bootloader.
 #[repr(C, packed)]
 pub struct StivaleInfo {
@@ -193,8 +206,8 @@ impl StivaleInfo {
         let mut current = self.tags;
 
         loop {
-            if unsafe { current.identifier == T::IDENTIFIER } {
-                return Some(unsafe { &*(current as *const Tag<NullTag> as *const Tag<T>) });
+            if current.identifier() == T::IDENTIFIER {
+                return unsafe { Some(transmute(current)) };
             }
 
             if let Some(tag) = current.next {

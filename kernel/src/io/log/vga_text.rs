@@ -78,7 +78,6 @@ struct ScreenChar {
 struct ScreenBuffer([[ScreenChar; ScreenBuffer::WIDTH]; ScreenBuffer::HEIGHT]);
 
 impl ScreenBuffer {
-    pub const PHYS_ADDRESS: usize = 0xB8000;
     const HEIGHT: usize = 25;
     const WIDTH: usize = 80;
 
@@ -186,11 +185,13 @@ impl Write for ScreenWriter {
 }
 
 #[doc(hidden)]
+#[allow(dead_code)]
 pub fn _print(args: fmt::Arguments) {
     ScreenWriter::the().write_fmt(args).unwrap()
 }
 
 #[doc(hidden)]
+#[allow(dead_code)]
 pub fn _print_colored(c: LogColor, args: fmt::Arguments) {
     let mut writer = ScreenWriter::the();
     let old_color = writer.color;

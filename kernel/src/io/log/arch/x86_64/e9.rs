@@ -48,6 +48,7 @@ impl Into<RGB8> for Color {
 }
 
 #[doc(hidden)]
+#[allow(dead_code)]
 pub fn _print(args: fmt::Arguments) {
     DebugPort::the()
         .write_fmt(args)
@@ -55,6 +56,7 @@ pub fn _print(args: fmt::Arguments) {
 }
 
 #[doc(hidden)]
+#[allow(dead_code)]
 pub fn _print_colored(c: Color, args: fmt::Arguments) {
-    write!(DebugPort::the(), "{}", args.fg(c.into()));
+    write!(DebugPort::the(), "{}", args.fg(c.into())).unwrap();
 }
