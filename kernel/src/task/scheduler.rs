@@ -53,7 +53,7 @@ impl TaskEntry {
     }
 }
 
-static SCHEDULER: OnceCell<Scheduler> = OnceCell::new();
+singleton!(SCHEDULER, Scheduler);
 
 pub struct Scheduler {
     tasks: Spinlock<HashMap<TaskId, Arc<TaskEntry>>>,
@@ -61,10 +61,6 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub fn the() -> &'static Self {
-        &*SCHEDULER
-    }
-
     fn new() -> Self {
         Self {
             tasks: Spinlock::new(HashMap::new()),

@@ -2,6 +2,8 @@
 
 #[macro_use]
 pub mod id;
+#[macro_use]
+pub mod singleton;
 
 pub mod arch;
 pub mod either;

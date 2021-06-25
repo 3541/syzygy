@@ -8,7 +8,6 @@ use log_crate::debug;
 
 use super::Page;
 use crate::mem::map::{MmapEntry, MmapEntryType};
-use crate::util::sync::OnceCell;
 use bitmap::BitmapAllocator;
 
 /// A page allocator over a memory region.
@@ -26,15 +25,7 @@ pub trait RegionPageAllocator {
 /// A global page allocator composed of multiple region allocators.
 pub struct PageAllocator<A: RegionPageAllocator>(Vec<A>);
 
-/// The global page allocator.
-static PAGE_ALLOCATOR: OnceCell<PageAllocator<BitmapAllocator>> = OnceCell::new();
-
-impl PageAllocator<BitmapAllocator> {
-    /// Get the global allocator.
-    pub fn the() -> &'static Self {
-        &*PAGE_ALLOCATOR
-    }
-}
+singleton!(PAGE_ALLOCATOR, PageAllocator<BitmapAllocator>);
 
 impl<A: RegionPageAllocator> PageAllocator<A> {
     /// Initialize the page allocator from the memory map. Creates a region

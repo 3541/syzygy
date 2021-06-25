@@ -4,8 +4,7 @@ use core::fmt::{self, Write};
 use core::{mem, ptr};
 
 use crate::consts::vga_text_virt_address;
-use crate::util::sync::spin::{Spinlock, SpinlockGuard};
-use crate::util::sync::OnceCell;
+use crate::util::sync::spin::Spinlock;
 
 use super::Color as LogColor;
 
@@ -106,7 +105,7 @@ struct ScreenWriter {
     buffer: &'static mut ScreenBuffer,
 }
 
-static SCREEN_WRITER: OnceCell<Spinlock<ScreenWriter>> = OnceCell::new();
+singleton!(SCREEN_WRITER, Spinlock<ScreenWriter>);
 
 impl ScreenWriter {
     fn new(fg: Color, bg: Color) -> ScreenWriter {
@@ -115,10 +114,6 @@ impl ScreenWriter {
             color: CharColor::new(fg, bg),
             buffer: ScreenBuffer::the(),
         }
-    }
-
-    fn the() -> SpinlockGuard<'static, ScreenWriter> {
-        SCREEN_WRITER.lock()
     }
 
     fn clear_row(&mut self, row: usize) {
