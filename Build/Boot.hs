@@ -7,6 +7,7 @@ import qualified Data.Map.Strict as Map
 import Development.Shake
 import Development.Shake.FilePath
 import Development.Shake.Util
+import System.Directory
 
 -- Clean the Limine build directory.
 cleanBoot :: Partial => FilePath -> Action ()
@@ -21,7 +22,7 @@ prefixedMakefileDeps prefix makefile =
 buildBootloader :: String -> Rules ()
 buildBootloader limineDir = do
   -- Use gcc as a proxy dependency for the whole toolchain.
-  let limineCC = limineDir </> "toolchain" </> "bin" </> "x86_64-elf-gcc"
+  let limineCC = limineDir </> "toolchain" </> "bin" </> "limine-gcc"
   options <- getShakeOptionsRules
   let threads = shakeThreads options
   let limineHddBin = limineDir </> "bin" </> "limine-hdd.bin"
@@ -72,5 +73,6 @@ buildBootloader limineDir = do
     cmd_ "make -j" (show threads) "-C" limineDir ("bin" </> "limine-install")
 
   limineCC %> \_out -> do
-    need [limineDir </> "scripts" </> "make_toolchain.sh"]
-    cmd_ (Cwd limineDir) ("scripts" </> "make_toolchain.sh") "toolchain" ("-j" ++ show threads)
+    need [limineDir </> "aux" </> "make_toolchain.sh"]
+    dir <- liftIO getCurrentDirectory
+    cmd_ "make" "-C" limineDir "toolchain"

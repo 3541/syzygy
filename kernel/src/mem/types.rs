@@ -46,7 +46,7 @@ const fn address_is_valid(address: usize) -> bool {
 /// A physical or virtual address.
 pub trait Address: Clone + Display {
     /// The underlying numeric type.
-    type RawAddress: PartialOrd<usize> + Into<usize> + From<usize>;
+    type RawAddress;
 
     /// The start of the noncanonical hole in the address space.
     const NONCANONICAL_START: usize = 0x0000_8000_0000_0000;
@@ -59,29 +59,12 @@ pub trait Address: Clone + Display {
     unsafe fn new_unchecked(address: Self::RawAddress) -> Self;
 
     /// Check whether the address is valid.
-    #[inline]
-    fn is_valid(&self) -> bool {
-        address_is_valid(self.raw().into())
-    }
-
+    fn is_valid(&self) -> bool;
     /// Check whether the address has the given alignment.
-    fn is_aligned(&self, align: usize) -> bool {
-        self.raw().into() % align == 0
-    }
+    fn is_aligned(&self, align: usize) -> bool;
 
     /// Create a new address. Enforces canonicity.
-    fn new(address: Self::RawAddress) -> Self {
-        let ret = unsafe { Self::new_unchecked(address) };
-        assert!(
-            ret.is_valid(),
-            "Invalid address {}. Address is in noncanonical range 0x{:x}-0x{:x}.",
-            ret,
-            Self::NONCANONICAL_START,
-            Self::NONCANONICAL_END
-        );
-
-        ret
-    }
+    fn new(address: Self::RawAddress) -> Self;
 }
 
 /// A physical address.
@@ -97,6 +80,24 @@ impl const Address for PhysicalAddress {
 
     fn raw(&self) -> RawPhysicalAddress {
         self.0
+    }
+
+    #[inline]
+    fn is_valid(&self) -> bool {
+        address_is_valid(self.raw())
+    }
+
+    fn is_aligned(&self, align: usize) -> bool {
+        self.raw() % align == 0
+    }
+
+    fn new(address: Self::RawAddress) -> Self {
+        let ret = unsafe { Self::new_unchecked(address) };
+        if !ret.is_valid() {
+            panic!("Invalid address.");
+        }
+
+        ret
     }
 }
 
@@ -138,7 +139,7 @@ impl VirtualAddress {
     /// # Safety
     /// `ptr` must be a valid pointer to an extant memory location (and
     /// therefore a canonical address).
-    pub const unsafe fn from_ptr_unchecked<T>(ptr: *const T) -> VirtualAddress {
+    pub unsafe fn from_ptr_unchecked<T>(ptr: *const T) -> VirtualAddress {
         VirtualAddress::new_unchecked(ptr as usize)
     }
 
@@ -180,6 +181,24 @@ impl const Address for VirtualAddress {
 
     fn raw(&self) -> RawVirtualAddress {
         self.0
+    }
+
+    #[inline]
+    fn is_valid(&self) -> bool {
+        address_is_valid(self.raw())
+    }
+
+    fn is_aligned(&self, align: usize) -> bool {
+        self.raw() % align == 0
+    }
+
+    fn new(address: Self::RawAddress) -> Self {
+        let ret = unsafe { Self::new_unchecked(address) };
+        if !ret.is_valid() {
+            panic!("Invalid address.");
+        }
+
+        ret
     }
 }
 
