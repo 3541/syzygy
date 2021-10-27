@@ -8,11 +8,11 @@
 #![feature(const_mut_refs)]
 #![feature(const_panic)]
 #![feature(const_fn_transmute)]
-#![feature(const_generics)]
 #![feature(const_fn_fn_ptr_basics)]
-#![feature(const_evaluatable_checked)]
 #![feature(inherent_associated_types)]
 #![feature(thread_local)]
+#![feature(adt_const_params)]
+#![feature(generic_const_exprs)]
 #![cfg_attr(test, allow(unused))]
 
 /*!
