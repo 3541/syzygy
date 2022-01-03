@@ -6,8 +6,6 @@
 #![feature(const_trait_impl)]
 #![feature(alloc_error_handler)]
 #![feature(const_mut_refs)]
-#![feature(const_panic)]
-#![feature(const_fn_transmute)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(inherent_associated_types)]
 #![feature(thread_local)]
