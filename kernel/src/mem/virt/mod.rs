@@ -9,7 +9,7 @@ pub use region::{VirtualRange, VirtualRegion};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::mem::forget;
-use core::ops::Drop;
+use core::ops::{Deref, Drop};
 
 use bitflags::bitflags;
 use log_crate::{trace, warn};
@@ -38,12 +38,12 @@ impl Drop for Flush {
     }
 }
 
-struct Unflushed<T> {
+struct Unflushed<T: Deref> {
     inner: T,
     flush: Flush,
 }
 
-impl<T> Unflushed<T> {
+impl<T: Deref> Unflushed<T> {
     /// SAFETY: Caller must guarantee the target refers to an object which will become valid once
     /// the mapping is flushed.
     unsafe fn new(inner: T, flush: Flush) -> Self {
