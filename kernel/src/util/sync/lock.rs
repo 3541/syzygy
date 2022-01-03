@@ -20,7 +20,10 @@ pub struct Lock {
 }
 
 /// The future generated when locking.
-pub struct LockRequest<'a>(&'a Lock);
+pub struct LockRequest<'a> {
+    lock: &'a Lock,
+    woke: bool,
+}
 
 impl Lock {
     pub const fn new() -> Self {
@@ -37,7 +40,10 @@ impl Lock {
     }
 
     pub fn lock(&self) -> LockRequest {
-        LockRequest(self)
+        LockRequest {
+            lock: self,
+            woke: false,
+        }
     }
 
     pub unsafe fn unlock(&self) {
@@ -66,17 +72,21 @@ impl Lock {
 impl Future for LockRequest<'_> {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<()> {
-        if self.0.try_lock() {
+    fn poll(mut self: Pin<&mut Self>, ctx: &mut Context) -> Poll<()> {
+        let waker = ctx.waker();
+        if self.lock.try_lock() {
+            if self.woke {
+                self.lock.unwait(waker);
+            }
             return Poll::Ready(());
         }
 
-        let waker = ctx.waker();
-        self.0.wait(waker.clone());
-        if self.0.try_lock() {
-            self.0.unwait(waker);
+        self.lock.wait(waker.clone());
+        if self.lock.try_lock() {
+            self.lock.unwait(waker);
             Poll::Ready(())
         } else {
+            self.woke = true;
             Poll::Pending
         }
     }
