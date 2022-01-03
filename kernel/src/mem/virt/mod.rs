@@ -3,7 +3,7 @@
 mod arch;
 mod region;
 
-pub use arch::{ActivePrimaryTable, InactivePrimaryTable};
+pub use arch::{ActiveRootTable, InactiveRootTable};
 pub use region::{VirtualRange, VirtualRegion};
 
 use alloc::vec;
@@ -118,18 +118,16 @@ bitflags! {
     }
 }
 
-/// Behavior of an inactive top-level page table.
-pub trait TInactivePrimaryTable {
+/// Behavior of an inactive top-level page table. This trait and the following are not actually
+/// required, but are useful as a source of truth betweeen architectural implementations.
+pub trait InactiveRoot {
     fn new(p: Page) -> Self;
     fn phys_address(&self) -> PhysicalAddress;
 }
 
 /// Behavior of the top-level page table.
-pub trait TActivePrimaryTable {
-    type Inactive: TInactivePrimaryTable;
-    /// This function probably doesn't enforce ownership constraints. It should be called /once/ in
-    /// a thread's lifetime, and then stored somewhere reasonable.
-    unsafe fn current_active() -> Self;
+pub trait ActiveRoot {
+    type Inactive: InactiveRoot;
     fn map(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush;
     fn map_range(
         &self,
@@ -138,13 +136,15 @@ pub trait TActivePrimaryTable {
         flags: MappingFlags,
     ) -> Vec<Flush>;
     unsafe fn unmap(&self, addr: VirtualAddress) -> Flush;
+    /// For the duration of the given callback function, the page table mappings are altered as if
+    /// `t` were the root table, thus allowing it to be written through the recursive mapping.
     fn with(&self, t: &mut Self::Inactive, f: impl FnOnce(&Self));
     unsafe fn swap(&self, other: Self::Inactive) -> Self::Inactive;
     fn translate(&self, addr: VirtualAddress) -> Option<PhysicalAddress>;
     fn translate_range(&self, range: VirtualRange) -> Option<Vec<Option<PageRef>>>;
 }
 
-pub fn init(_slide: usize) -> ActivePrimaryTable {
+pub fn init(_slide: usize) -> ActiveRootTable {
     let root_table = arch::init();
     trace!("Got current active table.");
 
@@ -177,7 +177,7 @@ pub fn init(_slide: usize) -> ActivePrimaryTable {
     .collect();
     trace!("Translated kernel image sections.");
 
-    let mut new_table = InactivePrimaryTable::new(
+    let mut new_table = InactiveRootTable::new(
         PageAllocator::the()
             .alloc()
             .expect("Unable to allocate page for new page table."),

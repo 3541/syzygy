@@ -4,9 +4,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::iter::IntoIterator;
 
-use super::{
-    ActivePrimaryTable, Flush, FlushAll, MappingFlags, Page, TActivePrimaryTable, VirtualAddress,
-};
+use super::{ActiveRoot, ActiveRootTable, Flush, FlushAll, MappingFlags, Page, VirtualAddress};
 use crate::mem::PageType;
 
 /// A virtual address range.
@@ -38,7 +36,7 @@ impl VirtualRange {
 
     pub(super) unsafe fn to_owned(
         self,
-        t: &ActivePrimaryTable,
+        t: &ActiveRootTable,
         flags: MappingFlags,
         ty: PageType,
     ) -> Option<VirtualRegion> {
@@ -146,7 +144,7 @@ impl VirtualRegion {
     }
 
     pub(super) fn new(
-        t: &ActivePrimaryTable,
+        t: &ActiveRootTable,
         from: VirtualRange,
         to: Vec<VirtualBacking>,
         flags: MappingFlags,
@@ -162,7 +160,7 @@ impl VirtualRegion {
         }
     }
 
-    pub fn map(&self, t: &ActivePrimaryTable) -> Vec<Flush> {
+    pub fn map(&self, t: &ActiveRootTable) -> Vec<Flush> {
         t.map_range(
             self.range,
             self.backing.iter().map(VirtualBacking::as_ref).collect(),

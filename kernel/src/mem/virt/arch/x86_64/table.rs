@@ -11,9 +11,7 @@ use bitflags::bitflags;
 use log_crate::trace;
 
 use super::flush_all_mappings;
-use crate::mem::virt::{
-    Flush, FlushAll, MappingFlags, TActivePrimaryTable, TInactivePrimaryTable, Unflushed,
-};
+use crate::mem::virt::{ActiveRoot, Flush, FlushAll, InactiveRoot, MappingFlags, Unflushed};
 use crate::mem::{
     align_up, size, Address, Page, PageAllocator, PageRef, PageType, PhysicalAddress,
     VirtualAddress, VirtualRange,
@@ -292,10 +290,10 @@ impl RootTable {
     }
 }
 
-pub struct InactivePrimaryTable(Page);
+pub struct InactiveRootTable(Page);
 
-impl InactivePrimaryTable {
-    fn ensure_recursive_mapping(&mut self, active: &ActivePrimaryTable) {
+impl InactiveRootTable {
+    fn ensure_recursive_mapping(&mut self, active: &ActiveRootTable) {
         let mut table: TempMap<RootTable> =
             active.map_temp(&mut self.0, MappingFlags::WRITABLE).flush();
         // SAFETY: This will panic if it overwrites an existing mapping.
@@ -307,7 +305,7 @@ impl InactivePrimaryTable {
     }
 }
 
-impl TInactivePrimaryTable for InactivePrimaryTable {
+impl InactiveRoot for InactiveRootTable {
     fn new(p: Page) -> Self {
         Self(p)
     }
@@ -317,20 +315,20 @@ impl TInactivePrimaryTable for InactivePrimaryTable {
     }
 }
 
-impl Drop for InactivePrimaryTable {
+impl Drop for InactiveRootTable {
     fn drop(&mut self) {
         panic!("Leaked InactivePrimaryTable.");
     }
 }
 
-pub struct ActivePrimaryTable(Spinlock<&'static mut RootTable>);
+pub struct ActiveRootTable(Spinlock<&'static mut RootTable>);
 #[must_use = "Unused TempMap"]
 struct TempMap<'a, T>(&'a mut T);
 
 impl<'a, T> TempMap<'a, T> {
     const ADDRESS: VirtualAddress = unsafe { VirtualAddress::new_unchecked(0xFFFF_DEAD_DEAD_0000) };
 
-    fn map<'p>(t: &ActivePrimaryTable, to: &'p mut Page, flags: MappingFlags) -> Unflushed<Self> {
+    fn map<'p>(t: &ActiveRootTable, to: &'p mut Page, flags: MappingFlags) -> Unflushed<Self> {
         unsafe {
             Unflushed::new(
                 Self(&mut *Self::ADDRESS.as_mut_ptr()),
@@ -340,7 +338,7 @@ impl<'a, T> TempMap<'a, T> {
     }
 
     /// SAFETY: Caller must guarantee that unmapping does not destroy any needed references.
-    unsafe fn unmap(self, t: &ActivePrimaryTable) -> Flush {
+    unsafe fn unmap(self, t: &ActiveRootTable) -> Flush {
         let ret = t.unmap(VirtualAddress::from_ptr(self.0));
         forget(self);
         ret
@@ -367,7 +365,7 @@ impl<T> Drop for TempMap<'_, T> {
     }
 }
 
-impl ActivePrimaryTable {
+impl ActiveRootTable {
     const ACTIVE_TABLE: *mut RootTable = 0xFFFF_FF7F_BFDF_E000 as *mut _;
 
     fn map_temp<T>(&self, to: &mut Page, flags: MappingFlags) -> Unflushed<TempMap<T>> {
@@ -384,15 +382,15 @@ impl ActivePrimaryTable {
         );
         Flush(from)
     }
-}
 
-impl TActivePrimaryTable for ActivePrimaryTable {
-    type Inactive = InactivePrimaryTable;
-
-    unsafe fn current_active() -> Self {
-        let ret = Self(Spinlock::new(&mut *ActivePrimaryTable::ACTIVE_TABLE));
+    unsafe fn current() -> Self {
+        let ret = Self(Spinlock::new(&mut *ActiveRootTable::ACTIVE_TABLE));
         ret
     }
+}
+
+impl ActiveRoot for ActiveRootTable {
+    type Inactive = InactiveRootTable;
 
     fn map(&self, from: VirtualAddress, to: &Page, flags: MappingFlags) -> Flush {
         assert!(from.is_aligned(Page::SIZE));
@@ -427,7 +425,7 @@ impl TActivePrimaryTable for ActivePrimaryTable {
         Flush(addr)
     }
 
-    fn with(&self, t: &mut InactivePrimaryTable, f: impl FnOnce(&Self)) {
+    fn with(&self, t: &mut InactiveRootTable, f: impl FnOnce(&Self)) {
         // SAFETY: This is safe, since it only affects the recursive page table mapping, which is
         // restored later on. The aliasing inside only lasts one line, and is not abused.
         let mut current_table_page = unsafe {
@@ -475,7 +473,7 @@ impl TActivePrimaryTable for ActivePrimaryTable {
     unsafe fn swap(&self, other: Self::Inactive) -> Self::Inactive {
         let _l = self.0.lock();
 
-        let ret = InactivePrimaryTable(Page::new(
+        let ret = InactiveRootTable(Page::new(
             PhysicalAddress::new(register::read::cr3() as usize),
             PageType::Allocated,
         ));
@@ -519,9 +517,9 @@ impl TActivePrimaryTable for ActivePrimaryTable {
     }
 }
 
-pub fn init() -> ActivePrimaryTable {
+pub fn init() -> ActiveRootTable {
     // SAFETY: This is the only reader of the bootstrap tables.
-    let table = unsafe { ActivePrimaryTable::current_active() };
+    let table = unsafe { ActiveRootTable::current() };
     unsafe { table.0.lock().early_ensure_recursive_mapping() };
     table
 }

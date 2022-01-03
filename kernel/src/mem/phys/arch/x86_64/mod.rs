@@ -59,7 +59,8 @@ impl fmt::Debug for Page {
     }
 }
 
-/// A non-owning reference to a page.
+/// A non-owning reference to a page. In the future, this should probably hold an Arc<Page> or
+/// Weak<Page>, instead.
 pub struct PageRef(pub PhysicalAddress);
 
 impl PageRef {
