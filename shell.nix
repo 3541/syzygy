@@ -5,6 +5,7 @@ pkgs.mkShell {
   packages = with pkgs; [
     rustup
     rust-analyzer
+    cargo-outdated
     nasm
     parted
     qemu
