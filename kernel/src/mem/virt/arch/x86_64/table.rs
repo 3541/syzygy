@@ -199,9 +199,7 @@ impl<const L: usize> IndexMut<usize> for Table<L> {
 
 impl<const L: usize> Table<L>
 where
-    [(); L]: Sized,
-    [(); L - 1]: Sized,
-    [(); L - 2]: Sized,
+    [(); L - 2]: Sized, // L > 1.
 {
     fn child_address(&self, addr: VirtualAddress) -> Option<VirtualAddress> {
         let i = Self::index_of(addr);
