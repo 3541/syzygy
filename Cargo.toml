@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["boot/*", "xtask"]
+
+[workspace.package]
+version = "0.1.0-alpha"
+authors = ["Alex O'Brien <3541@3541.website>"]
+edition = "2021"
