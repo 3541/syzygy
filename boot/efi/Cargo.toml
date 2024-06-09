@@ -5,5 +5,8 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
-r-efi = { version = "4.5.0", features = ["native"] }
+r-efi = "4.5.0"
 ucs2 = "0.3.3"
+blake2.workspace = true
+hex = { version = "0.4.3", default-features = false }
+spin = { version = "0.9.8", default-features = false, features = ["once"] }

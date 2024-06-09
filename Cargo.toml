@@ -1,8 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["boot/*", "xtask"]
+members = ["boot/*", "kernel", "xtask"]
 
 [workspace.package]
 version = "0.1.0-alpha"
 authors = ["Alex O'Brien <3541@3541.website>"]
 edition = "2021"
+
+[workspace.dependencies]
+blake2 = { version = "0.10.6", default-features = false }

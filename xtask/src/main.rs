@@ -1,67 +1,30 @@
-use std::{env, fmt, path::Path};
-
-use clap::{Parser, Subcommand, ValueEnum};
-
+mod build;
 mod run;
+mod rustc;
+mod target;
+mod targets;
 
-#[derive(Clone, Copy, ValueEnum)]
-enum Target {
-    Amd64,
-    Aarch64,
-}
+use std::{env, fs, path::Path};
 
-impl fmt::Display for Target {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Amd64 => "amd64",
-                Self::Aarch64 => "aarch64",
-            }
-        )
-    }
-}
+use blake2::{Blake2b512, Digest};
+use clap::{Parser, Subcommand};
+use xshell::Shell;
 
-impl Target {
-    fn triple(&self) -> &'static str {
-        match self {
-            Self::Amd64 => "x86_64-unknown-uefi",
-            Self::Aarch64 => "aarch64-unknown-uefi",
-        }
-    }
-
-    fn qemu_arch(&self) -> &'static str {
-        match self {
-            Self::Amd64 => "x86_64",
-            Self::Aarch64 => "aarch64",
-        }
-    }
-
-    fn qemu_machine(&self) -> &'static str {
-        match self {
-            Self::Amd64 => "q35",
-            Self::Aarch64 => "virt",
-        }
-    }
-
-    fn efi_filename(&self) -> &'static str {
-        match self {
-            Self::Amd64 => "bootx64.efi",
-            Self::Aarch64 => "bootaa64.efi",
-        }
-    }
-}
+use rustc::BuildType;
+use target::Arch;
 
 #[derive(Subcommand)]
 enum Command {
+    Build,
     Run,
 }
 
 #[derive(Parser)]
 struct Args {
-    #[arg(short, long, value_enum, default_value_t = Target::Amd64)]
-    target: Target,
+    #[arg(short, long, value_enum, default_value_t = Arch::Amd64)]
+    arch: Arch,
+    #[arg(short, long, value_enum, default_value_t = BuildType::Debug)]
+    build_type: BuildType,
 
     #[command(subcommand)]
     command: Command,
@@ -76,10 +39,21 @@ fn repo_root() -> &'static Path {
         .unwrap()
 }
 
+fn hash(path: &Path) -> Result<String> {
+    let data = fs::read(path)?;
+    let mut h = Blake2b512::new();
+    h.update(&data);
+    Ok(format!("{:x}", h.finalize()))
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
+    let sh = Shell::new()?;
+    let _env = sh.push_env("RUSTC_BOOTSTRAP", "1");
+
     match args.command {
-        Command::Run => run::run(&args),
+        Command::Build => build::build(&args, &sh),
+        Command::Run => run::run(&args, &sh),
     }?;
 
     Ok(())

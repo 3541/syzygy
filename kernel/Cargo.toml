@@ -1,0 +1,9 @@
+[package]
+name = "sz-kernel"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+
