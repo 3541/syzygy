@@ -18,15 +18,11 @@ use r_efi::efi::{
     },
     BootServices, Guid,
 };
-use spin::Once;
 use ucs2::ucs2_cstr;
-
-static LOG: Once<Log> = Once::new();
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    if let Some(log) = LOG.get() {
-        let mut log = *log;
+    if let Some(mut log) = unsafe { LOG } {
         let _ = write!(log, "PANIC: ");
 
         if let Some(msg) = info.message() {
@@ -74,6 +70,8 @@ struct Log {
     protocol: usize, // *mut simple_text_protocol::Protocol, but Send. Shhh....
 }
 
+static mut LOG: Option<Log> = None;
+
 impl Log {
     fn new(st: &mut efi::SystemTable) -> Log {
         unsafe {
@@ -83,6 +81,12 @@ impl Log {
                 protocol: st.con_out as usize,
             }
         }
+    }
+
+    // SAFETY: Must be called only once.
+    unsafe fn init(st: &mut efi::SystemTable) -> Self {
+        LOG = Some(Log::new(st));
+        LOG.unwrap()
     }
 
     fn clear(&self) -> Result<()> {
@@ -238,7 +242,7 @@ fn expected_hash() -> [u8; 64] {
 }
 
 fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
-    let mut log = *LOG.get().unwrap();
+    let mut log = unsafe { LOG.unwrap() };
 
     log.clear()?;
     writeln!(log, "Syzygy EFI loader {}.\r", env!("CARGO_PKG_VERSION"))?;
@@ -265,7 +269,7 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
 
 #[no_mangle]
 pub extern "efiapi" fn efi_main(image: efi::Handle, st: &mut efi::SystemTable) -> efi::Status {
-    let mut log = *LOG.call_once(|| Log::new(st));
+    let mut log = unsafe { Log::init(st) };
 
     match start(image, st) {
         Ok(_) => {

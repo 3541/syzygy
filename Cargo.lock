@@ -195,12 +195,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9e935efc5854715dfc0a4c9ef18dc69dee0ec3bf9cc3ab740db831c0fdd86a3"
 
 [[package]]
-name = "spin"
-version = "0.9.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
-
-[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -230,7 +224,6 @@ dependencies = [
  "blake2",
  "hex",
  "r-efi",
- "spin",
  "ucs2",
 ]
 
