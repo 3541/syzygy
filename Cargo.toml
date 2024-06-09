@@ -6,6 +6,7 @@ members = ["boot/*", "kernel", "xtask"]
 version = "0.1.0-alpha"
 authors = ["Alex O'Brien <3541@3541.website>"]
 edition = "2021"
+license = "GPL-3.0-only"
 
 [workspace.dependencies]
 blake2 = { version = "0.10.6", default-features = false }
