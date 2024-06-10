@@ -1,0 +1,3 @@
+mod arch;
+
+fn kmain() {}
