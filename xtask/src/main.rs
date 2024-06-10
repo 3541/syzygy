@@ -8,7 +8,7 @@ use std::{env, fs, path::Path};
 
 use blake2::{Blake2b512, Digest};
 use clap::{Parser, Subcommand};
-use xshell::Shell;
+use xshell::{cmd, Shell};
 
 use rustc::BuildType;
 use target::Arch;
@@ -46,10 +46,36 @@ fn hash(path: &Path) -> Result<String> {
     Ok(format!("{:x}", h.finalize()))
 }
 
+fn version(sh: &Shell) -> Result<String> {
+    let hash = cmd!(sh, "git rev-parse --short HEAD").quiet().read()?;
+    let tag = env!("CARGO_PKG_VERSION");
+    let tag_hash = cmd!(sh, "git rev-parse --short {tag}")
+        .quiet()
+        .read()
+        .unwrap_or("<no tag>".into());
+
+    if hash == tag_hash {
+        return Ok(tag.into());
+    }
+    if cmd!(sh, "git diff-index --quiet HEAD")
+        .quiet()
+        .ignore_stdout()
+        .run()
+        .is_ok()
+    {
+        Ok(format!("{tag}-{hash}"))
+    } else {
+        Ok(format!("{tag}-{hash}-dirty"))
+    }
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let sh = Shell::new()?;
-    let _env = sh.push_env("RUSTC_BOOTSTRAP", "1");
+    let _env = vec![
+        sh.push_env("RUSTC_BOOTSTRAP", "1"),
+        sh.push_env("SZ_VER", version(&sh)?),
+    ];
 
     match args.command {
         Command::Build => build::build(&args, &sh),

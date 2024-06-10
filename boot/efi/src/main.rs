@@ -245,7 +245,7 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     let mut log = unsafe { LOG.unwrap() };
 
     log.clear()?;
-    writeln!(log, "Syzygy EFI loader {}.\r", env!("CARGO_PKG_VERSION"))?;
+    writeln!(log, "Syzygy EFI loader {}.\r", env!("SZ_VER"))?;
 
     let bs = unsafe { &*st.boot_services };
     let volume = unsafe { open_image_volume(image, bs) }?;
