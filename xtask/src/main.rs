@@ -65,7 +65,7 @@ fn version(sh: &Shell) -> Result<String> {
     {
         Ok(format!("{tag}-{hash}"))
     } else {
-        Ok(format!("{tag}-{hash}-dirty"))
+        Ok(format!("{tag}-{hash}*"))
     }
 }
 
