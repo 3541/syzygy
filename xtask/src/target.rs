@@ -42,10 +42,24 @@ impl Arch {
         }
     }
 
+    pub fn qemu_cpu(&self) -> &'static str {
+        match self {
+            Self::Amd64 => "Haswell-v4",
+            Self::Aarch64 => todo!(),
+        }
+    }
+
     pub fn efi_filename(&self) -> &'static str {
         match self {
             Self::Amd64 => "bootx64.efi",
             Self::Aarch64 => "bootaa64.efi",
+        }
+    }
+
+    pub fn ld_machine(&self) -> &'static str {
+        match self {
+            Self::Amd64 => "elf_x86_64",
+            Self::Aarch64 => todo!(),
         }
     }
 }

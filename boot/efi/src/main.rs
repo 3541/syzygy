@@ -95,7 +95,7 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     }
     writeln!(log, "Hash matches {EXPECTED_HASH}.\r")?;
 
-    load_image(&image)?;
+    load_image(&mut log, bs, &image)?;
 
     Ok(())
 }

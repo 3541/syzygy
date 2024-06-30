@@ -14,9 +14,10 @@ pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
     let ovmf_vars = bin_dir.join("OVMF_VARS.fd");
     let qemu_arch = config.arch.qemu_arch();
     let machine = config.arch.qemu_machine();
+    let cpu = config.arch.qemu_cpu();
     cmd!(
         sh,
-        "qemu-system-{qemu_arch} -machine {machine} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp}"
+        "qemu-system-{qemu_arch} -machine {machine} -cpu {cpu} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp}"
     )
     .run()?;
 

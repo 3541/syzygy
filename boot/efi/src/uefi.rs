@@ -136,3 +136,46 @@ impl<'a> Image<'a> {
         Ok(ret)
     }
 }
+
+pub const EFI_PAGE_SIZE: usize = 0x1000;
+
+pub struct Pages {
+    ptr: *mut u8,
+    count: usize,
+}
+
+impl Drop for Pages {
+    fn drop(&mut self) {
+        todo!();
+    }
+}
+
+impl Pages {
+    pub fn new(bs: &BootServices, size: usize) -> Result<Self> {
+        let mut phys = 0u64;
+        let count = (size - 1) / EFI_PAGE_SIZE + 1;
+        res((bs.allocate_pages)(
+            efi::ALLOCATE_ANY_PAGES,
+            efi::LOADER_DATA,
+            count,
+            &mut phys as *mut _,
+        ))?;
+
+        let ptr = phys as *mut u8;
+        unsafe { ptr.write_bytes(0, count * EFI_PAGE_SIZE) };
+
+        Ok(Self { ptr, count })
+    }
+
+    pub fn ptr(&self) -> *mut u8 {
+        self.ptr
+    }
+
+    pub fn data(&mut self) -> &mut [u8] {
+        unsafe { slice::from_raw_parts_mut(self.ptr, self.size()) }
+    }
+
+    pub fn size(&self) -> usize {
+        self.count * EFI_PAGE_SIZE
+    }
+}
