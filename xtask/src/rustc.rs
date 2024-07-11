@@ -5,7 +5,7 @@ use xshell::{cmd, Shell};
 
 use crate::{
     target::{Arch, Target},
-    Result,
+    Args, Result,
 };
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -30,6 +30,15 @@ impl fmt::Display for BuildType {
 pub struct Config {
     pub arch: Arch,
     pub build_type: BuildType,
+}
+
+impl From<&Args> for Config {
+    fn from(value: &Args) -> Self {
+        Self {
+            arch: value.arch(),
+            build_type: value.build_type,
+        }
+    }
 }
 
 pub struct Compile {

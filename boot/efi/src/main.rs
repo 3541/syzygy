@@ -4,6 +4,8 @@
 
 mod load;
 mod log;
+#[cfg(target_arch = "aarch64")]
+mod rand;
 mod uefi;
 
 use core::fmt::{self, Write};

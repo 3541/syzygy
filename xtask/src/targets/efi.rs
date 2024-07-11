@@ -1,8 +1,9 @@
 use std::{ops::RangeInclusive, path::PathBuf};
 
-use xshell::{cmd, Shell};
+use xshell::Shell;
 
 use crate::{
+    find::llvm_binary,
     rustc::{Compile, Config},
     target::Target,
     Result,
@@ -11,25 +12,13 @@ use crate::{
 fn find_linker(sh: &Shell) -> Result<String> {
     const VERSIONS: RangeInclusive<u32> = 13..=18;
 
-    if cmd!(sh, "lld-link --version")
-        .quiet()
-        .ignore_stdout()
-        .run()
-        .is_ok()
-    {
-        return Ok("lld-link".into());
+    if let Some(p) = llvm_binary(sh, "lld-link") {
+        return Ok(p);
     }
 
     for ver in VERSIONS.rev() {
-        let vs = format!("{ver}");
-
-        if cmd!(sh, "lld-link-{vs} --version")
-            .quiet()
-            .ignore_stdout()
-            .run()
-            .is_ok()
-        {
-            return Ok(format!("lld-link-{ver}"));
+        if let Some(p) = llvm_binary(sh, &format!("lld-link-{ver}")) {
+            return Ok(p);
         }
     }
 

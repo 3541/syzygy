@@ -1,10 +1,11 @@
 mod build;
+mod find;
 mod run;
 mod rustc;
 mod target;
 mod targets;
 
-use std::{env, fs, path::Path};
+use std::{env::consts::ARCH, fs, path::Path};
 
 use blake2::{Blake2b512, Digest};
 use clap::{Parser, Subcommand};
@@ -21,13 +22,21 @@ enum Command {
 
 #[derive(Parser)]
 struct Args {
-    #[arg(short, long, value_enum, default_value_t = Arch::Amd64)]
-    arch: Arch,
+    #[arg(short, long)]
+    arch: Option<Arch>,
     #[arg(short, long, value_enum, default_value_t = BuildType::Debug)]
     build_type: BuildType,
 
     #[command(subcommand)]
     command: Command,
+}
+
+impl Args {
+    fn arch(&self) -> Arch {
+        self.arch
+            .or(Arch::try_from(ARCH).ok())
+            .unwrap_or(Arch::Amd64)
+    }
 }
 
 type Result<T> = core::result::Result<T, Box<dyn std::error::Error>>;

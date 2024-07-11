@@ -3,10 +3,7 @@ use xshell::{cmd, Shell};
 use crate::{repo_root, rustc::Config, targets, Result};
 
 pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
-    let config = Config {
-        arch: args.arch,
-        build_type: args.build_type,
-    };
+    let config = Config::from(args);
     let esp = targets::build(sh, &config)?;
 
     let bin_dir = repo_root().join(format!("boot/efi/bin/{}", config.arch));

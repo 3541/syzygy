@@ -23,6 +23,18 @@ impl fmt::Display for Arch {
     }
 }
 
+impl TryFrom<&str> for Arch {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "amd64" | "x86_64" => Ok(Self::Amd64),
+            "aarch64" | "arm64" => Ok(Self::Aarch64),
+            _ => Err(()),
+        }
+    }
+}
+
 impl Arch {
     pub fn qemu_arch(&self) -> &'static str {
         match self {
@@ -45,7 +57,7 @@ impl Arch {
     pub fn qemu_cpu(&self) -> &'static str {
         match self {
             Self::Amd64 => "Haswell-v4",
-            Self::Aarch64 => todo!(),
+            Self::Aarch64 => "cortex-a76",
         }
     }
 
@@ -59,7 +71,7 @@ impl Arch {
     pub fn ld_machine(&self) -> &'static str {
         match self {
             Self::Amd64 => "elf_x86_64",
-            Self::Aarch64 => todo!(),
+            Self::Aarch64 => "aarch64elf",
         }
     }
 }
