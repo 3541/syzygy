@@ -10,12 +10,17 @@ use crate::{
     Result,
 };
 
+#[allow(unreachable_code)]
 fn linker(sh: &Shell) -> Result<String> {
-    #[cfg(target_os = "macos")]
-    return llvm_binary(sh, "ld.lld").ok_or("lld is required to produce ELF objects".into());
+    // ld on Darwin is ld64, which only produces Mach-O objects. Windows is even more of a special
+    // snowflake and does not provide anything named "ld" (if it did, it would be link.exe, which
+    // would be similarly unsuitable).
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    return llvm_binary(sh, "ld.lld")
+        .ok_or("lld is required to produce ELF objects on this platform".into());
 
-    #[cfg(not(target_os = "macos"))]
-    return Ok("ld");
+    // Otherwise, hope the system linker exists and is sensible.
+    return Ok("ld".into());
 }
 
 pub fn build(sh: &Shell, config: &Config) -> Result<PathBuf> {
