@@ -3,14 +3,16 @@ use std::path::PathBuf;
 use xshell::{cmd, Shell};
 
 use crate::{
-    find::llvm_binary,
     repo_root,
     rustc::{Compile, Config},
     target::Target,
     Result,
 };
 
-#[allow(unreachable_code)]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use crate::find::llvm_binary;
+
+#[allow(unreachable_code, unused_variables)]
 fn linker(sh: &Shell) -> Result<String> {
     // ld on Darwin is ld64, which only produces Mach-O objects. Windows is even more of a special
     // snowflake and does not provide anything named "ld" (if it did, it would be link.exe, which
@@ -20,7 +22,7 @@ fn linker(sh: &Shell) -> Result<String> {
         .ok_or("lld is required to produce ELF objects on this platform".into());
 
     // Otherwise, hope the system linker exists and is sensible.
-    return Ok("ld".into());
+    Ok("ld".into())
 }
 
 pub fn build(sh: &Shell, config: &Config) -> Result<PathBuf> {

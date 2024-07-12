@@ -88,20 +88,20 @@ pub fn file_size(file: &file::Protocol) -> Result<usize> {
     Ok(info.file_size as usize)
 }
 
-pub struct Image<'a> {
+pub struct FileImage<'a> {
     bs: &'a BootServices,
     buf: *mut c_void,
     size: usize,
 }
 
-impl Drop for Image<'_> {
+impl Drop for FileImage<'_> {
     fn drop(&mut self) {
         let status = (self.bs.free_pool)(self.buf);
         assert_eq!(status, efi::Status::SUCCESS);
     }
 }
 
-impl<'a> Image<'a> {
+impl<'a> FileImage<'a> {
     pub fn load(bs: &'a BootServices, file: &file::Protocol, size: usize) -> Result<Self> {
         let mut buf = ptr::null_mut();
         res((bs.allocate_pool)(
@@ -146,14 +146,17 @@ pub struct Pages {
 
 impl Drop for Pages {
     fn drop(&mut self) {
-        todo!();
+        todo!("Drop pages.");
     }
 }
 
 impl Pages {
     pub fn new(bs: &BootServices, size: usize) -> Result<Self> {
+        Self::new_count(bs, (size - 1) / EFI_PAGE_SIZE + 1)
+    }
+
+    pub fn new_count(bs: &BootServices, count: usize) -> Result<Self> {
         let mut phys = 0u64;
-        let count = (size - 1) / EFI_PAGE_SIZE + 1;
         res((bs.allocate_pages)(
             efi::ALLOCATE_ANY_PAGES,
             efi::LOADER_DATA,
@@ -172,10 +175,10 @@ impl Pages {
     }
 
     pub fn data(&mut self) -> &mut [u8] {
-        unsafe { slice::from_raw_parts_mut(self.ptr, self.size()) }
+        unsafe { slice::from_raw_parts_mut(self.ptr, self.len()) }
     }
 
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count * EFI_PAGE_SIZE
     }
 }

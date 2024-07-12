@@ -1,7 +1,9 @@
 #![no_main]
 #![no_std]
 #![feature(panic_info_message)]
+#![feature(maybe_uninit_array_assume_init)]
 
+mod arch;
 mod load;
 mod log;
 #[cfg(target_arch = "aarch64")]
@@ -14,8 +16,9 @@ use log::{Log, LOG};
 use r_efi::efi;
 use ucs2::ucs2_cstr;
 
-use load::load_image;
-use uefi::{file_size, open_file, open_image_volume, Image};
+use arch::map_image;
+use load::Image;
+use uefi::{file_size, open_file, open_image_volume, FileImage};
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
@@ -86,7 +89,7 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     let size = file_size(kernel)?;
     writeln!(log, "Found kernel image, {size} bytes.\r")?;
 
-    let image = Image::load(bs, kernel, size)?;
+    let image = FileImage::load(bs, kernel, size)?;
     writeln!(log, "Loaded image, verifying...\r")?;
 
     let hash = image.hash(log)?;
@@ -97,7 +100,8 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     }
     writeln!(log, "Hash matches {EXPECTED_HASH}.\r")?;
 
-    load_image(&mut log, bs, &image)?;
+    let image = Image::load(&mut log, bs, &image)?;
+    map_image(&mut log, bs, &image)?;
 
     Ok(())
 }

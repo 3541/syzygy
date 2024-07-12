@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! arch_mod_impl {
     ($arch:ident, $arch_str:expr) => {
         #[cfg(target_arch = $arch_str)]
@@ -7,9 +8,10 @@ macro_rules! arch_mod_impl {
     };
 }
 
+#[macro_export]
 macro_rules! arch_mod {
     () => {
-        arch_mod_impl!(amd64, "x86_64");
-        arch_mod_impl!(aarch64, "aarch64");
+        util::arch_mod_impl!(amd64, "x86_64");
+        util::arch_mod_impl!(aarch64, "aarch64");
     };
 }

@@ -1,6 +1,6 @@
 use crate::boot::kmain;
 
 #[no_mangle]
-fn kinit() {
+extern "C" fn kinit() {
     kmain();
 }

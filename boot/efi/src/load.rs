@@ -1,11 +1,14 @@
-use core::fmt::{self, Write};
+use core::{
+    fmt::{self, Write},
+    mem::size_of,
+};
 
+use arrayvec::ArrayVec;
 use elf::{
     abi,
-    dynamic::DynamicTable,
     endian::NativeEndian,
     file::{Class, FileHeader},
-    symbol::Symbol,
+    relocation::RelaIterator,
     to_str, ElfBytes,
 };
 use r_efi::efi::BootServices;
@@ -13,7 +16,7 @@ use rand::{rngs::OsRng, Rng};
 
 use crate::{
     log::Log,
-    uefi::{Image, Pages, EFI_PAGE_SIZE},
+    uefi::{FileImage, Pages, EFI_PAGE_SIZE},
     Result,
 };
 
@@ -62,15 +65,77 @@ fn validate(h: &FileHeader<NativeEndian>) -> Result<()> {
 }
 
 fn relocate(
-    _log: &mut Log,
-    dy: &DynamicTable<'_, NativeEndian>,
-    _data: &[u8],
-    _offset: usize,
+    file: &ElfBytes<NativeEndian>,
+    data: &mut [u8],
+    file_base: usize,
+    real_base: usize,
 ) -> Result<()> {
+    let dy = file
+        .dynamic()?
+        .ok_or(Error::InvalidStructure("No PT_DYNAMIC program header"))?;
+
+    let find_only = |t| {
+        let mut it = dy.iter().filter(|d| d.d_tag == t);
+        let res = it.next();
+        if it.next().is_some() {
+            Err(crate::Error::from(Error::InvalidStructure(
+                "Multiple relocation headers of single type",
+            )))
+        } else {
+            Ok(res)
+        }
+    };
+
+    let relas = find_only(abi::DT_RELA)?;
+    if let Some(relas) = relas {
+        let relasz = find_only(abi::DT_RELASZ)?
+            .ok_or(Error::InvalidStructure(
+                "DT_RELA present, but missing DT_RELSZ",
+            ))?
+            .d_val();
+        let relaent = find_only(abi::DT_RELAENT)?
+            .ok_or(Error::InvalidStructure(
+                "DT_RELA present, but missing DT_RELAENT",
+            ))?
+            .d_val();
+
+        if let Some(relacount) = find_only(abi::DT_RELACOUNT)? {
+            if relasz / relaent != relacount.d_val() {
+                return Err(Error::InvalidStructure(
+                    "DT_RELACOUNT does not match DT_RELASZ / DT_RELAENT",
+                )
+                .into());
+            }
+        }
+
+        let rel_offset = relas.d_ptr() as usize - file_base;
+        for rela in RelaIterator::new(
+            NativeEndian,
+            file.ehdr.class,
+            &data[rel_offset..rel_offset + relasz as usize],
+        ) {
+            let res = match rela.r_type {
+                abi::R_X86_64_RELATIVE => real_base as i64 + rela.r_addend,
+                _ => {
+                    todo!("Unhandled relocation {}", rela.r_type)
+                }
+            } as u64;
+
+            let i = rela.r_offset as usize - file_base;
+            assert!(i + size_of::<u64>() <= rel_offset || rel_offset + relasz as usize <= i);
+            assert!(i + size_of::<u64>() <= data.len());
+            // SAFETY: Previous assertion verifies this does not overlap with subslice being iterated.
+            unsafe { (&data[i] as *const _ as *mut u64).write(res) };
+        }
+    }
+
     for d in dy.iter() {
         match d.d_tag {
-            abi::DT_REL | abi::DT_RELA | abi::DT_RELAENT | abi::DT_RELASZ | abi::DT_JMPREL => {
-                todo!("relocations")
+            abi::DT_REL | abi::DT_RELENT | abi::DT_RELSZ | abi::DT_JMPREL => {
+                todo!(
+                    "{} relocations",
+                    to_str::d_tag_to_str(d.d_tag).unwrap_or("<unknown>")
+                )
             }
             _ => {}
         }
@@ -79,60 +144,88 @@ fn relocate(
     Ok(())
 }
 
-pub fn load_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> {
-    let file = ElfBytes::<NativeEndian>::minimal_parse(image.data())?;
-    validate(&file.ehdr)?;
+pub struct Region {
+    base: usize,
+    size: usize,
+    flags: u32,
+}
 
-    let phdrs = file
-        .segments()
-        .ok_or(Error::InvalidStructure("No program headers"))?;
-    let dy = file
-        .dynamic()?
-        .ok_or(Error::InvalidStructure("No PT_DYNAMIC program header"))?;
+pub struct Image {
+    pub data: Pages,
+    pub base: usize,
+    pub map: ArrayVec<Region, 32>,
+}
 
-    let nonempty = || {
-        phdrs
-            .iter()
-            .filter(|h| h.p_type == abi::PT_LOAD && h.p_memsz != 0)
-    };
-    let align = nonempty()
-        .map(|h| h.p_align)
-        .max()
-        .ok_or(Error::InvalidStructure("No nonempty program headers"))?;
-    let min = nonempty().map(|h| h.p_vaddr).min().unwrap();
-    let max = nonempty().map(|h| h.p_vaddr).max().unwrap();
+impl Image {
+    pub fn load(log: &mut Log, bs: &BootServices, image: &FileImage) -> Result<Self> {
+        let file = ElfBytes::<NativeEndian>::minimal_parse(image.data())?;
+        validate(&file.ehdr)?;
 
-    assert!(align <= EFI_PAGE_SIZE as u64);
-    assert!(min < max);
+        let phdrs = file
+            .segments()
+            .ok_or(Error::InvalidStructure("No program headers"))?;
 
-    let size = (max - min) as usize;
-    writeln!(log, "Loading ELF image, {} bytes.\r", size)?;
+        let nonempty = || {
+            phdrs
+                .iter()
+                .filter(|h| h.p_type == abi::PT_LOAD && h.p_memsz != 0)
+        };
+        let align = nonempty()
+            .map(|h| h.p_align)
+            .max()
+            .ok_or(Error::InvalidStructure("No nonempty program headers"))?;
+        let min = nonempty().map(|h| h.p_vaddr).min().unwrap();
+        let max = nonempty().map(|h| h.p_vaddr + h.p_memsz).max().unwrap();
 
-    let mut dst = Pages::new(bs, size)?;
-    let mut r = OsRng;
-    let rel_offset = r.gen_range(0..=(usize::MAX - dst.size())) & !(EFI_PAGE_SIZE - 1);
-    writeln!(log, "Offset: {:#x}.\r", rel_offset)?;
+        assert!(align <= EFI_PAGE_SIZE as u64);
+        assert!(min < max);
 
-    for h in nonempty() {
-        assert!(h.p_memsz >= h.p_filesz);
-        assert!(h.p_vaddr >= min);
+        let size = (max - min) as usize;
+        writeln!(log, "Loading ELF image, {} bytes.\r", size)?;
 
-        let offset = (h.p_vaddr - min) as usize;
-        writeln!(
-            log,
-            "Loading {}{}{}: {:#x}@P{:#x}.\r",
-            if h.p_flags & abi::PF_R != 0 { "R" } else { " " },
-            if h.p_flags & abi::PF_W != 0 { "W" } else { " " },
-            if h.p_flags & abi::PF_X != 0 { "X" } else { " " },
-            h.p_memsz,
-            dst.ptr() as usize + offset,
-        )?;
+        let mut dst = Pages::new(bs, size)?;
 
-        let region = &mut dst.data()[offset..offset + h.p_memsz as usize];
-        region[..h.p_filesz as usize].copy_from_slice(file.segment_data(&h)?);
+        let mut r = OsRng;
+        let load_address =
+            r.gen_range(0xFFFFFFFF80100000..=(usize::MAX - dst.len())) & !(EFI_PAGE_SIZE - 1);
 
-        relocate(log, &dy, region, rel_offset)?;
+        let mut map = ArrayVec::<Region, 32>::new();
+        for h in nonempty() {
+            assert!(h.p_memsz >= h.p_filesz);
+            assert!(h.p_vaddr >= min);
+
+            let offset = (h.p_vaddr - min) as usize;
+            writeln!(
+                log,
+                "Loading {}{}{}: {}@P{:#x}.\r",
+                if h.p_flags & abi::PF_R != 0 { "R" } else { " " },
+                if h.p_flags & abi::PF_W != 0 { "W" } else { " " },
+                if h.p_flags & abi::PF_X != 0 { "X" } else { " " },
+                h.p_memsz,
+                dst.ptr() as usize + offset,
+            )?;
+
+            let region = &mut dst.data()[offset..offset + h.p_memsz as usize];
+            region[..h.p_filesz as usize].copy_from_slice(file.segment_data(&h)?);
+
+            if h.p_memsz > h.p_filesz {
+                region[h.p_filesz as usize..h.p_memsz as usize].fill(0);
+            }
+
+            map.push(Region {
+                base: load_address + offset,
+                size: h.p_memsz as usize,
+                flags: h.p_flags,
+            });
+        }
+
+        writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.\r")?;
+        relocate(&file, dst.data(), min as usize, load_address)?;
+
+        Ok(Self {
+            data: dst,
+            base: load_address,
+            map,
+        })
     }
-
-    todo!()
 }
