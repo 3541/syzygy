@@ -130,7 +130,7 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     let image = Image::load(&mut log, bs, &image)?;
     map_image(&mut log, bs, &image)?;
 
-    Ok(())
+    todo!("Final setup and jump");
 }
 
 #[no_mangle]

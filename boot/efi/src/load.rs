@@ -165,9 +165,9 @@ fn relocate(
 }
 
 pub struct Region {
-    base: usize,
-    size: usize,
-    flags: u32,
+    pub base: usize,
+    pub size: usize,
+    pub flags: u32,
 }
 
 pub struct Image {
