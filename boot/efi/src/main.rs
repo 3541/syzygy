@@ -150,7 +150,7 @@ pub extern "efiapi" fn efi_main(image: efi::Handle, st: &mut efi::SystemTable) -
             } else {
                 efi::Status::SUCCESS
             }
-        }
+        },
         Err(Error::Efi(s)) => panic!("EFI error: {s:?}\r"),
         Err(Error::Elf(e)) => panic!("ELF parsing error: {e}\r"),
         Err(Error::Load(e)) => panic!("ELF loading error: {e}\r"),

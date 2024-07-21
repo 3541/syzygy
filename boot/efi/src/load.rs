@@ -33,6 +33,7 @@ use elf::{
 };
 use r_efi::efi::BootServices;
 use rand::{rngs::OsRng, Rng};
+use util::constants;
 
 use crate::{
     log::Log,
@@ -52,14 +53,14 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidClass(c) => {
                 write!(f, "Invalid class {:?}, expected {:?}.", c, Class::ELF64)
-            }
+            },
             Self::InvalidMachine(m) => {
                 write!(
                     f,
                     "Invalid machine {}.",
                     to_str::e_machine_to_str(*m).unwrap_or("<unknown>")
                 )
-            }
+            },
             Self::InvalidType(t) => write!(
                 f,
                 "Invalid type {}.",
@@ -138,7 +139,7 @@ fn relocate(
                 abi::R_X86_64_RELATIVE => real_base as i64 + rela.r_addend,
                 _ => {
                     todo!("Unhandled relocation {}", rela.r_type)
-                }
+                },
             } as u64;
 
             let i = rela.r_offset as usize - file_base;
@@ -156,8 +157,8 @@ fn relocate(
                     "{} relocations",
                     to_str::d_tag_to_str(d.d_tag).unwrap_or("<unknown>")
                 )
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -207,7 +208,7 @@ impl Image {
 
         let mut r = OsRng;
         let load_address =
-            r.gen_range(0xFFFFFFFF80100000..=(usize::MAX - dst.len())) & !(EFI_PAGE_SIZE - 1);
+            r.gen_range(0xFFFFFFFF80100000..=(usize::MAX - dst.len())) & !(2 * constants::MB - 1);
 
         let mut map = ArrayVec::<Region, 32>::new();
         for h in nonempty() {

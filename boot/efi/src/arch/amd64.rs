@@ -47,13 +47,6 @@ bitflags! {
 
 fn entry<T>(ptr: *const T, flags: EntryFlags) -> u64 {
     let address = ptr as u64;
-    unsafe {
-        writeln!(
-            crate::log::LOG.unwrap(),
-            "Address is {address:#x}, index is {}\r",
-            index(ptr, 1)
-        )
-    };
     assert_eq!(address & !ENTRY_MASK, 0, "Invalid address P{address:#x}.");
 
     address | (flags | EntryFlags::PRESENT).bits()
@@ -79,7 +72,6 @@ fn index<T>(ptr: *const T, level: usize) -> usize {
 
 fn flags(elf: u32) -> EntryFlags {
     assert!(elf & abi::PF_W == 0 || elf & abi::PF_X == 0);
-    assert_ne!(elf & abi::PF_R, 0);
 
     (if elf & abi::PF_W != 0 {
         EntryFlags::WRITABLE
@@ -114,7 +106,8 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
     pml4[index(virt_base, 4)] = entry(pdp.as_ptr(), table_flags);
     pdp[index(virt_base, 3)] = entry(pd.as_ptr(), table_flags);
 
-    let pd_index = index(virt_base, 3);
+    let pd_index = index(virt_base, 2);
+    writeln!(log, "Base is V{:#x}\r", image.base)?;
     pd[pd_index] = entry(pt.as_ptr(), table_flags);
 
     let mut count = 0;
@@ -133,10 +126,22 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
             let offset = i * PAGE_SIZE;
             let virt = (region.base + offset - align_offset) as *const u8;
             let phys = (base + offset) as *const u8;
+            writeln!(
+                log,
+                "Mapping P{:#x} => V{:#x}, {}/{}/{}/{}\r",
+                phys as usize,
+                virt as usize,
+                index(virt, 4), // TODO: Either the recursive mapping or the higher half address has to move.
+                index(virt, 3),
+                index(virt, 2),
+                index(virt, 1),
+            )?;
+
             assert_eq!(
                 index(virt, 2),
                 pd_index,
-                "Mapping spans multiple PDs (P{:#x}).",
+                "Mapping spans multiple PDs (V{:#x} P{:#x}).",
+                virt as usize,
                 phys as usize
             );
 
