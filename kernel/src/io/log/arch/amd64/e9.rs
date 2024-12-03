@@ -31,7 +31,7 @@ impl DebugPort {
     const ADDRESS: u16 = 0xE9;
 
     fn the() -> &'static Self {
-        static INSTANCE: DebugPort = Self(Port::new(DebugPort::ADDRESS));
+        static INSTANCE: DebugPort = DebugPort(Port::new(DebugPort::ADDRESS));
         &INSTANCE
     }
 }

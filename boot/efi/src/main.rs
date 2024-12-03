@@ -50,14 +50,7 @@ use uefi::{file_size, open_file, open_image_volume, FileImage};
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     if let Some(mut log) = unsafe { LOG } {
-        let _ = write!(log, "PANIC: ");
-
-        if let Some(msg) = info.message() {
-            let _ = fmt::write(&mut log, *msg);
-            let _ = write!(log, "\r\n");
-        } else {
-            let _ = writeln!(log, "<no message>\r");
-        }
+        let _ = write!(log, "PANIC: \r\n{}", info.message());
     }
 
     loop {}

@@ -60,6 +60,7 @@ fn version(sh: &Shell) -> Result<String> {
     let tag = env!("CARGO_PKG_VERSION");
     let tag_hash = cmd!(sh, "git rev-parse --short {tag}")
         .quiet()
+        .ignore_stderr()
         .read()
         .unwrap_or("<no tag>".into());
 
