@@ -14,5 +14,5 @@ elf.workspace = true
 rand = { version = "0.8.5", default-features = false, features = ["getrandom"] }
 getrandom = { version = "0.2.15", default-features = false, features = ["rdrand", "custom"] }
 arrayvec = { version = "0.7.4", default-features = false }
-util.path = "../../util"
+common.path = "../../common"
 bitflags = "2.6.0"

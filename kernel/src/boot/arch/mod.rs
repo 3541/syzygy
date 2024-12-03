@@ -1,1 +1,1 @@
-util::arch_mod!();
+common::arch_mod!();

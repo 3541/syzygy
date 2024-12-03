@@ -33,13 +33,13 @@ use elf::{
 };
 use r_efi::efi::BootServices;
 use rand::{rngs::OsRng, Rng};
-use util::constants;
 
 use crate::{
     log::Log,
     uefi::{FileImage, Pages, EFI_PAGE_SIZE},
     Result,
 };
+use common::constants;
 
 pub enum Error {
     InvalidClass(Class),

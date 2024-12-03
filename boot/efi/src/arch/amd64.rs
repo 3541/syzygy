@@ -25,9 +25,9 @@ use core::{
 use bitflags::bitflags;
 use elf::abi;
 use r_efi::efi::BootServices;
-use util::constants::MB;
 
 use crate::{load::Image, log::Log, uefi::Pages, Result};
+use common::constants::MB;
 
 const PAGE_SIZE: usize = 0x1000;
 const ENTRY_MASK: u64 = 0x000F_FFFF_FFFF_F000;
