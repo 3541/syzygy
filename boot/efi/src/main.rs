@@ -1,13 +1,6 @@
 /*
  * EFI: EFI boot loader.
  *
- * This is a very simple EFI bootloader. It will:
- * 1. Load the kernel from the filename 'sz' on the same volume as the loader itself.
- * 2. Relocate to a random address.
- * 3. Set up a bootstrap page mapping.
- * 4. Apply any necessary architecture-specific configuration (e.g., WP bit).
- * 5. Invoke kinit(), passing the memory map and bootstrap page tables.
- *
  * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
@@ -23,6 +16,14 @@
  *
  * You should have received a copy of the GNU General Public License along with
  * this software. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * This is a very simple EFI bootloader. It will:
+ * 1. Load the kernel from the filename 'sz' on the same volume as the loader itself.
+ * 2. Relocate to a random address.
+ * 3. Set up a bootstrap page mapping.
+ * 4. Apply any necessary architecture-specific configuration (e.g., WP bit).
+ * 5. Invoke kinit(), passing the memory map and bootstrap page tables.
+ *
  */
 
 #![no_main]
