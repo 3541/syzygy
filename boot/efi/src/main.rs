@@ -27,7 +27,6 @@
 
 #![no_main]
 #![no_std]
-#![feature(panic_info_message)]
 #![feature(maybe_uninit_array_assume_init)]
 
 mod arch;
