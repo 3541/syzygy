@@ -21,13 +21,21 @@
 use core::{
     ffi::c_void,
     fmt::Write,
-    mem::{size_of_val, MaybeUninit},
+    mem::{forget, size_of_val, MaybeUninit},
+    ops::Range,
     ptr, slice,
 };
 
+use arrayvec::ArrayVec;
 use blake2::{Blake2b512, Digest};
 use r_efi::{
-    efi::{self, BootServices, Guid},
+    efi::{
+        self, BootServices, Guid, MemoryDescriptor, ACPI_MEMORY_NVS, ACPI_RECLAIM_MEMORY,
+        BOOT_SERVICES_CODE, BOOT_SERVICES_DATA, CONVENTIONAL_MEMORY, LOADER_CODE, LOADER_DATA,
+        MEMORY_MAPPED_IO, MEMORY_MAPPED_IO_PORT_SPACE, PAL_CODE, PERSISTENT_MEMORY,
+        RESERVED_MEMORY_TYPE, RUNTIME_SERVICES_CODE, RUNTIME_SERVICES_DATA, UNACCEPTED_MEMORY_TYPE,
+        UNUSABLE_MEMORY,
+    },
     protocols::{file, loaded_image, simple_file_system},
 };
 
@@ -152,7 +160,7 @@ impl<'a> FileImage<'a> {
         let mut ret = [0u8; 64];
         ret.clone_from_slice(&r);
 
-        writeln!(log, "Image hash: {r:x}.\r")?;
+        writeln!(log, "Image hash: {r:x}.")?;
         Ok(ret)
     }
 }
@@ -166,7 +174,7 @@ pub struct Pages {
 
 impl Drop for Pages {
     fn drop(&mut self) {
-        todo!("Drop pages.");
+        panic!("Did not free pages.");
     }
 }
 
@@ -201,4 +209,84 @@ impl Pages {
     pub fn len(&self) -> usize {
         self.count * EFI_PAGE_SIZE
     }
+
+    pub fn leak(self) -> &'static mut [u8] {
+        let res = unsafe { slice::from_raw_parts_mut(self.ptr, self.len()) };
+        forget(self);
+        res
+    }
+}
+
+fn memory_type(t: u32) -> &'static str {
+    match t {
+        RESERVED_MEMORY_TYPE => "RESERVED",
+        LOADER_CODE => "LOADER_CODE",
+        LOADER_DATA => "LOADER_DATA",
+        BOOT_SERVICES_CODE => "BOOT_SERVICES_CODE",
+        BOOT_SERVICES_DATA => "BOOT_SERVICES_DATA",
+        RUNTIME_SERVICES_CODE => "RUNTIME_SERVICES_CODE",
+        RUNTIME_SERVICES_DATA => "RUNTIME_SERVICES_DATA",
+        CONVENTIONAL_MEMORY => "CONVENTIONAL_MEMORY",
+        UNUSABLE_MEMORY => "UNUSABLE_MEMORY",
+        ACPI_RECLAIM_MEMORY => "ACPI_RECLAIM_MEMORY",
+        ACPI_MEMORY_NVS => "ACPI_MEMORY_NVS",
+        MEMORY_MAPPED_IO => "MEMORY_MAPPED_IO",
+        MEMORY_MAPPED_IO_PORT_SPACE => "MEMORY_MAPPED_IO_PORT_SPACE",
+        PAL_CODE => "PAL_CODE",
+        PERSISTENT_MEMORY => "PERSISTENT_MEMORY",
+        UNACCEPTED_MEMORY_TYPE => "UNACCEPTED_MEMORY_TYPE",
+        _ => "<unknown>",
+    }
+}
+
+pub fn memory_map(log: &mut Log, bs: &BootServices, kernel_range: Range<*const u8>) -> Result<()> {
+    let mut buf = [0u8; 8192];
+    let size = size_of_val(&buf);
+
+    let mut size_res = size;
+    let mut key = 0usize;
+    let mut descriptor_size = 0usize;
+    let mut descriptor_version = 0u32;
+    res((bs.get_memory_map)(
+        &mut size_res,
+        buf.as_mut_ptr() as *mut MemoryDescriptor,
+        &mut key,
+        &mut descriptor_size,
+        &mut descriptor_version,
+    ))?;
+
+    writeln!(
+        log,
+        "{} descriptors of size {}",
+        size_res / descriptor_size,
+        descriptor_size
+    )?;
+
+    assert!(descriptor_size >= size_of::<MemoryDescriptor>());
+    assert!(size_res <= size);
+
+    for i in 0..size_res / descriptor_size {
+        let desc = unsafe {
+            ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
+        };
+
+        writeln!(
+            log,
+            "{} P{:#x}-P{:#x} {} pages",
+            memory_type(desc.r#type),
+            desc.physical_start,
+            desc.physical_start + desc.number_of_pages * EFI_PAGE_SIZE as u64,
+            desc.number_of_pages
+        )?;
+    }
+
+    todo!();
+}
+
+pub fn exit_boot_services(
+    bs: &BootServices,
+    image: efi::Handle,
+    memory_map_key: usize,
+) -> Result<()> {
+    res((bs.exit_boot_services)(image, memory_map_key))
 }

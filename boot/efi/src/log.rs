@@ -57,13 +57,32 @@ impl Log {
         res((self.clear)(self.protocol))
     }
 
+    fn print_char(&self, ch: u16) -> efi::Status {
+        let mut buf = [ch, 0];
+        (self.print)(self.protocol, &mut buf as *mut _)
+    }
+
     fn print(&self, str: &str) -> Result<()> {
+        let mut lf = [0u16];
+        let mut cr = [0u16];
+        ucs2::encode("\n", &mut lf).unwrap();
+        ucs2::encode("\r", &mut cr).unwrap();
+        let lf = lf[0];
+        let cr = cr[0];
+        assert_ne!(lf, 0);
+        assert_ne!(lf, cr);
+
         let mut status = efi::Status::SUCCESS;
-
         ucs2::encode_with(str, |ch| {
-            let mut buf = [ch, 0];
+            if ch == lf {
+                status = self.print_char(cr);
 
-            status = (self.print)(self.protocol, &mut buf as *mut _);
+                if status.is_error() {
+                    return Err(ucs2::Error::BufferOverflow);
+                }
+            }
+
+            status = self.print_char(ch);
             if status.is_error() {
                 Err(ucs2::Error::BufferOverflow)
             } else {

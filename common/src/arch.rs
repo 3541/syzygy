@@ -1,9 +1,6 @@
 /*
  * ARCH: Platform submodule helper.
  *
- * These macros define an appropriately-named submodule for each supported CPU
- * architecture and reexport all symbols from the correct target.
- *
  * Copyright (c) 2020, 2024 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
@@ -19,6 +16,9 @@
  *
  * You should have received a copy of the GNU General Public License along with
  * this software. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * These macros define an appropriately-named submodule for each supported CPU
+ * architecture and reexport all symbols from the correct target.
  */
 
 #[macro_export]
@@ -34,7 +34,7 @@ macro_rules! arch_mod_impl {
 #[macro_export]
 macro_rules! arch_mod {
     () => {
-        common::arch_mod_impl!(amd64, "x86_64");
-        common::arch_mod_impl!(aarch64, "aarch64");
+        $crate::arch_mod_impl!(amd64, "x86_64");
+        $crate::arch_mod_impl!(aarch64, "aarch64");
     };
 }

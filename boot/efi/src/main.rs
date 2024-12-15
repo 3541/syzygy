@@ -23,7 +23,6 @@
  * 3. Set up a bootstrap page mapping.
  * 4. Apply any necessary architecture-specific configuration (e.g., WP bit).
  * 5. Invoke kinit(), passing the memory map and bootstrap page tables.
- *
  */
 
 #![no_main]
@@ -45,12 +44,12 @@ use ucs2::ucs2_cstr;
 
 use arch::map_image;
 use load::Image;
-use uefi::{file_size, open_file, open_image_volume, FileImage};
+use uefi::{exit_boot_services, file_size, memory_map, open_file, open_image_volume, FileImage};
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     if let Some(mut log) = unsafe { LOG } {
-        let _ = write!(log, "PANIC: \r\n{}", info.message());
+        let _ = write!(log, "PANIC: \n{}", info.message());
     }
 
     loop {}
@@ -97,20 +96,20 @@ fn expected_hash() -> [u8; 64] {
     ret
 }
 
-fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
+fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     let mut log = unsafe { LOG.unwrap() };
 
     log.clear()?;
-    writeln!(log, "Syzygy EFI loader {}.\r", env!("SZ_VER"))?;
+    writeln!(log, "Syzygy EFI loader {}.", env!("SZ_VER"))?;
 
     let bs = unsafe { &*st.boot_services };
-    let volume = unsafe { open_image_volume(image, bs) }?;
+    let volume = unsafe { open_image_volume(image_handle, bs) }?;
     let kernel = unsafe { open_file(volume, &ucs2_cstr!("sz")) }?;
     let size = file_size(kernel)?;
-    writeln!(log, "Found kernel image, {size} bytes.\r")?;
+    writeln!(log, "Found kernel image, {size} bytes.")?;
 
     let image = FileImage::load(bs, kernel, size)?;
-    writeln!(log, "Loaded image, verifying...\r")?;
+    writeln!(log, "Loaded image, verifying...")?;
 
     let hash = image.hash(log)?;
     let expected = expected_hash();
@@ -118,11 +117,15 @@ fn start(image: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     if hash != expected {
         panic!("Hash mismatch. Found {hash:x?}, expected {expected:x?}");
     }
-    writeln!(log, "Hash matches {EXPECTED_HASH}.\r")?;
+    writeln!(log, "Hash matches {EXPECTED_HASH}.")?;
 
     let image = Image::load(&mut log, bs, &image)?;
     map_image(&mut log, bs, &image)?;
+    let (_, kernel) = image.leak();
 
+    memory_map(&mut log, bs, kernel.as_ptr_range())?;
+
+    exit_boot_services(bs, image_handle, 0)?;
     todo!("Final setup and jump");
 }
 
@@ -144,9 +147,9 @@ pub extern "efiapi" fn efi_main(image: efi::Handle, st: &mut efi::SystemTable) -
                 efi::Status::SUCCESS
             }
         },
-        Err(Error::Efi(s)) => panic!("EFI error: {s:?}\r"),
-        Err(Error::Elf(e)) => panic!("ELF parsing error: {e}\r"),
-        Err(Error::Load(e)) => panic!("ELF loading error: {e}\r"),
-        Err(Error::Fmt) => efi::Status::DEVICE_ERROR, // Panic probably a bad idea.
+        Err(Error::Efi(s)) => panic!("EFI error: {s:x?}"),
+        Err(Error::Elf(e)) => panic!("ELF parsing error: {e}"),
+        Err(Error::Load(e)) => panic!("ELF loading error: {e}"),
+        Err(Error::Fmt) => efi::Status::DEVICE_ERROR, // Panic probably a bad idea, given the handler itself uses writeln!().
     }
 }

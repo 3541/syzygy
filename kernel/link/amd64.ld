@@ -28,4 +28,12 @@ SECTIONS {
     .tbss ALIGN(4K) : {
         *(.tbss .tbss.*)
     }
+
+    .dynamic ALIGN(4K) : {
+        *(.dynamic)
+    }
+
+    .dynsym : ALIGN(4K) {
+        *(.dynsym)
+    }
 }

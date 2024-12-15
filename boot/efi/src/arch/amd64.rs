@@ -27,7 +27,7 @@ use elf::abi;
 use r_efi::efi::BootServices;
 
 use crate::{load::Image, log::Log, uefi::Pages, Result};
-use common::constants::MB;
+use common::constants::{MB, PT_RECURSIVE_INDEX};
 
 const PAGE_SIZE: usize = 0x1000;
 const ENTRY_MASK: u64 = 0x000F_FFFF_FFFF_F000;
@@ -102,12 +102,11 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
     assert_eq!(image.base % PAGE_SIZE, 0);
     let virt_base = image.base as *const u8;
 
-    pml4[pml4.len() - 1] = entry(pml4.as_ptr(), table_flags);
+    pml4[PT_RECURSIVE_INDEX] = entry(pml4.as_ptr(), table_flags);
     pml4[index(virt_base, 4)] = entry(pdp.as_ptr(), table_flags);
     pdp[index(virt_base, 3)] = entry(pd.as_ptr(), table_flags);
 
     let pd_index = index(virt_base, 2);
-    writeln!(log, "Base is V{:#x}\r", image.base)?;
     pd[pd_index] = entry(pt.as_ptr(), table_flags);
 
     let mut count = 0;
@@ -122,16 +121,16 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
             "Region P{base:#x} not aligned to page size."
         );
 
-        for i in 0..=(region.size - 1 + align_offset) / PAGE_SIZE + 1 {
+        for i in 0..=region.size / PAGE_SIZE {
             let offset = i * PAGE_SIZE;
             let virt = (region.base + offset - align_offset) as *const u8;
             let phys = (base + offset) as *const u8;
             writeln!(
                 log,
-                "Mapping P{:#x} => V{:#x}, {}/{}/{}/{}\r",
+                "Mapping P{:#x} => V{:#x}, {}/{}/{}/{}",
                 phys as usize,
                 virt as usize,
-                index(virt, 4), // TODO: Either the recursive mapping or the higher half address has to move.
+                index(virt, 4),
                 index(virt, 3),
                 index(virt, 2),
                 index(virt, 1),
@@ -159,7 +158,9 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
         }
     }
 
-    writeln!(log, "Mapped {count} pages in 1 page table.\r")?;
+    tables.leak();
+
+    writeln!(log, "Mapped {count} pages in 1 page table.")?;
 
     Ok(())
 }

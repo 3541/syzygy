@@ -202,7 +202,7 @@ impl Image {
         assert!(min < max);
 
         let size = (max - min) as usize;
-        writeln!(log, "Loading ELF image, {} bytes.\r", size)?;
+        writeln!(log, "Loading ELF image, {} bytes.", size)?;
 
         let mut dst = Pages::new(bs, size)?;
 
@@ -218,12 +218,12 @@ impl Image {
             let offset = (h.p_vaddr - min) as usize;
             writeln!(
                 log,
-                "Loading {}{}{}: {}@P{:#x}.\r",
+                "Loading {}{}{}: P{:#x} - P{:#x}.",
                 if h.p_flags & abi::PF_R != 0 { "R" } else { " " },
                 if h.p_flags & abi::PF_W != 0 { "W" } else { " " },
                 if h.p_flags & abi::PF_X != 0 { "X" } else { " " },
-                h.p_memsz,
                 dst.ptr() as usize + offset,
+                dst.ptr() as usize + offset + h.p_memsz as usize,
             )?;
 
             let region = &mut dst.data()[offset..offset + h.p_memsz as usize];
@@ -240,7 +240,7 @@ impl Image {
             });
         }
 
-        writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.\r")?;
+        writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.")?;
         relocate(&file, dst.data(), min as usize, load_address)?;
 
         Ok(Self {
@@ -248,5 +248,10 @@ impl Image {
             base: load_address,
             map,
         })
+    }
+
+    pub fn leak(self) -> (ArrayVec<Region, 32>, &'static mut [u8]) {
+        let Self { data, map, .. } = self;
+        (map, data.leak())
     }
 }
