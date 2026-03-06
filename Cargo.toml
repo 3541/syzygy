@@ -5,12 +5,9 @@ members = ["boot/*", "common", "kernel", "xtask"]
 [workspace.package]
 version = "0.1.0-alpha"
 authors = ["Alex O'Brien <3541@3541.website>"]
-edition = "2021"
+edition = "2024"
 license = "GPL-3.0-only"
 
 [workspace.dependencies]
 blake2 = { version = "0.10.6", default-features = false }
-elf = { version = "0.8.0-dev", default-features = false, features = ["to_str"] }
-
-[patch.crates-io]
-elf = { git = "https://github.com/cole14/rust-elf.git" }
+elf = { version = "0.8.0", default-features = false, features = ["to_str"] }

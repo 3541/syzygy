@@ -129,7 +129,7 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     todo!("Final setup and jump");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "efiapi" fn efi_main(image: efi::Handle, st: &mut efi::SystemTable) -> efi::Status {
     unsafe { Log::init(st) };
 

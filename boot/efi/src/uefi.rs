@@ -270,14 +270,14 @@ pub fn memory_map(log: &mut Log, bs: &BootServices, kernel_range: Range<*const u
             ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
         };
 
-        writeln!(
-            log,
-            "{} P{:#x}-P{:#x} {} pages",
-            memory_type(desc.r#type),
-            desc.physical_start,
-            desc.physical_start + desc.number_of_pages * EFI_PAGE_SIZE as u64,
-            desc.number_of_pages
-        )?;
+        // writeln!(
+        //     log,
+        //     "{} P{:#x}-P{:#x} {} pages",
+        //     memory_type(desc.r#type),
+        //     desc.physical_start,
+        //     desc.physical_start + desc.number_of_pages * EFI_PAGE_SIZE as u64,
+        //     desc.number_of_pages
+        // )?;
     }
 
     todo!();

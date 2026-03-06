@@ -22,7 +22,7 @@ use log::info;
 
 use crate::boot::kmain;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn kinit() {
     info!("Syzygy kernel amd64 {}.", env!("SZ_VER"));
 
