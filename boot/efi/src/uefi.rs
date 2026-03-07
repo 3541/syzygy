@@ -99,12 +99,14 @@ pub fn file_size(file: &file::Protocol) -> Result<usize> {
     let mut info = MaybeUninit::<file::Info<64>>::uninit();
     let mut size = size_of_val(&info);
     let mut guid = file::INFO_ID;
-    res((file.get_info)(
-        file as *const _ as *mut _,
-        &mut guid as *mut _,
-        &mut size as *mut _,
-        info.as_mut_ptr() as *mut _,
-    ))?;
+    unsafe {
+        res((file.get_info)(
+            file as *const _ as *mut _,
+            &mut guid as *mut _,
+            &mut size as *mut _,
+            info.as_mut_ptr() as *mut _,
+        ))?;
+    }
 
     // SAFETY: Now initialized, given the previous call did not fail.
     let info = unsafe { info.assume_init() };
@@ -120,7 +122,7 @@ pub struct FileImage<'a> {
 
 impl Drop for FileImage<'_> {
     fn drop(&mut self) {
-        let status = (self.bs.free_pool)(self.buf);
+        let status = unsafe { (self.bs.free_pool)(self.buf) };
         assert_eq!(status, efi::Status::SUCCESS);
     }
 }
@@ -128,18 +130,22 @@ impl Drop for FileImage<'_> {
 impl<'a> FileImage<'a> {
     pub fn load(bs: &'a BootServices, file: &file::Protocol, size: usize) -> Result<Self> {
         let mut buf = ptr::null_mut();
-        res((bs.allocate_pool)(
-            efi::LOADER_DATA,
-            size,
-            &mut buf as *mut _,
-        ))?;
+        unsafe {
+            res((bs.allocate_pool)(
+                efi::LOADER_DATA,
+                size,
+                &mut buf as *mut _,
+            ))?;
+        }
 
         let mut read_size = size;
-        res((file.read)(
-            file as *const _ as *mut _,
-            &mut read_size as *mut _,
-            buf,
-        ))?;
+        unsafe {
+            res((file.read)(
+                file as *const _ as *mut _,
+                &mut read_size as *mut _,
+                buf,
+            ))?;
+        }
         assert_eq!(read_size, size);
 
         Ok(Self { bs, buf, size })
@@ -181,12 +187,14 @@ impl Pages {
 
     pub fn new_count(bs: &BootServices, count: usize) -> Result<Self> {
         let mut phys = 0u64;
-        res((bs.allocate_pages)(
-            efi::ALLOCATE_ANY_PAGES,
-            efi::LOADER_DATA,
-            count,
-            &mut phys as *mut _,
-        ))?;
+        unsafe {
+            res((bs.allocate_pages)(
+                efi::ALLOCATE_ANY_PAGES,
+                efi::LOADER_DATA,
+                count,
+                &mut phys as *mut _,
+            ))?;
+        }
 
         let ptr = phys as *mut u8;
         unsafe { ptr.write_bytes(0, count * EFI_PAGE_SIZE) };
@@ -239,10 +247,7 @@ pub struct MemoryMap {
     pub key: usize,
 }
 
-fn memory_map(
-    bs: &BootServices,
-    kernel_range: Range<*const u8>,
-) -> Result<MemoryMap> {
+fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<MemoryMap> {
     let mut buf = [0u8; 8192];
     let size = size_of_val(&buf);
 
@@ -250,13 +255,15 @@ fn memory_map(
     let mut key = 0usize;
     let mut descriptor_size = 0usize;
     let mut descriptor_version = 0u32;
-    res((bs.get_memory_map)(
-        &mut size_res,
-        buf.as_mut_ptr() as *mut MemoryDescriptor,
-        &mut key,
-        &mut descriptor_size,
-        &mut descriptor_version,
-    ))?;
+    unsafe {
+        res((bs.get_memory_map)(
+            &mut size_res,
+            buf.as_mut_ptr() as *mut MemoryDescriptor,
+            &mut key,
+            &mut descriptor_size,
+            &mut descriptor_version,
+        ))?;
+    }
 
     assert!(descriptor_size >= size_of::<MemoryDescriptor>());
     assert!(size_res <= size);
@@ -265,7 +272,6 @@ fn memory_map(
         let desc = unsafe {
             ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
         };
-
     }
 
     Ok(MemoryMap { key })
@@ -280,9 +286,14 @@ pub fn exit_boot_services(
     let mut err = crate::Error::Efi(efi::Status::SUCCESS);
     const ATTEMPTS: usize = 2;
     for attempt in 0..ATTEMPTS {
-        writeln!(log, "About to exit EFI boot services (attempt {}/{})", attempt + 1, ATTEMPTS);
+        writeln!(
+            log,
+            "About to exit EFI boot services (attempt {}/{})",
+            attempt + 1,
+            ATTEMPTS
+        );
         let map = memory_map(bs, kernel_range.clone())?;
-        match res((bs.exit_boot_services)(image, map.key)) {
+        match unsafe { res((bs.exit_boot_services)(image, map.key)) } {
             Ok(()) => return Ok(map),
             Err(e) => err = e,
         }

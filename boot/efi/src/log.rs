@@ -25,7 +25,7 @@ use r_efi::{
     protocols::simple_text_output::{self, ProtocolClearScreen, ProtocolOutputString},
 };
 
-use crate::{uefi::res, Error, Result};
+use crate::{Error, Result, uefi::res};
 
 #[derive(Clone, Copy)]
 pub struct Log {
@@ -49,17 +49,19 @@ impl Log {
 
     // SAFETY: Must be called only once.
     pub unsafe fn init(st: &mut efi::SystemTable) -> Self {
-        LOG = Some(Log::new(st));
-        LOG.unwrap()
+        unsafe {
+            LOG = Some(Log::new(st));
+            LOG.unwrap()
+        }
     }
 
     pub fn clear(&self) -> Result<()> {
-        res((self.clear)(self.protocol))
+        unsafe { res((self.clear)(self.protocol)) }
     }
 
     fn print_char(&self, ch: u16) -> efi::Status {
         let mut buf = [ch, 0];
-        (self.print)(self.protocol, &mut buf as *mut _)
+        unsafe { (self.print)(self.protocol, &mut buf as *mut _) }
     }
 
     fn print(&self, str: &str) -> Result<()> {
