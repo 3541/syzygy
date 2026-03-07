@@ -41,7 +41,7 @@ pub fn build(sh: &Shell, config: &Config) -> Result<PathBuf> {
 
     cmd!(
         sh,
-        "{linker} -m{machine} --static --nostdlib --as-needed --gc-sections -z max-page-size=0x1000 --pie -T {ldscript} -o {out} {lib}"
+        "{linker} -m{machine} -static -nostdlib --as-needed --gc-sections -z max-page-size=0x1000 -pie -T {ldscript} -o {out} {lib}"
     ).run()?;
 
     Ok(out)

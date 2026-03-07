@@ -4,7 +4,7 @@ use clap::ValueEnum;
 
 use crate::repo_root;
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum Arch {
     Amd64,
     Aarch64,

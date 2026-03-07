@@ -9,7 +9,7 @@ use std::{env::consts::ARCH, fs, path::Path};
 
 use blake2::{Blake2b512, Digest};
 use clap::{Parser, Subcommand};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use rustc::BuildType;
 use target::Arch;
@@ -17,7 +17,10 @@ use target::Arch;
 #[derive(Subcommand)]
 enum Command {
     Build,
-    Run,
+    Run {
+        #[arg(long)]
+        force_emu: bool,
+    },
 }
 
 #[derive(Parser)]
@@ -89,7 +92,7 @@ fn main() -> Result<()> {
 
     match args.command {
         Command::Build => build::build(&args, &sh),
-        Command::Run => run::run(&args, &sh),
+        Command::Run { .. } => run::run(&args, &sh),
     }?;
 
     Ok(())

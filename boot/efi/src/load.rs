@@ -78,7 +78,7 @@ fn validate(h: &FileHeader<NativeEndian>) -> Result<()> {
     if h.e_machine != abi::EM_X86_64 {
         return Err(Error::InvalidMachine(h.e_machine).into());
     }
-    if h.e_type != abi::ET_DYN {
+    if h.e_type != abi::ET_DYN && h.e_type != abi::ET_EXEC {
         return Err(Error::InvalidType(h.e_type).into());
     }
 

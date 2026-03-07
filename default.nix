@@ -8,4 +8,6 @@ pkgs.mkShellNoCC {
     llvmPackages_21.lld
     qemu
   ];
+
+  shellHook = "export RUSTC_BOOTSTRAP=1";
 }

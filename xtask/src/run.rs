@@ -1,8 +1,12 @@
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
-use crate::{repo_root, rustc::Config, targets, Result};
+use crate::{Result, repo_root, rustc::Config, target::Arch, targets};
 
 pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
+    let crate::Command::Run { force_emu } = args.command else {
+        panic!("what");
+    };
+
     let config = Config::from(args);
     let esp = targets::build(sh, &config)?;
 
@@ -12,9 +16,12 @@ pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
     let qemu_arch = config.arch.qemu_arch();
     let machine = config.arch.qemu_machine();
     let cpu = config.arch.qemu_cpu();
+
+    let accel = if force_emu { "tcg" } else { "kvm:hvf:tcg" };
+
     cmd!(
         sh,
-        "qemu-system-{qemu_arch} -machine {machine} -cpu {cpu} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp}"
+        "qemu-system-{qemu_arch} -machine {machine},accel={accel} -cpu {cpu} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp}"
     )
     .run()?;
 
