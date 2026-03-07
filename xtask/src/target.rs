@@ -56,15 +56,19 @@ impl Arch {
 
     pub fn qemu_cpu(&self) -> &'static str {
         match self {
-            #[cfg(target_arch = "x86_64")]
-            Self::Amd64 => "host",
-            #[cfg(not(target_arch = "x86_64"))]
             Self::Amd64 => "Haswell-v4",
-            #[cfg(target_arch = "aarch64")]
-            Self::Aarch64 => "host",
-            #[cfg(not(target_arch = "aarch64"))]
             Self::Aarch64 => "cortex-a76",
         }
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn is_host(&self) -> bool {
+        *self == Arch::Amd64
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    pub fn is_host(&self) -> bool {
+        *self == Arch::Aarch64
     }
 
     pub fn efi_filename(&self) -> &'static str {

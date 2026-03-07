@@ -42,7 +42,7 @@ use ucs2::ucs2_cstr;
 
 use arch::map_image;
 use load::Image;
-use uefi::{exit_boot_services, file_size, memory_map, open_file, open_image_volume, FileImage};
+use uefi::{exit_boot_services, file_size, open_file, open_image_volume, FileImage};
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
@@ -121,9 +121,7 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     map_image(&mut log, bs, &image)?;
     let (_, kernel) = image.leak();
 
-    memory_map(&mut log, bs, kernel.as_ptr_range())?;
-
-    exit_boot_services(bs, image_handle, 0)?;
+    let map = exit_boot_services(&mut log, bs, image_handle, kernel.as_ptr_range())?;
     todo!("Final setup and jump");
 }
 

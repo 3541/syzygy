@@ -21,7 +21,7 @@
 use core::{
     ffi::c_void,
     fmt::Write,
-    mem::{forget, size_of_val, MaybeUninit},
+    mem::{MaybeUninit, forget, size_of_val},
     ops::Range,
     ptr, slice,
 };
@@ -30,23 +30,19 @@ use arrayvec::ArrayVec;
 use blake2::{Blake2b512, Digest};
 use r_efi::{
     efi::{
-        self, BootServices, Guid, MemoryDescriptor, ACPI_MEMORY_NVS, ACPI_RECLAIM_MEMORY,
-        BOOT_SERVICES_CODE, BOOT_SERVICES_DATA, CONVENTIONAL_MEMORY, LOADER_CODE, LOADER_DATA,
-        MEMORY_MAPPED_IO, MEMORY_MAPPED_IO_PORT_SPACE, PAL_CODE, PERSISTENT_MEMORY,
+        self, ACPI_MEMORY_NVS, ACPI_RECLAIM_MEMORY, BOOT_SERVICES_CODE, BOOT_SERVICES_DATA,
+        BootServices, CONVENTIONAL_MEMORY, Guid, LOADER_CODE, LOADER_DATA, MEMORY_MAPPED_IO,
+        MEMORY_MAPPED_IO_PORT_SPACE, MemoryDescriptor, PAL_CODE, PERSISTENT_MEMORY,
         RESERVED_MEMORY_TYPE, RUNTIME_SERVICES_CODE, RUNTIME_SERVICES_DATA, UNACCEPTED_MEMORY_TYPE,
         UNUSABLE_MEMORY,
     },
     protocols::{file, loaded_image, simple_file_system},
 };
 
-use crate::{log::Log, Result};
+use crate::{Result, log::Log};
 
 pub fn res(s: efi::Status) -> Result<()> {
-    if s.is_error() {
-        Err(s.into())
-    } else {
-        Ok(())
-    }
+    if s.is_error() { Err(s.into()) } else { Ok(()) }
 }
 
 unsafe fn handle_protocol<T>(h: efi::Handle, bs: &BootServices, mut guid: Guid) -> Result<&mut T> {
@@ -239,7 +235,14 @@ fn memory_type(t: u32) -> &'static str {
     }
 }
 
-pub fn memory_map(log: &mut Log, bs: &BootServices, kernel_range: Range<*const u8>) -> Result<()> {
+pub struct MemoryMap {
+    pub key: usize,
+}
+
+fn memory_map(
+    bs: &BootServices,
+    kernel_range: Range<*const u8>,
+) -> Result<MemoryMap> {
     let mut buf = [0u8; 8192];
     let size = size_of_val(&buf);
 
@@ -255,13 +258,6 @@ pub fn memory_map(log: &mut Log, bs: &BootServices, kernel_range: Range<*const u
         &mut descriptor_version,
     ))?;
 
-    writeln!(
-        log,
-        "{} descriptors of size {}",
-        size_res / descriptor_size,
-        descriptor_size
-    )?;
-
     assert!(descriptor_size >= size_of::<MemoryDescriptor>());
     assert!(size_res <= size);
 
@@ -270,23 +266,27 @@ pub fn memory_map(log: &mut Log, bs: &BootServices, kernel_range: Range<*const u
             ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
         };
 
-        // writeln!(
-        //     log,
-        //     "{} P{:#x}-P{:#x} {} pages",
-        //     memory_type(desc.r#type),
-        //     desc.physical_start,
-        //     desc.physical_start + desc.number_of_pages * EFI_PAGE_SIZE as u64,
-        //     desc.number_of_pages
-        // )?;
     }
 
-    todo!();
+    Ok(MemoryMap { key })
 }
 
 pub fn exit_boot_services(
+    log: &mut Log,
     bs: &BootServices,
     image: efi::Handle,
-    memory_map_key: usize,
-) -> Result<()> {
-    res((bs.exit_boot_services)(image, memory_map_key))
+    kernel_range: Range<*const u8>,
+) -> Result<MemoryMap> {
+    let mut err = crate::Error::Efi(efi::Status::SUCCESS);
+    const ATTEMPTS: usize = 2;
+    for attempt in 0..ATTEMPTS {
+        writeln!(log, "About to exit EFI boot services (attempt {}/{})", attempt + 1, ATTEMPTS);
+        let map = memory_map(bs, kernel_range.clone())?;
+        match res((bs.exit_boot_services)(image, map.key)) {
+            Ok(()) => return Ok(map),
+            Err(e) => err = e,
+        }
+    }
+
+    Err(err)
 }
