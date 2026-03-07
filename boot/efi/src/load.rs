@@ -25,19 +25,19 @@ use core::{
 
 use arrayvec::ArrayVec;
 use elf::{
-    abi,
+    ElfBytes, abi,
     endian::NativeEndian,
     file::{Class, FileHeader},
     relocation::RelaIterator,
-    to_str, ElfBytes,
+    to_str,
 };
 use r_efi::efi::BootServices;
-use rand::{rngs::OsRng, Rng};
+use rand::{RngExt, rngs::SysRng, rand_core::UnwrapErr};
 
 use crate::{
-    log::Log,
-    uefi::{FileImage, Pages, EFI_PAGE_SIZE},
     Result,
+    log::Log,
+    uefi::{EFI_PAGE_SIZE, FileImage, Pages},
 };
 use common::constants;
 
@@ -206,9 +206,9 @@ impl Image {
 
         let mut dst = Pages::new(bs, size)?;
 
-        let mut r = OsRng;
-        let load_address =
-            r.gen_range(0xFFFFFFFF80100000..=(usize::MAX - dst.len())) & !(2 * constants::MB - 1);
+        let mut r = UnwrapErr(SysRng);
+        let load_address = r.random_range(0xFFFFFFFF80100000..=(usize::MAX - dst.len()))
+            & !(2 * constants::MB - 1);
 
         let mut map = ArrayVec::<Region, 32>::new();
         for h in nonempty() {

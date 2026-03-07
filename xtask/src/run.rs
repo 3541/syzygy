@@ -1,6 +1,6 @@
 use xshell::{Shell, cmd};
 
-use crate::{Result, repo_root, rustc::Config, target::Arch, targets};
+use crate::{Result, repo_root, rustc::Config, targets};
 
 pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
     let crate::Command::Run { force_emu } = args.command else {
