@@ -41,6 +41,6 @@ impl Port<u8> {
     /// Depends entirely on the particular port.
     #[inline]
     pub unsafe fn write(&self, v: u8) {
-        asm!("out dx, al", in("dx") self.addr, in("al") v, options(nostack, nomem));
+        unsafe { asm!("out dx, al", in("dx") self.addr, in("al") v, options(nostack, nomem)) }
     }
 }

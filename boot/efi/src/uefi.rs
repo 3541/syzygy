@@ -29,13 +29,7 @@ use core::{
 use arrayvec::ArrayVec;
 use blake2::{Blake2b512, Digest};
 use r_efi::{
-    efi::{
-        self, ACPI_MEMORY_NVS, ACPI_RECLAIM_MEMORY, BOOT_SERVICES_CODE, BOOT_SERVICES_DATA,
-        BootServices, CONVENTIONAL_MEMORY, Guid, LOADER_CODE, LOADER_DATA, MEMORY_MAPPED_IO,
-        MEMORY_MAPPED_IO_PORT_SPACE, MemoryDescriptor, PAL_CODE, PERSISTENT_MEMORY,
-        RESERVED_MEMORY_TYPE, RUNTIME_SERVICES_CODE, RUNTIME_SERVICES_DATA, UNACCEPTED_MEMORY_TYPE,
-        UNUSABLE_MEMORY,
-    },
+    efi::{self, BootServices, Guid, MemoryDescriptor},
     protocols::{file, loaded_image, simple_file_system},
 };
 
@@ -47,13 +41,14 @@ pub fn res(s: efi::Status) -> Result<()> {
 
 unsafe fn handle_protocol<T>(h: efi::Handle, bs: &BootServices, mut guid: Guid) -> Result<&mut T> {
     let mut protocol = ptr::null_mut();
-    res((bs.handle_protocol)(
-        h,
-        &mut guid as *mut _,
-        &mut protocol as *mut _,
-    ))?;
-
-    Ok(unsafe { &mut *(protocol as *mut _) })
+    unsafe {
+        res((bs.handle_protocol)(
+            h,
+            &mut guid as *mut _,
+            &mut protocol as *mut _,
+        ))?;
+        Ok(&mut *(protocol as *mut _))
+    }
 }
 
 pub unsafe fn open_image_volume(image: efi::Handle, bs: &BootServices) -> Result<&file::Protocol> {
@@ -69,12 +64,15 @@ pub unsafe fn open_image_volume(image: efi::Handle, bs: &BootServices) -> Result
     }?;
 
     let mut volume = ptr::null_mut();
-    res((volume_protocol.open_volume)(
-        volume_protocol as *mut _,
-        &mut volume as *mut _,
-    ))?;
 
-    Ok(unsafe { &*(volume as *mut _) })
+    unsafe {
+        res((volume_protocol.open_volume)(
+            volume_protocol as *mut _,
+            &mut volume as *mut _,
+        ))?;
+
+        Ok(&*(volume as *mut _))
+    }
 }
 
 pub unsafe fn open_file<'a>(
@@ -84,15 +82,18 @@ pub unsafe fn open_file<'a>(
     assert_eq!(path.last(), Some(&0u16));
 
     let mut file = ptr::null_mut();
-    res((volume.open)(
-        volume as *const _ as *mut _,
-        &mut file as *mut _,
-        path.as_ptr() as *mut _,
-        file::MODE_READ,
-        file::READ_ONLY | file::HIDDEN | file::SYSTEM,
-    ))?;
 
-    Ok(unsafe { &*(file as *mut _) })
+    unsafe {
+        res((volume.open)(
+            volume as *const _ as *mut _,
+            &mut file as *mut _,
+            path.as_ptr() as *mut _,
+            file::MODE_READ,
+            file::READ_ONLY | file::HIDDEN | file::SYSTEM,
+        ))?;
+
+        Ok(&*(file as *mut _))
+    }
 }
 
 pub fn file_size(file: &file::Protocol) -> Result<usize> {
@@ -221,28 +222,6 @@ impl Pages {
     }
 }
 
-fn memory_type(t: u32) -> &'static str {
-    match t {
-        RESERVED_MEMORY_TYPE => "RESERVED",
-        LOADER_CODE => "LOADER_CODE",
-        LOADER_DATA => "LOADER_DATA",
-        BOOT_SERVICES_CODE => "BOOT_SERVICES_CODE",
-        BOOT_SERVICES_DATA => "BOOT_SERVICES_DATA",
-        RUNTIME_SERVICES_CODE => "RUNTIME_SERVICES_CODE",
-        RUNTIME_SERVICES_DATA => "RUNTIME_SERVICES_DATA",
-        CONVENTIONAL_MEMORY => "CONVENTIONAL_MEMORY",
-        UNUSABLE_MEMORY => "UNUSABLE_MEMORY",
-        ACPI_RECLAIM_MEMORY => "ACPI_RECLAIM_MEMORY",
-        ACPI_MEMORY_NVS => "ACPI_MEMORY_NVS",
-        MEMORY_MAPPED_IO => "MEMORY_MAPPED_IO",
-        MEMORY_MAPPED_IO_PORT_SPACE => "MEMORY_MAPPED_IO_PORT_SPACE",
-        PAL_CODE => "PAL_CODE",
-        PERSISTENT_MEMORY => "PERSISTENT_MEMORY",
-        UNACCEPTED_MEMORY_TYPE => "UNACCEPTED_MEMORY_TYPE",
-        _ => "<unknown>",
-    }
-}
-
 pub struct MemoryMap {
     pub key: usize,
 }
@@ -291,7 +270,7 @@ pub fn exit_boot_services(
             "About to exit EFI boot services (attempt {}/{})",
             attempt + 1,
             ATTEMPTS
-        );
+        )?;
         let map = memory_map(bs, kernel_range.clone())?;
         match unsafe { res((bs.exit_boot_services)(image, map.key)) } {
             Ok(()) => return Ok(map),
