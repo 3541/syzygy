@@ -34,15 +34,15 @@ mod load;
 mod log;
 mod uefi;
 
-use core::fmt::{self, Write};
+use core::{arch::asm, fmt::{self, Write}};
 
-use log::{Log, LOG};
+use log::{LOG, Log};
 use r_efi::efi;
 use ucs2::ucs2_cstr;
 
 use arch::map_image;
 use load::Image;
-use uefi::{exit_boot_services, file_size, open_file, open_image_volume, FileImage};
+use uefi::{FileImage, exit_boot_services, file_size, open_file, open_image_volume};
 
 #[panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
@@ -119,10 +119,10 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
 
     let image = Image::load(&mut log, bs, &image)?;
     map_image(&mut log, bs, &image)?;
-    let (_, kernel) = image.leak();
+    let (_elf_map, kernel, entrypoint) = image.leak();
 
-    let map = exit_boot_services(&mut log, bs, image_handle, kernel.as_ptr_range())?;
-    todo!("Final setup and jump");
+    let memmap = exit_boot_services(&mut log, bs, image_handle, kernel.as_ptr_range())?;
+    unsafe { entrypoint() }
 }
 
 #[unsafe(no_mangle)]

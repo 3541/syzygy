@@ -20,7 +20,7 @@
 
 use core::{
     fmt::{self, Write},
-    mem::size_of,
+    mem::{size_of, transmute},
 };
 
 use arrayvec::ArrayVec;
@@ -32,14 +32,17 @@ use elf::{
     to_str,
 };
 use r_efi::efi::BootServices;
-use rand::{RngExt, rngs::SysRng, rand_core::UnwrapErr};
+use rand::{RngExt, rand_core::UnwrapErr, rngs::SysRng};
 
 use crate::{
     Result,
     log::Log,
     uefi::{EFI_PAGE_SIZE, FileImage, Pages},
 };
-use common::constants;
+use common::{
+    abi::{ENTRYPOINT, Entrypoint},
+    constants,
+};
 
 pub enum Error {
     InvalidClass(Class),
@@ -86,6 +89,7 @@ fn validate(h: &FileHeader<NativeEndian>) -> Result<()> {
 }
 
 fn relocate(
+    log: &mut Log,
     file: &ElfBytes<NativeEndian>,
     data: &mut [u8],
     file_base: usize,
@@ -165,6 +169,18 @@ fn relocate(
     Ok(())
 }
 
+fn find_entrypoint(file: &ElfBytes<NativeEndian>) -> Result<usize> {
+    let (symtab, strtab) = file
+        .symbol_table()?
+        .ok_or(Error::InvalidStructure("Unable to find symbol table."))?;
+    symtab
+        .iter()
+        .filter(|e| strtab.get(e.st_name as usize).ok() == Some(ENTRYPOINT))
+        .map(|s| s.st_value as usize)
+        .next()
+        .ok_or(Error::InvalidStructure("Failed to find entrypoint in symbol table.").into())
+}
+
 pub struct Region {
     pub base: usize,
     pub size: usize,
@@ -174,6 +190,7 @@ pub struct Region {
 pub struct Image {
     pub data: Pages,
     pub base: usize,
+    pub entrypoint: Entrypoint,
     pub map: ArrayVec<Region, 32>,
 }
 
@@ -240,18 +257,22 @@ impl Image {
             });
         }
 
+        let entrypoint = find_entrypoint(&file)? - min as usize + load_address;
+        writeln!(log, "Found entrypoint at {entrypoint:#x}.");
+
         writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.")?;
-        relocate(&file, dst.data(), min as usize, load_address)?;
+        relocate(log, &file, dst.data(), min as usize, load_address)?;
 
         Ok(Self {
             data: dst,
             base: load_address,
+            entrypoint: unsafe { transmute(entrypoint as *const ()) },
             map,
         })
     }
 
-    pub fn leak(self) -> (ArrayVec<Region, 32>, &'static mut [u8]) {
-        let Self { data, map, .. } = self;
-        (map, data.leak())
+    pub fn leak(self) -> (ArrayVec<Region, 32>, &'static mut [u8], Entrypoint) {
+        let Self { data, map, entrypoint, .. } = self;
+        (map, data.leak(), entrypoint)
     }
 }

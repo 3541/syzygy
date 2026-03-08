@@ -21,7 +21,7 @@ pub fn run(args: &crate::Args, sh: &Shell) -> Result<()> {
 
     cmd!(
         sh,
-        "qemu-system-{qemu_arch} -machine {machine},accel={accel} -cpu {cpu} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp}"
+        "qemu-system-{qemu_arch} -machine {machine},accel={accel} -cpu {cpu} -drive if=pflash,format=raw,readonly=on,file={ovmf} -drive if=pflash,format=raw,readonly=on,file={ovmf_vars} -drive format=raw,file=fat:rw:{esp} -nographic"
     )
     .run()?;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -17,16 +17,17 @@
  */
 
 use core::{
+    arch::asm,
     fmt::Write,
-    mem::{size_of, MaybeUninit},
-    slice,
+    mem::{MaybeUninit, size_of},
+    ptr, slice,
 };
 
 use bitflags::bitflags;
 use elf::abi;
 use r_efi::efi::BootServices;
 
-use crate::{load::Image, log::Log, uefi::Pages, Result};
+use crate::{Result, load::Image, log::Log, uefi::Pages};
 use common::constants::{MB, PT_RECURSIVE_INDEX};
 
 const PAGE_SIZE: usize = 0x1000;
@@ -84,6 +85,18 @@ fn flags(elf: u32) -> EntryFlags {
     })
 }
 
+unsafe fn current_pml4() -> &'static [u64] {
+    let mut pml4: *mut [u64; 512] = ptr::null_mut();
+    unsafe {
+        asm!("mov {}, cr3", out(reg) pml4, options(nomem, nostack));
+        &mut *pml4
+    }
+}
+
+fn load_pml4(addr: usize) {
+    unsafe { asm!("mov cr3, {}", in(reg) addr, options(nomem, nostack)) }
+}
+
 pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> {
     assert!(
         image.data.len() <= 2 * MB,
@@ -91,17 +104,31 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
         image.data.len()
     );
 
+    let current_pml4 = unsafe { current_pml4() };
+    writeln!(
+        log,
+        "Creating bootstrap page tables (UEFI PML4: P{:#x}).",
+        current_pml4.as_ptr() as usize
+    )?;
+
     let mut tables = Pages::new_count(bs, 4)?;
     tables.data().fill(0);
 
     let [pml4, pdp, pd, pt] = chunks::<u64, 4>(tables.data());
     assert_eq!(pml4.len(), 512);
+    writeln!(log, "New PML4: P{:#x}", pml4.as_ptr() as usize)?;
+
+    pml4.copy_from_slice(current_pml4);
 
     let table_flags = EntryFlags::WRITABLE | EntryFlags::NO_EXEC;
 
     assert_eq!(image.base % PAGE_SIZE, 0);
     let virt_base = image.base as *const u8;
 
+    let pml4_pdp_index = index(virt_base, 4);
+    assert_eq!(pml4[PT_RECURSIVE_INDEX], 0);
+    assert_eq!(pml4[pml4_pdp_index], 0);
+    assert_ne!(PT_RECURSIVE_INDEX, pml4_pdp_index);
     pml4[PT_RECURSIVE_INDEX] = entry(pml4.as_ptr(), table_flags);
     pml4[index(virt_base, 4)] = entry(pdp.as_ptr(), table_flags);
     pdp[index(virt_base, 3)] = entry(pd.as_ptr(), table_flags);
@@ -127,9 +154,24 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
             let phys = (base + offset) as *const u8;
             writeln!(
                 log,
-                "Mapping P{:#x} => V{:#x}, {}/{}/{}/{}",
-                phys as usize,
+                "Mapping {}{}{} V{:#x} => P{:#x}, {}/{}/{}/{}",
+                if region.flags & abi::PF_R != 0 {
+                    "R"
+                } else {
+                    " "
+                },
+                if region.flags & abi::PF_W != 0 {
+                    "W"
+                } else {
+                    " "
+                },
+                if region.flags & abi::PF_X != 0 {
+                    "X"
+                } else {
+                    " "
+                },
                 virt as usize,
+                phys as usize,
                 index(virt, 4),
                 index(virt, 3),
                 index(virt, 2),
@@ -158,6 +200,7 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
         }
     }
 
+    load_pml4(pml4.as_ptr() as usize);
     tables.leak();
 
     writeln!(log, "Mapped {count} pages in 1 page table.")?;

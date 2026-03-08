@@ -18,13 +18,16 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use core::arch::asm;
+
 use log::info;
 
 use crate::boot::kmain;
 
 #[unsafe(no_mangle)]
 extern "C" fn kinit() {
-    info!("Syzygy kernel amd64 {}.", env!("SZ_VER"));
+    unsafe { asm!("out dx, al", in("dx") 0xe9, in("al") b'Y', options(nostack, nomem) )};
+    // info!("Syzygy kernel amd64 {}.", env!("SZ_VER"));
 
     crate::io::log::init();
     kmain();

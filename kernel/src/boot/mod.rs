@@ -20,4 +20,9 @@
 
 mod arch;
 
-fn kmain() {}
+use log::info;
+
+fn kmain() {
+    info!("kmain");
+    loop {}
+}
