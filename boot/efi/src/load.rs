@@ -89,7 +89,6 @@ fn validate(h: &FileHeader<NativeEndian>) -> Result<()> {
 }
 
 fn relocate(
-    log: &mut Log,
     file: &ElfBytes<NativeEndian>,
     data: &mut [u8],
     file_base: usize,
@@ -140,7 +139,7 @@ fn relocate(
             &data[rel_offset..rel_offset + relasz as usize],
         ) {
             let res = match rela.r_type {
-                abi::R_X86_64_RELATIVE => real_base as i64 + rela.r_addend,
+                abi::R_X86_64_RELATIVE => (real_base as i64 - file_base as i64) + rela.r_addend,
                 _ => {
                     todo!("Unhandled relocation {}", rela.r_type)
                 },
@@ -261,7 +260,7 @@ impl Image {
         writeln!(log, "Found entrypoint at {entrypoint:#x}.");
 
         writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.")?;
-        relocate(log, &file, dst.data(), min as usize, load_address)?;
+        relocate(&file, dst.data(), min as usize, load_address)?;
 
         Ok(Self {
             data: dst,
@@ -272,7 +271,12 @@ impl Image {
     }
 
     pub fn leak(self) -> (ArrayVec<Region, 32>, &'static mut [u8], Entrypoint) {
-        let Self { data, map, entrypoint, .. } = self;
+        let Self {
+            data,
+            map,
+            entrypoint,
+            ..
+        } = self;
         (map, data.leak(), entrypoint)
     }
 }

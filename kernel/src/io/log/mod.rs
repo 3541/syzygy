@@ -99,8 +99,10 @@ impl Log for Logger {
             Level::Trace => ("T", Color::Gray),
         };
 
-        print_colored!(color, "<{}> ", prefix);
-        println!("[{}]: {}", record.target(), record.args());
+        print_colored!(color, "[{} ", prefix);
+        print!("{}", record.target());
+        print_colored!(color, "]");
+        println!(": {}", record.args());
     }
 
     fn flush(&self) {}

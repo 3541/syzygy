@@ -120,7 +120,7 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
 
     pml4.copy_from_slice(current_pml4);
 
-    let table_flags = EntryFlags::WRITABLE | EntryFlags::NO_EXEC;
+    let table_flags = EntryFlags::WRITABLE;
 
     assert_eq!(image.base % PAGE_SIZE, 0);
     let virt_base = image.base as *const u8;
@@ -154,7 +154,7 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
             let phys = (base + offset) as *const u8;
             writeln!(
                 log,
-                "Mapping {}{}{} V{:#x} => P{:#x}, {}/{}/{}/{}",
+                "Mapping {}{}{} V{:#x} => P{:#x}, {}:{}:{}:{}",
                 if region.flags & abi::PF_R != 0 {
                     "R"
                 } else {
