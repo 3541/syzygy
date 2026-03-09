@@ -1,7 +1,7 @@
 /*
  * EFI: EFI boot loader.
  *
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *

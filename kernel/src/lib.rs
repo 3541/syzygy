@@ -1,7 +1,7 @@
 /*
  * SYZYGY: Kernel.
  *
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -20,11 +20,15 @@
 
 #![no_std]
 
+mod arch;
 mod boot;
 #[macro_use]
 mod io;
 
+use log::error;
+
 #[panic_handler]
-fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
+fn panic_handler(info: &core::panic::PanicInfo) -> ! {
+    error!("PANIC: {}", info);
     loop {}
 }

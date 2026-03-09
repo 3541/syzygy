@@ -1,7 +1,7 @@
 /*
- * BOOT: Architecture-independent bootstrap.
+ * ARCH: Architecture-specific fundamentals.
  *
- * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,8 +18,4 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod arch;
-
-fn kmain() {
-    todo!("kmain");
-}
+common::arch_mod!();
