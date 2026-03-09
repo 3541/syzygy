@@ -257,7 +257,7 @@ impl Image {
         }
 
         let entrypoint = find_entrypoint(&file)? - min as usize + load_address;
-        writeln!(log, "Found entrypoint at {entrypoint:#x}.");
+        writeln!(log, "Found entrypoint at {entrypoint:#x}.")?;
 
         writeln!(log, "Relocating: V{min:#x} to V{load_address:#x}.")?;
         relocate(&file, dst.data(), min as usize, load_address)?;

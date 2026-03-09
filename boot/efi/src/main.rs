@@ -34,7 +34,7 @@ mod load;
 mod log;
 mod uefi;
 
-use core::{arch::asm, fmt::{self, Write}};
+use core::fmt::{self, Write};
 
 use log::{LOG, Log};
 use r_efi::efi;
