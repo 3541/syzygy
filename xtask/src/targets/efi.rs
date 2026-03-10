@@ -34,6 +34,7 @@ pub fn build(sh: &Shell, config: &Config, image_hash: &str) -> Result<PathBuf> {
         target,
         build_type: config.build_type,
         extra_args: vec!["-C".into(), format!("linker={linker}")],
+        alloc: false,
     };
 
     c.build(sh)

@@ -45,6 +45,7 @@ pub struct Compile {
     pub target: Target,
     pub build_type: BuildType,
     pub extra_args: Vec<String>,
+    pub alloc: bool,
 }
 
 impl Compile {
@@ -59,10 +60,11 @@ impl Compile {
             BuildType::Release => "release",
         };
         let extra = &self.extra_args;
+        let core_libs = if self.alloc { "core,alloc" } else { "core" };
 
         cmd!(
             sh,
-            "{cargo} rustc -p {package} --target {triple} -Zbuild-std=core --profile {build_type} -- {extra...}"
+            "{cargo} rustc -p {package} --target {triple} -Zbuild-std={core_libs} --profile {build_type} -- {extra...}"
         )
         .run()?;
 

@@ -121,7 +121,8 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     map_image(&mut log, bs, &image)?;
     let (_elf_map, kernel, entrypoint) = image.leak();
 
-    let memmap = exit_boot_services(&mut log, bs, image_handle, kernel.as_ptr_range())?;
+    writeln!(log, "Entering kernel.")?;
+    let memmap = exit_boot_services(bs, image_handle, kernel.as_ptr_range())?;
     unsafe { entrypoint() }
 }
 

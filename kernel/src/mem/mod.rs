@@ -1,7 +1,7 @@
 /*
- * SYZYGY: Kernel.
+ * MEM: Memory management.
  *
- * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,28 +18,14 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![cfg_attr(not(test), no_std)]
-
-#![feature(const_trait_impl)]
-#![feature(derive_const)]
-#![feature(const_clone)]
-#![feature(const_cmp)]
-#![feature(allocator_api)]
-#![feature(ptr_as_ref_unchecked)]
-
-extern crate alloc;
-
 mod arch;
-mod boot;
-#[macro_use]
-mod io;
-mod mem;
-mod sync;
+mod heap;
+mod types;
+mod util;
 
-use log::error;
+pub use heap::DefaultAlloc;
+pub use types::{PhysicalAddress, VirtualAddress};
+pub use util::{align_up, align_down};
 
-#[cfg_attr(not(test), panic_handler)]
-fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    error!("PANIC: {}", info);
-    loop {}
+pub fn init() {
 }

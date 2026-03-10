@@ -1,7 +1,7 @@
 /*
- * SYZYGY: Kernel.
+ * MEM UTIL: Memory management utilities.
  *
- * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,28 +18,12 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![cfg_attr(not(test), no_std)]
+#[inline]
+pub const fn align_down(n: usize, align: usize) -> usize {
+    n & !(align - 1)
+}
 
-#![feature(const_trait_impl)]
-#![feature(derive_const)]
-#![feature(const_clone)]
-#![feature(const_cmp)]
-#![feature(allocator_api)]
-#![feature(ptr_as_ref_unchecked)]
-
-extern crate alloc;
-
-mod arch;
-mod boot;
-#[macro_use]
-mod io;
-mod mem;
-mod sync;
-
-use log::error;
-
-#[cfg_attr(not(test), panic_handler)]
-fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    error!("PANIC: {}", info);
-    loop {}
+#[inline]
+pub const fn align_up(n: usize, align: usize) -> usize {
+    align_down(n + align - 1, align)
 }

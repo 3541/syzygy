@@ -32,6 +32,7 @@ pub fn build(sh: &Shell, config: &Config) -> Result<PathBuf> {
         target,
         build_type: config.build_type,
         extra_args: vec![],
+        alloc: true,
     };
     let lib = c.build(sh)?;
     let out = lib.parent().unwrap().join("sz");

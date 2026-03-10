@@ -257,20 +257,13 @@ fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<Memor
 }
 
 pub fn exit_boot_services(
-    log: &mut Log,
     bs: &BootServices,
     image: efi::Handle,
     kernel_range: Range<*const u8>,
 ) -> Result<MemoryMap> {
     let mut err = crate::Error::Efi(efi::Status::SUCCESS);
     const ATTEMPTS: usize = 2;
-    for attempt in 0..ATTEMPTS {
-        writeln!(
-            log,
-            "About to exit EFI boot services (attempt {}/{})",
-            attempt + 1,
-            ATTEMPTS
-        )?;
+    for _ in 0..ATTEMPTS {
         let map = memory_map(bs, kernel_range.clone())?;
         match unsafe { res((bs.exit_boot_services)(image, map.key)) } {
             Ok(()) => return Ok(map),

@@ -1,7 +1,7 @@
 /*
- * SYZYGY: Kernel.
+ * MEM ARCH: Architecture-specific memory management.
  *
- * Copyright (c) 2024, 2026 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2020-2021, 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,28 +18,11 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#![cfg_attr(not(test), no_std)]
+use crate::mem::types::raw::RawVirtualAddress;
 
-#![feature(const_trait_impl)]
-#![feature(derive_const)]
-#![feature(const_clone)]
-#![feature(const_cmp)]
-#![feature(allocator_api)]
-#![feature(ptr_as_ref_unchecked)]
+const NONCANONICAL_START: RawVirtualAddress = RawVirtualAddress(0x0000_8000_0000_0000);
+const NONCANONICAL_END: RawVirtualAddress = RawVirtualAddress(0xFFFF_8000_0000_0000);
 
-extern crate alloc;
-
-mod arch;
-mod boot;
-#[macro_use]
-mod io;
-mod mem;
-mod sync;
-
-use log::error;
-
-#[cfg_attr(not(test), panic_handler)]
-fn panic_handler(info: &core::panic::PanicInfo) -> ! {
-    error!("PANIC: {}", info);
-    loop {}
+pub const fn is_valid(addr: RawVirtualAddress) -> bool {
+    addr < NONCANONICAL_START || addr >= NONCANONICAL_END
 }

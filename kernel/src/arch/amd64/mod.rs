@@ -23,7 +23,7 @@ use core::arch::asm;
 pub fn halt_loop() -> ! {
     loop {
         unsafe {
-            asm!("hlt", options(nostack, nomem));
+            asm!("cli", "hlt", options(nostack, nomem));
         }
     }
 }

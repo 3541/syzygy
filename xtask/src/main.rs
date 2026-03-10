@@ -15,6 +15,7 @@ use rustc::BuildType;
 use target::Arch;
 
 #[derive(Subcommand)]
+#[clap(infer_subcommands = true)]
 enum Command {
     Build,
     Run {

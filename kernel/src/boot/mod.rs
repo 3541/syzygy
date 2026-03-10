@@ -20,6 +20,19 @@
 
 mod arch;
 
+use alloc::vec::Vec;
+use log::info;
+
+use crate::mem::DefaultAlloc;
+
 fn kmain() {
+    crate::mem::init();
+
+    let mut v = Vec::new_in(DefaultAlloc::the());
+    v.push(1);
+    v.push(2);
+    v.push(3);
+    info!("Allocation: {v:?}");
+
     todo!("kmain");
 }
