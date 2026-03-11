@@ -31,7 +31,7 @@ use ll::{LLAlloc, Node};
 
 use crate::mem::phys::PhysAlloc;
 
-const INIT_HEAP_SIZE: usize = 128 * KB;
+const INIT_HEAP_SIZE: usize = 512 * KB;
 const INIT_HEAP_NODE_COUNT: usize = INIT_HEAP_SIZE / size_of::<Node>();
 static mut INIT_HEAP: [Node; INIT_HEAP_NODE_COUNT] =
     [const { Node::new(INIT_HEAP_SIZE) }; INIT_HEAP_NODE_COUNT];

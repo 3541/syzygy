@@ -130,8 +130,14 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     map_image(&mut log, bs, &image)?;
     let (_elf_map, kernel, entrypoint) = image.leak();
 
-    writeln!(log, "Entering kernel.")?;
-    let memmap = exit_boot_services(bs, image_handle, kernel.as_ptr_range())?;
+    let kernel_range = kernel.as_ptr_range();
+    writeln!(
+        log,
+        "Entering kernel (P{:#x}-P{:#x}).",
+        kernel_range.start as usize,
+        kernel_range.end as usize
+    )?;
+    let memmap = exit_boot_services(bs, image_handle, kernel_range)?;
     unsafe {
         entrypoint(Mmap {
             // SAFETY: There is no return from this point, so the memory map is effectively 'static (until the kernel decides to unmap it).

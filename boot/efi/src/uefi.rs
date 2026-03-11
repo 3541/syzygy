@@ -305,7 +305,7 @@ fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<Memor
         let end = start + size;
         let entry_type = mmap_type(desc.r#type);
 
-        if start <= kernel_range.start as usize && kernel_range.start as usize <= end {
+        if start <= kernel_range.start as usize && (kernel_range.start as usize) < end {
             assert!(kernel_range.end as usize <= end);
 
             if start < kernel_range.start as usize {
