@@ -18,13 +18,15 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
+use common::mmap::Mmap;
 use log::info;
 
 use crate::boot::kmain;
 
 // TODO: Does this need to be kept separate, or can everyone just use kmain()?
 #[unsafe(no_mangle)]
-extern "C" fn kinit() {
+#[allow(improper_ctypes_definitions)]
+unsafe extern "sysv64" fn kinit(mmap: Mmap) -> ! {
     #[cfg(not(test))]
     const VER: &'static str = env!("SZ_VER");
     #[cfg(test)]
@@ -33,5 +35,5 @@ extern "C" fn kinit() {
     crate::io::log::init();
     info!("Syzygy kernel amd64 {}.", VER);
 
-    kmain();
+    kmain(mmap);
 }

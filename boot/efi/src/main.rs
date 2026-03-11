@@ -34,8 +34,12 @@ mod load;
 mod log;
 mod uefi;
 
-use core::fmt::{self, Write};
+use core::{
+    fmt::{self, Write},
+    mem::transmute,
+};
 
+use common::mmap::Mmap;
 use log::{LOG, Log};
 use r_efi::efi;
 use ucs2::ucs2_cstr;
@@ -94,6 +98,11 @@ fn expected_hash() -> [u8; 64] {
     ret
 }
 
+unsafe fn extend<T>(t: &[T]) -> &'static [T] {
+    // SAFETY: lol. lmao, even.
+    unsafe { transmute(t) }
+}
+
 fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
     let mut log = unsafe { LOG.unwrap() };
 
@@ -123,7 +132,13 @@ fn start(image_handle: efi::Handle, st: &mut efi::SystemTable) -> Result<()> {
 
     writeln!(log, "Entering kernel.")?;
     let memmap = exit_boot_services(bs, image_handle, kernel.as_ptr_range())?;
-    unsafe { entrypoint() }
+    unsafe {
+        entrypoint(Mmap {
+            // SAFETY: There is no return from this point, so the memory map is effectively 'static (until the kernel decides to unmap it).
+            map: extend(&memmap.map),
+            max_usable_range: memmap.max_usable_range,
+        })
+    }
 }
 
 #[unsafe(no_mangle)]

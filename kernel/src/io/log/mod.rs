@@ -74,7 +74,11 @@ struct Logger {
 impl Logger {
     fn the() -> &'static Self {
         static INSTANCE: Logger = Logger {
-            level: LevelFilter::Debug,
+            level: if option_env!("SZ_TRACE").is_some() {
+                LevelFilter::Trace
+            } else {
+                LevelFilter::Debug
+            }
         };
 
         &INSTANCE

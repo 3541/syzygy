@@ -1,5 +1,5 @@
 /*
- * MEM: Memory management.
+ * PHYS MEM: Physical memory management.
  *
  * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
@@ -19,16 +19,33 @@
  */
 
 mod arch;
-mod heap;
-mod phys;
+mod bitmap;
 mod types;
-mod util;
 
-use common::mmap::Mmap;
-pub use heap::DefaultAlloc;
-pub use types::{PhysicalAddress, VirtualAddress};
-pub use util::{align_down, align_up};
+use log::{info, trace};
 
-pub fn init(mmap: Mmap) {
-    let phys_alloc = phys::init(mmap);
+use common::{constants::MB, mmap::Mmap};
+
+use bitmap::BitmapAlloc;
+pub use types::PhysicalArea;
+
+pub type PhysAlloc = BitmapAlloc;
+
+pub(super) fn init(mmap: Mmap) -> PhysAlloc {
+    trace!(
+        "Initializing physical memory management. Memory map: {:#x?}",
+        mmap.map
+    );
+
+    let overall_size = mmap.max_usable_range.end - mmap.max_usable_range.start;
+    let res = BitmapAlloc::new(mmap);
+    let free = res.free_size();
+    assert!(free < overall_size);
+    info!(
+        "Initialized physical memory allocator. {}/{} MB usable.",
+        free / MB,
+        overall_size / MB
+    );
+
+    res
 }

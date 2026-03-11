@@ -19,6 +19,7 @@
  */
 
 use core::{
+    cmp::{max, min},
     ffi::c_void,
     fmt::Write,
     mem::{MaybeUninit, forget, size_of_val},
@@ -29,11 +30,18 @@ use core::{
 use arrayvec::ArrayVec;
 use blake2::{Blake2b512, Digest};
 use r_efi::{
-    efi::{self, BootServices, Guid, MemoryDescriptor},
+    efi::{
+        self, ACPI_MEMORY_NVS, ACPI_RECLAIM_MEMORY, BOOT_SERVICES_CODE, BOOT_SERVICES_DATA,
+        BootServices, CONVENTIONAL_MEMORY, Guid, LOADER_CODE, LOADER_DATA, MEMORY_MAPPED_IO,
+        MEMORY_MAPPED_IO_PORT_SPACE, MemoryDescriptor, PAL_CODE, PERSISTENT_MEMORY,
+        RESERVED_MEMORY_TYPE, RUNTIME_SERVICES_CODE, RUNTIME_SERVICES_DATA, UNACCEPTED_MEMORY_TYPE,
+        UNUSABLE_MEMORY,
+    },
     protocols::{file, loaded_image, simple_file_system},
 };
 
 use crate::{Result, log::Log};
+use common::mmap::{MmapEntry, MmapEntryType};
 
 pub fn res(s: efi::Status) -> Result<()> {
     if s.is_error() { Err(s.into()) } else { Ok(()) }
@@ -224,6 +232,26 @@ impl Pages {
 
 pub struct MemoryMap {
     pub key: usize,
+    pub map: ArrayVec<MmapEntry, 32>,
+    pub max_usable_range: Range<usize>,
+}
+
+fn mmap_type(t: u32) -> MmapEntryType {
+    match t {
+        RESERVED_MEMORY_TYPE
+        | RUNTIME_SERVICES_CODE
+        | RUNTIME_SERVICES_DATA
+        | UNUSABLE_MEMORY
+        | ACPI_MEMORY_NVS
+        | MEMORY_MAPPED_IO
+        | MEMORY_MAPPED_IO_PORT_SPACE
+        | PAL_CODE => MmapEntryType::Reserved,
+        LOADER_CODE | LOADER_DATA | BOOT_SERVICES_CODE | BOOT_SERVICES_DATA
+        | CONVENTIONAL_MEMORY => MmapEntryType::Usable,
+        ACPI_RECLAIM_MEMORY => MmapEntryType::ACPIReclaimable,
+        PERSISTENT_MEMORY | UNACCEPTED_MEMORY_TYPE => MmapEntryType::Reserved, // Not entirely sure what these are.
+        _ => MmapEntryType::Reserved,
+    }
 }
 
 fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<MemoryMap> {
@@ -247,13 +275,72 @@ fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<Memor
     assert!(descriptor_size >= size_of::<MemoryDescriptor>());
     assert!(size_res <= size);
 
+    let mut map: ArrayVec<MmapEntry, 32> = ArrayVec::new();
+
+    let mut min_usable = usize::MAX;
+    let mut max_usable = 0usize;
+    let mut add_entry = |entry: MmapEntry| {
+        if entry.entry_type == MmapEntryType::Usable {
+            min_usable = min(min_usable, entry.start_phys);
+            max_usable = max(max_usable, entry.end_phys());
+        }
+
+        if let Some(last) = map.last_mut()
+            && last.entry_type == entry.entry_type
+            && last.end_phys() == entry.start_phys
+        {
+            last.size += entry.size;
+        } else {
+            map.push(entry);
+        }
+    };
+
     for i in 0..size_res / descriptor_size {
         let desc = unsafe {
             ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
         };
+
+        let start = desc.physical_start as usize;
+        let size = desc.number_of_pages as usize * EFI_PAGE_SIZE;
+        let end = start + size;
+        let entry_type = mmap_type(desc.r#type);
+
+        if start <= kernel_range.start as usize && kernel_range.start as usize <= end {
+            assert!(kernel_range.end as usize <= end);
+
+            if start < kernel_range.start as usize {
+                add_entry(MmapEntry {
+                    entry_type,
+                    start_phys: start,
+                    size: kernel_range.start as usize - start,
+                });
+            }
+            add_entry(MmapEntry {
+                entry_type: MmapEntryType::Kernel,
+                start_phys: kernel_range.start as usize,
+                size: kernel_range.end as usize - kernel_range.start as usize,
+            });
+            if (kernel_range.end as usize) < end {
+                add_entry(MmapEntry {
+                    entry_type,
+                    start_phys: kernel_range.end as usize,
+                    size: end - kernel_range.end as usize,
+                });
+            }
+        } else {
+            add_entry(MmapEntry {
+                entry_type,
+                start_phys: start,
+                size,
+            })
+        }
     }
 
-    Ok(MemoryMap { key })
+    Ok(MemoryMap {
+        key,
+        map,
+        max_usable_range: min_usable..max_usable,
+    })
 }
 
 pub fn exit_boot_services(

@@ -22,27 +22,37 @@ pub(super) mod raw;
 
 use core::ops::{Add, Sub};
 
-use super::arch::is_valid;
 pub use raw::{RawPhysicalAddress, RawVirtualAddress};
 
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct PhysicalAddress(RawPhysicalAddress);
+
+impl PhysicalAddress {
+    pub const fn new(raw: RawPhysicalAddress) -> Self {
+        assert!(raw.is_valid());
+        Self(raw)
+    }
+}
+
+impl Sub<PhysicalAddress> for PhysicalAddress {
+    type Output = <RawPhysicalAddress as Sub<RawPhysicalAddress>>::Output;
+
+    fn sub(self, rhs: PhysicalAddress) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct VirtualAddress(RawVirtualAddress);
 
 impl VirtualAddress {
     pub const fn new(raw: RawVirtualAddress) -> Self {
-        assert!(is_valid(raw));
+        assert!(raw.is_valid());
         Self(raw)
     }
 
     pub const unsafe fn new_unchecked(raw: RawVirtualAddress) -> Self {
         Self(raw)
-    }
-
-    pub const fn is_valid(raw: RawVirtualAddress) -> bool {
-        is_valid(raw)
     }
 
     pub fn of<T>(r: &T) -> Self {

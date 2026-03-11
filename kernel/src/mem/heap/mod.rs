@@ -21,15 +21,20 @@
 mod ll;
 
 use core::{
-    alloc::{AllocError, Allocator, GlobalAlloc, Layout}, mem::size_of, ptr::{self, NonNull}
+    alloc::{AllocError, Allocator, GlobalAlloc, Layout},
+    mem::size_of,
+    ptr::{self, NonNull},
 };
 
 use common::constants::KB;
 use ll::{LLAlloc, Node};
 
+use crate::mem::phys::PhysAlloc;
+
 const INIT_HEAP_SIZE: usize = 128 * KB;
 const INIT_HEAP_NODE_COUNT: usize = INIT_HEAP_SIZE / size_of::<Node>();
-static mut INIT_HEAP: [Node; INIT_HEAP_NODE_COUNT] = [const { Node::new(INIT_HEAP_SIZE) }; INIT_HEAP_NODE_COUNT];
+static mut INIT_HEAP: [Node; INIT_HEAP_NODE_COUNT] =
+    [const { Node::new(INIT_HEAP_SIZE) }; INIT_HEAP_NODE_COUNT];
 // SAFETY: Mutable static only accessed here, and thereafter protected by LLAlloc's lock.
 static HEAP: LLAlloc = LLAlloc::from_slice(&raw mut INIT_HEAP);
 
@@ -66,3 +71,7 @@ unsafe impl GlobalAlloc for DummyGlobalAlloc {
 
 #[cfg_attr(not(test), global_allocator)]
 static DUMMY_GLOBAL_ALLOC: DummyGlobalAlloc = DummyGlobalAlloc;
+
+pub(super) fn init(alloc: &PhysAlloc) {
+    // TODO: Give the heap allocator a way to ask for more if needed.
+}

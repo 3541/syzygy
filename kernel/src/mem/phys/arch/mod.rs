@@ -1,7 +1,7 @@
 /*
- * INIT: aarch64 bootstrap.
+ * PHYS MEM: Physical memory management.
  *
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,10 +18,4 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::boot::kmain;
-use common::mmap::Mmap;
-
-#[unsafe(no_mangle)]
-fn kinit(mmap: Mmap) {
-    kmain(mmap);
-}
+common::arch_mod!();

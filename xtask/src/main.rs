@@ -30,6 +30,8 @@ struct Args {
     arch: Option<Arch>,
     #[arg(short, long, value_enum, default_value_t = BuildType::Debug)]
     build_type: BuildType,
+    #[arg(short, long)]
+    trace: bool,
 
     #[command(subcommand)]
     command: Command,
@@ -86,10 +88,13 @@ fn version(sh: &Shell) -> Result<String> {
 fn main() -> Result<()> {
     let args = Args::parse();
     let sh = Shell::new()?;
-    let _env = vec![
+    let mut _env = vec![
         sh.push_env("RUSTC_BOOTSTRAP", "1"),
         sh.push_env("SZ_VER", version(&sh)?),
     ];
+    if args.trace {
+        _env.push(sh.push_env("SZ_TRACE", "1"));
+    }
 
     match args.command {
         Command::Build => build::build(&args, &sh),

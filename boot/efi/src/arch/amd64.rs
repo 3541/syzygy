@@ -141,6 +141,7 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
         let real_base = region.base - image.base + image.data.ptr() as usize;
         let base = real_base & !(PAGE_SIZE - 1);
         let align_offset = real_base - base;
+        let page_count = (region.size + align_offset + PAGE_SIZE - 1) / PAGE_SIZE;
 
         assert_eq!(
             base % PAGE_SIZE,
@@ -148,7 +149,7 @@ pub fn map_image(log: &mut Log, bs: &BootServices, image: &Image) -> Result<()> 
             "Region P{base:#x} not aligned to page size."
         );
 
-        for i in 0..=region.size / PAGE_SIZE {
+        for i in 0..page_count {
             let offset = i * PAGE_SIZE;
             let virt = (region.base + offset - align_offset) as *const u8;
             let phys = (base + offset) as *const u8;

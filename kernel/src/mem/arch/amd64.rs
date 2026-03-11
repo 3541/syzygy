@@ -18,11 +18,19 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::mem::types::raw::RawVirtualAddress;
+use crate::mem::types::raw::{RawPhysicalAddress, RawVirtualAddress};
 
-const NONCANONICAL_START: RawVirtualAddress = RawVirtualAddress(0x0000_8000_0000_0000);
-const NONCANONICAL_END: RawVirtualAddress = RawVirtualAddress(0xFFFF_8000_0000_0000);
+const NONCANONICAL_START: usize = 0x0000_8000_0000_0000;
+const NONCANONICAL_END: usize = 0xFFFF_8000_0000_0000;
 
-pub const fn is_valid(addr: RawVirtualAddress) -> bool {
-    addr < NONCANONICAL_START || addr >= NONCANONICAL_END
+impl RawPhysicalAddress {
+    pub const fn is_valid(&self) -> bool {
+        self.0 < NONCANONICAL_START || self.0 >= NONCANONICAL_END
+    }
+}
+
+impl RawVirtualAddress {
+    pub const fn is_valid(&self) -> bool {
+        self.0 < NONCANONICAL_START || self.0 >= NONCANONICAL_END
+    }
 }

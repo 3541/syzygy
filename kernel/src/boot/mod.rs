@@ -20,19 +20,10 @@
 
 mod arch;
 
-use alloc::vec::Vec;
-use log::info;
+use common::mmap::Mmap;
 
-use crate::mem::DefaultAlloc;
+fn kmain(mmap: Mmap) -> ! {
+    crate::mem::init(mmap);
 
-fn kmain() {
-    crate::mem::init();
-
-    let mut v = Vec::new_in(DefaultAlloc::the());
-    v.push(1);
-    v.push(2);
-    v.push(3);
-    info!("Allocation: {v:?}");
-
-    todo!("kmain");
+    panic!("kmain end");
 }

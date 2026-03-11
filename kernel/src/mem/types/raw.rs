@@ -18,8 +18,11 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use core::{fmt, ops::{Add, Sub}};
 use crate::mem::align_up;
+use core::{
+    fmt,
+    ops::{Add, Sub},
+};
 
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Debug)]
@@ -30,6 +33,14 @@ impl Copy for RawPhysicalAddress {}
 impl fmt::Display for RawPhysicalAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "P{:#x}", self.0)
+    }
+}
+
+impl Sub<RawPhysicalAddress> for RawPhysicalAddress {
+    type Output = isize;
+
+    fn sub(self, rhs: RawPhysicalAddress) -> Self::Output {
+        self.0 as isize - rhs.0 as isize
     }
 }
 
@@ -67,7 +78,11 @@ impl Add<usize> for RawVirtualAddress {
     type Output = Self;
 
     fn add(self, rhs: usize) -> Self {
-        Self(self.0.checked_add(rhs).expect("Overflowed virtual address addition."))
+        Self(
+            self.0
+                .checked_add(rhs)
+                .expect("Overflowed virtual address addition."),
+        )
     }
 }
 
@@ -75,6 +90,6 @@ impl Sub<RawVirtualAddress> for RawVirtualAddress {
     type Output = isize;
 
     fn sub(self, rhs: RawVirtualAddress) -> isize {
-        (self.0 as isize) - (rhs.0 as isize)
+        self.0 as isize - rhs.0 as isize
     }
 }

@@ -1,7 +1,7 @@
 /*
- * INIT: aarch64 bootstrap.
+ * PHYS MEM: Physical memory management.
  *
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,10 +18,17 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::boot::kmain;
-use common::mmap::Mmap;
+use crate::mem::phys::PhysicalArea;
+use common::constants::{GB, KB, MB};
 
-#[unsafe(no_mangle)]
-fn kinit(mmap: Mmap) {
-    kmain(mmap);
+pub const MIN_PAGE_SIZE: usize = 4 * KB;
+
+impl PhysicalArea {
+    pub fn page_size(&self) -> usize {
+        match self.size {
+            s if s % GB == 0 || s >= 4 * GB => GB,
+            s if s >= 32 * MB => 2 * MB,
+            _ => 4 * KB,
+        }
+    }
 }

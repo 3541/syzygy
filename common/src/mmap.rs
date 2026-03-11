@@ -1,7 +1,7 @@
 /*
- * INIT: aarch64 bootstrap.
+ * MMAP: Initial memory map.
  *
- * Copyright (c) 2024 Alex O'Brien <3541@3541.website>
+ * Copyright (c) 2020-2021, 2026 Alex O'Brien <3541@3541.website>
  *
  * This file is part of Syzygy.
  *
@@ -18,10 +18,30 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::boot::kmain;
-use common::mmap::Mmap;
+use core::ops::Range;
 
-#[unsafe(no_mangle)]
-fn kinit(mmap: Mmap) {
-    kmain(mmap);
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum MmapEntryType {
+    Usable,
+    Reserved,
+    Kernel,
+    ACPIReclaimable,
+}
+
+#[derive(Debug)]
+pub struct MmapEntry {
+    pub entry_type: MmapEntryType,
+    pub start_phys: usize,
+    pub size: usize,
+}
+
+impl MmapEntry {
+    pub fn end_phys(&self) -> usize {
+        self.start_phys + self.size
+    }
+}
+
+pub struct Mmap {
+    pub map: &'static [MmapEntry],
+    pub max_usable_range: Range<usize>,
 }

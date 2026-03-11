@@ -4,3 +4,4 @@
 mod arch;
 pub mod abi;
 pub mod constants;
+pub mod mmap;
