@@ -22,30 +22,20 @@ mod arch;
 mod bitmap;
 mod types;
 
-use log::{info, trace};
+use log::trace;
 
-use common::{constants::MB, mmap::Mmap};
+use common::mmap::Mmap;
 
 use bitmap::BitmapAlloc;
-pub use types::PhysicalArea;
+pub use types::{PhysicalAllocation, PhysicalArea};
 
 pub type PhysAlloc = BitmapAlloc;
 
-pub(super) fn init(mmap: Mmap) -> PhysAlloc {
+pub(super) fn init(mmap: Mmap) {
     trace!(
         "Initializing physical memory management. Memory map: {:#x?}",
         mmap.map
     );
 
-    let overall_size = mmap.max_usable_range.end - mmap.max_usable_range.start;
-    let res = BitmapAlloc::new(mmap);
-    let free = res.free_size();
-    assert!(free < overall_size);
-    info!(
-        "Initialized physical memory allocator. {}/{} MB usable.",
-        free / MB,
-        overall_size / MB
-    );
-
-    res
+    bitmap::init(mmap);
 }

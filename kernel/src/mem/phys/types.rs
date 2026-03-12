@@ -18,7 +18,9 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::mem::PhysicalAddress;
+use core::ops::Deref;
+
+use crate::mem::{PhysicalAddress, PhysAlloc};
 
 #[derive(Debug, Copy, Clone)]
 pub struct PhysicalArea {
@@ -26,16 +28,27 @@ pub struct PhysicalArea {
     pub size: usize,
 }
 
-impl PhysicalArea {
-    pub fn page_count(&self) -> usize {
-        self.size / self.page_size()
+#[derive(Debug)]
+pub struct PhysicalAllocation(PhysicalArea);
+
+impl PhysicalAllocation {
+    // SAFETY: This has a Drop implementation which will hand back to the bitmap allocator, so it must actually come from the right place.
+    pub(in crate::mem::phys) unsafe fn new(area: PhysicalArea) -> Self {
+        Self(area)
     }
 }
 
-pub struct PhysicalAllocation(PhysicalArea);
+impl Deref for PhysicalAllocation {
+    type Target = PhysicalArea;
+
+    fn deref(&self) -> &PhysicalArea {
+        &self.0
+    }
+}
 
 impl Drop for PhysicalAllocation {
     fn drop(&mut self) {
-        todo!()
+        // SAFETY: This is the Drop implementation, so nothing will touch this afterwards.
+        unsafe { PhysAlloc::the().free(self) }
     }
 }

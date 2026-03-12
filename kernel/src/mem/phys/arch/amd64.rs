@@ -18,17 +18,6 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use crate::mem::phys::PhysicalArea;
-use common::constants::{GB, KB, MB};
+use common::constants::KB;
 
 pub const MIN_PAGE_SIZE: usize = 4 * KB;
-
-impl PhysicalArea {
-    pub fn page_size(&self) -> usize {
-        match self.size {
-            s if s % GB == 0 || s >= 4 * GB => GB,
-            s if s >= 32 * MB => 2 * MB,
-            _ => 4 * KB,
-        }
-    }
-}

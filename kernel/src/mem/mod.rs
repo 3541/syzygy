@@ -24,11 +24,32 @@ mod phys;
 mod types;
 mod util;
 
-use common::mmap::Mmap;
+use alloc::vec::Vec;
+
+use common::{constants::MB, mmap::Mmap};
 pub use heap::DefaultAlloc;
+use log::debug;
+pub use phys::PhysAlloc;
 pub use types::{PhysicalAddress, VirtualAddress};
 pub use util::{align_down, align_up};
 
 pub fn init(mmap: Mmap) {
-    let phys_alloc = phys::init(mmap);
+    phys::init(mmap);
+
+    {
+        let test_alloc = PhysAlloc::the()
+            .alloc_contiguous(48 * MB)
+            .expect("Failed to allocate");
+        debug!("Test allocation: {test_alloc:#x?}.");
+    }
+
+    let mut allocs = Vec::new_in(DefaultAlloc::the());
+    for alloc in PhysAlloc::the().try_alloc(48 * MB) {
+        allocs.push(alloc);
+    }
+
+    debug!(
+        "More test allocations: {allocs:#x?}. Total size: {} MB",
+        allocs.iter().map(|a| a.size).sum::<usize>() / MB
+    );
 }

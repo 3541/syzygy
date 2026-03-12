@@ -21,7 +21,7 @@
 use crate::mem::align_up;
 use core::{
     fmt,
-    ops::{Add, Sub},
+    ops::{Add, Rem, Sub},
 };
 
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -36,11 +36,31 @@ impl fmt::Display for RawPhysicalAddress {
     }
 }
 
+impl Add<usize> for RawPhysicalAddress {
+    type Output = Self;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        Self(
+            self.0
+                .checked_add(rhs)
+                .expect("Overflowed physical address addition."),
+        )
+    }
+}
+
 impl Sub<RawPhysicalAddress> for RawPhysicalAddress {
     type Output = isize;
 
     fn sub(self, rhs: RawPhysicalAddress) -> Self::Output {
         self.0 as isize - rhs.0 as isize
+    }
+}
+
+impl Rem<usize> for RawPhysicalAddress {
+    type Output = usize;
+
+    fn rem(self, rhs: usize) -> usize {
+        self.0 % rhs
     }
 }
 
