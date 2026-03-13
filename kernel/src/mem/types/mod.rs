@@ -20,7 +20,10 @@
 
 pub(super) mod raw;
 
-use core::ops::{Add, Rem, Sub};
+use core::{
+    fmt,
+    ops::{Add, Rem, Sub},
+};
 
 pub use raw::{RawPhysicalAddress, RawVirtualAddress};
 
@@ -31,6 +34,12 @@ impl PhysicalAddress {
     pub const fn new(raw: RawPhysicalAddress) -> Self {
         assert!(raw.is_valid());
         Self(raw)
+    }
+}
+
+impl fmt::Display for PhysicalAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -81,6 +90,12 @@ impl VirtualAddress {
 
     pub fn as_mut_ptr<T>(&self) -> *mut T {
         self.0.0 as *mut T
+    }
+}
+
+impl fmt::Display for VirtualAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

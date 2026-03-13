@@ -1,5 +1,5 @@
 /*
- * MEM: Memory management.
+ * VIRT MEM: Virtual memory management.
  *
  * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
@@ -18,20 +18,14 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod arch;
-mod heap;
-mod phys;
-mod types;
-mod util;
-mod virt;
+use common::constants::GB;
 
-use common::mmap::Mmap;
-pub use heap::DefaultAlloc;
-pub use phys::PhysAlloc;
-pub use types::{PhysicalAddress, VirtualAddress};
-pub use util::{align_down, align_up};
+use crate::mem::{
+    types::{RawVirtualAddress, VirtualAddress},
+    virt::types::VirtualArea,
+};
 
-pub fn init(mmap: Mmap) {
-    phys::init(mmap);
-    virt::init();
-}
+pub const KERNEL_VMALLOC_AREA: VirtualArea = VirtualArea {
+    start: VirtualAddress::new(RawVirtualAddress(0xFFFFFE8000000000)),
+    size: 512 * GB,
+};

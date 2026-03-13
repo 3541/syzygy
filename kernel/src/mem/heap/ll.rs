@@ -18,18 +18,22 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use log::error;
-
-use crate::{
-    mem::{VirtualAddress, align_up},
-    sync::spin::Spinlock,
-};
 use core::{
     alloc::{AllocError, Allocator, Layout},
     cmp::max,
     mem,
     ptr::{self, NonNull},
 };
+
+use log::trace;
+
+use crate::{
+    mem::{VirtualAddress, align_up},
+    sync::spin::Spinlock,
+};
+use common::constants::MB;
+
+const HEAP_GROWTH_INCREMENT: usize = 1 * MB;
 
 pub(super) struct Node {
     size: usize,
@@ -139,15 +143,18 @@ impl LLAlloc {
 
         res
     }
-}
 
-unsafe impl Allocator for LLAlloc {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+    fn try_alloc(&self, layout: Layout) -> Option<NonNull<[u8]>> {
+        trace!(
+            "Allocating {} bytes ({} aligned).",
+            layout.size(),
+            layout.align()
+        );
         assert!(layout.align() <= mem::align_of::<Node>());
 
         let mut head = self.0.lock();
         if head.is_null() {
-            return Err(AllocError);
+            return None;
         }
 
         let mut prev = *head;
@@ -176,19 +183,28 @@ unsafe impl Allocator for LLAlloc {
 
                 let res = align_up(current as *mut _ as usize, layout.align()) as *mut u8;
 
-                return Ok(NonNull::slice_from_raw_parts(
+                return Some(NonNull::slice_from_raw_parts(
                     NonNull::new_unchecked(res),
                     size,
                 ));
             }
         }
 
-        error!(
-            "Unable to allocate {} bytes (align {}): no space found.",
-            layout.size(),
-            layout.align()
-        );
-        Err(AllocError)
+        None
+    }
+}
+
+unsafe impl Allocator for LLAlloc {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        if let Some(res) = self.try_alloc(layout) {
+            return Ok(res);
+        }
+
+        trace!("Insufficient space available. Allocating more physical memory.");
+        let size = max(HEAP_GROWTH_INCREMENT, layout.size());
+        todo!();
+
+        self.try_alloc(layout).ok_or(AllocError)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {

@@ -28,6 +28,7 @@ use common::mmap::Mmap;
 
 use bitmap::BitmapAlloc;
 pub use types::{PhysicalAllocation, PhysicalArea};
+pub use arch::MIN_PAGE_SIZE;
 
 pub type PhysAlloc = BitmapAlloc;
 

@@ -29,8 +29,6 @@ use core::{
 use common::constants::KB;
 use ll::{LLAlloc, Node};
 
-use crate::mem::phys::PhysAlloc;
-
 const INIT_HEAP_SIZE: usize = 512 * KB;
 const INIT_HEAP_NODE_COUNT: usize = INIT_HEAP_SIZE / size_of::<Node>();
 static mut INIT_HEAP: [Node; INIT_HEAP_NODE_COUNT] =
@@ -71,7 +69,3 @@ unsafe impl GlobalAlloc for DummyGlobalAlloc {
 
 #[cfg_attr(not(test), global_allocator)]
 static DUMMY_GLOBAL_ALLOC: DummyGlobalAlloc = DummyGlobalAlloc;
-
-pub(super) fn init(alloc: &PhysAlloc) {
-    // TODO: Give the heap allocator a way to ask for more if needed.
-}

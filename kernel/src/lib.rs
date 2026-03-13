@@ -26,6 +26,8 @@
 #![feature(const_cmp)]
 #![feature(allocator_api)]
 #![feature(ptr_as_ref_unchecked)]
+#![feature(btreemap_alloc)]
+#![feature(btree_cursors)]
 
 extern crate alloc;
 

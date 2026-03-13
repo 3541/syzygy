@@ -1,5 +1,5 @@
 /*
- * MEM: Memory management.
+ * VIRT MEM: Virtual memory management.
  *
  * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
@@ -18,20 +18,25 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
+mod alloc;
 mod arch;
-mod heap;
-mod phys;
 mod types;
-mod util;
-mod virt;
 
-use common::mmap::Mmap;
-pub use heap::DefaultAlloc;
-pub use phys::PhysAlloc;
-pub use types::{PhysicalAddress, VirtualAddress};
-pub use util::{align_down, align_up};
+pub use alloc::VMAlloc;
+use common::constants::GB;
+use log::info;
 
-pub fn init(mmap: Mmap) {
-    phys::init(mmap);
-    virt::init();
+pub(super) fn init() {
+    alloc::init();
+    info!(
+        "Initialized kernel VMM. {} GB available.",
+        VMAlloc::kernel().total_free() / GB
+    );
+
+    let alloc = VMAlloc::kernel().alloc(20 * GB).unwrap();
+    info!(
+        "Allocated {} GB. {} still free.",
+        alloc.size / GB,
+        VMAlloc::kernel().total_free() / GB
+    );
 }
