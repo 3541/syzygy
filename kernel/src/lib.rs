@@ -19,7 +19,6 @@
  */
 
 #![cfg_attr(not(test), no_std)]
-
 #![feature(const_trait_impl)]
 #![feature(derive_const)]
 #![feature(const_clone)]
@@ -28,6 +27,7 @@
 #![feature(ptr_as_ref_unchecked)]
 #![feature(btreemap_alloc)]
 #![feature(btree_cursors)]
+#![feature(generic_const_exprs)]
 
 extern crate alloc;
 

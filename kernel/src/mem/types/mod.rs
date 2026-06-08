@@ -91,6 +91,10 @@ impl VirtualAddress {
     pub fn as_mut_ptr<T>(&self) -> *mut T {
         self.0.0 as *mut T
     }
+
+    pub const fn raw(&self) -> RawVirtualAddress {
+        self.0
+    }
 }
 
 impl fmt::Display for VirtualAddress {

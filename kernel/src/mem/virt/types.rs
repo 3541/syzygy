@@ -20,6 +20,7 @@
 
 use core::ops::Deref;
 
+use super::VirtualMapping;
 use crate::mem::{VirtualAddress, virt::VMAlloc};
 
 #[derive(Debug, Copy, Clone)]
@@ -43,11 +44,14 @@ impl VirtualArea {
 }
 
 #[derive(Debug)]
-pub struct VirtualAllocation(VirtualArea);
+pub enum VirtualAllocation {
+    Unmapped(VirtualArea),
+    Mapped(VirtualMapping),
+}
 
 impl VirtualAllocation {
-    pub(super) unsafe fn new(area: VirtualArea) -> Self {
-        Self(area)
+    pub(super) unsafe fn unmapped(area: VirtualArea) -> Self {
+        Self::Unmapped(area)
     }
 }
 
@@ -55,13 +59,19 @@ impl Deref for VirtualAllocation {
     type Target = VirtualArea;
 
     fn deref(&self) -> &VirtualArea {
-        &self.0
+        match self {
+            Self::Unmapped(area) => area,
+            Self::Mapped(mapping) => mapping.area(),
+        }
     }
 }
 
 impl Drop for VirtualAllocation {
     fn drop(&mut self) {
-        // TODO: Also unmap if mapped.
+        if let Self::Mapped(mapping) = self {
+            todo!("Unmap area and potentially free backing.");
+        }
+
         // TODO: Handle non-kernel allocations.
         // SAFETY: There cannot be any repeated calls to drop after this.
         unsafe { VMAlloc::kernel().free(self) }

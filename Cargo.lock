@@ -466,6 +466,7 @@ name = "sz-kernel"
 version = "0.1.0-alpha"
 dependencies = [
  "ansi_rgb",
+ "bitflags",
  "common",
  "log",
  "rgb",

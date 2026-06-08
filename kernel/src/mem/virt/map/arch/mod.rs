@@ -1,5 +1,5 @@
 /*
- * VIRT MEM: Virtual memory management.
+ * VM MAP: Paging.
  *
  * Copyright (c) 2026 Alex O'Brien <3541@3541.website>
  *
@@ -18,28 +18,6 @@
  * this software. If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod alloc;
-mod arch;
-mod map;
-mod types;
+use common::arch_mod;
 
-pub use alloc::VMAlloc;
-pub use map::VirtualMapping;
-
-use common::constants::GB;
-use log::info;
-
-pub(super) fn init() {
-    alloc::init();
-    info!(
-        "Initialized kernel VMM. {} GB available.",
-        VMAlloc::kernel().total_free() / GB
-    );
-
-    let alloc = VMAlloc::kernel().alloc(20 * GB).unwrap();
-    info!(
-        "Allocated {} GB. {} still free.",
-        alloc.size / GB,
-        VMAlloc::kernel().total_free() / GB
-    );
-}
+arch_mod!();

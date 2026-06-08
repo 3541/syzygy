@@ -68,7 +68,7 @@ impl VMAlloc {
 
         let mut map = self.map.lock();
         let (addr, avail) = map.extract_if(.., |_, s| *s >= size).next()?;
-        let res = unsafe { VirtualAllocation::new(VirtualArea { start: addr, size }) };
+        let res = unsafe { VirtualAllocation::unmapped(VirtualArea { start: addr, size }) };
         if avail == size {
             return Some(res);
         }
@@ -79,8 +79,16 @@ impl VMAlloc {
 
     // SAFETY: Must ensure this is only called once. If not for drop() taking &mut, this would be by value.
     pub unsafe fn free(&self, alloc: &mut VirtualAllocation) {
-        trace!("Freeing VM allocation: {} ({} bytes).", alloc.start, alloc.size);
-        assert!(self.area.contains_area(**alloc));
+        trace!(
+            "Freeing VM allocation: {} ({} bytes).",
+            alloc.start, alloc.size
+        );
+        assert!(
+            self.area.contains_area(**alloc),
+            "VM area {} ({} bytes) freed with wrong allocator.",
+            alloc.start,
+            alloc.size
+        );
         assert!(alloc.size > 0);
 
         let mut map = self.map.lock();

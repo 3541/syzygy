@@ -297,7 +297,9 @@ fn memory_map(bs: &BootServices, kernel_range: Range<*const u8>) -> Result<Memor
 
     for i in 0..size_res / descriptor_size {
         let desc = unsafe {
-            ptr::read(buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor)
+            ptr::read_volatile(
+                buf.as_ptr().offset((i * descriptor_size) as isize) as *const MemoryDescriptor
+            )
         };
 
         let start = desc.physical_start as usize;

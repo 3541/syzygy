@@ -25,10 +25,10 @@ use core::{
     ptr::{self, NonNull},
 };
 
-use log::trace;
+use log::{debug, trace};
 
 use crate::{
-    mem::{VirtualAddress, align_up},
+    mem::{VirtualAddress, align_up, virt::VMAlloc},
     sync::spin::Spinlock,
 };
 use common::constants::MB;
@@ -192,6 +192,15 @@ impl LLAlloc {
 
         None
     }
+
+    fn grow(&self, min_size: usize) -> bool {
+        let size = max(HEAP_GROWTH_INCREMENT, min_size);
+        let Some(space) = VMAlloc::kernel().alloc(size) else {
+            return false;
+        };
+
+        todo!("map");
+    }
 }
 
 unsafe impl Allocator for LLAlloc {
@@ -200,9 +209,10 @@ unsafe impl Allocator for LLAlloc {
             return Ok(res);
         }
 
-        trace!("Insufficient space available. Allocating more physical memory.");
-        let size = max(HEAP_GROWTH_INCREMENT, layout.size());
-        todo!();
+        debug!("Insufficient heap space available. Allocating more memory.");
+        if !self.grow(layout.size()) {
+            return Err(AllocError);
+        }
 
         self.try_alloc(layout).ok_or(AllocError)
     }

@@ -11,3 +11,4 @@ license = "GPL-3.0-only"
 [workspace.dependencies]
 blake2 = { version = "0.10.6", default-features = false }
 elf = { version = "0.8.0", default-features = false, features = ["to_str"] }
+bitflags = "2.6.0"
